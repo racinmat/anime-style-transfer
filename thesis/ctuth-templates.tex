@@ -1,0 +1,230 @@
+
+%!TEX ROOT = ctutest.tex
+
+\ProvidesExplFile{ctuth-templates.tex}%
+	{2015/11/15}{0.1 t1511151022}%MY TIMESTAMP HERE {0.1}
+	{"Templates"\space part\space of\space the\space class\space ctuthesis}
+
+% The titlepage, includes doctype, faculty, department, title, author,
+% and some auxiliary information at the bottom
+\ctutemplateset{titlepage}{
+	\thispagestyle { empty }
+	\noindent
+	\vbox to \textheight{%
+	% The titlepage goes all way up to the header (taking one \baselineskip of the head)
+	\vspace*{\dimexpr-\baselineskip-\headsep}
+	\vss%
+	{\noindent\leavevmode\color{ctubluerule}\vrule width 11pt\hspace*{11pt}}
+	% The main vbox of the titlepage is larger by (bls + heasep) up and (footskip) down
+	\vbox to \dimexpr\textheight + \baselineskip + \headsep + \footskip{
+		% Reduce hsize by the rule width and the sep
+		\hsize\dimexpr\linewidth-17pt
+		% No justification, sf bf font
+		\raggedright \sffamily \bfseries
+		\selectctulanguage{title}
+		%
+		% The document type
+		{\ctufield[title]{doctype}\par}
+		%
+		\vspace*{3ex}
+		%
+		% A table containing: the CTU logo and name, faculty number, faculty and deparment name
+		\begin{tabular}{@{}l@{\hspace*{1em}}l@{}}
+			\Large\includegraphics[height=\dimexpr4\normalbaselineskip-1ex]{ctu_logo_black}
+		&
+			\Large\color{ctubluetext}\begin{tabular}[b]{@{}l@{}}\ctufield[title]{university-endl}\end{tabular}
+		\\[3ex]
+%			\begin{tabular}[c]{@{}l@{}}
+			\raisebox{-8pt}{
+			\color{ctubluetext}\fontsize{32.7}{32.7}\selectfont
+			\setbox0\hbox{\smash{\ctufield{facultynum}}\vphantom{X}}
+			\ifdim\wd0>2em \scalebox{0.9}[1]{\textls[-50]{\smash{\ctufield{facultynum}}\vphantom{X}}}\else\box0\fi
+			}
+%			\end{tabular}
+		&
+			\begin{tabular}[c]{@{}l@{}}\rlap{\ctufield[title]{faculty}}\\[2pt]\ctufield[title]{department}\end{tabular}
+		\end{tabular}\par
+		%
+		\vspace{8ex plus 1fill}
+		%
+		% The title, in two languages
+		{\LARGE\color{ctubluetext}
+		\ctufield[title]{title}
+		\par}
+		%
+		\vspace{3ex}
+		%
+		{\Large\color{ctubluetext}
+		\ctufield[title]{subtitle}
+		\par}
+		%
+		\vspace*{8ex}
+		%
+		% The author
+		{\Large
+		\ctufield{author}
+		\par}
+		%
+		\vspace{0pt plus 3fill}
+		{
+		% The "metadata": supervisor, field of study, month and year
+		\parskip 1pt
+		\ctuiffield*{supervisor}{\supervisorname :~{\frenchspacing\ctufield{supervisor}}\par}{}
+		\ctuiffield*{supervisor-specialist}{\supervisorspecialistname :~{\frenchspacing\ctufield{supervisor-specialist}}\par}{}
+		\ctuiffield*[title]{fieldofstudy}{\fieldofstudyname :~\ctufield[title]{fieldofstudy}\par}{}
+		\ctuiffield*[title]{subfieldofstudy}{\subfieldofstudyname :~\ctufield[title]{subfieldofstudy}\par}{}
+		\monthinlanguage*{title}~\ctufield{year}\par
+		}
+	}
+	\vss
+	% The titlepage goes all way down to the foot
+	\vspace*{-\footskip}
+	}
+	\par
+}
+
+% This include the specification file, and does nothing more
+\ctutemplateset{include.specification}{
+	\includepdf[pages=-]{\tl_use:c{ g_ctuthesis_field_specification-file_tl }}
+}
+
+% Includes the specification as a chapter
+\ctutemplateset{specification.as.chapter}{
+	\cleardoublepage
+	% If it is an appendix, it gets a number, if not, it does not
+	\ifctu@app
+		\refstepcounter{chapter}
+		\phantomsection
+		\addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}\specificationname}
+	\else
+		\phantomsection
+		\addcontentsline{toc}{chapter}{\specificationname}
+	\fi
+	\ctutemplate{include.specification}
+}
+
+\ctutemplateset{twocolumn.abstract.in.titlelanguage}{
+		\selectctulanguage{title}
+		\chapter{\abstractname}\noindent
+		\ctufield[title]{abstract}\par
+		{ \raggedright
+		\paragraph{\keywordsname :}
+		\ctufield[title]{keywords}
+		\paragraph{\supervisorname :}
+		\ctuiffield*{supervisor}{
+			\ctufield{supervisor}
+			\ctuiffield*{supervisor-address}{
+				\\
+				\ctufield{supervisor-address}
+			}{}
+		}{}
+		\par }
+}
+
+\ctutemplateset{twocolumn.abstract.in.secondlanguage}{
+		\selectctulanguage{second}
+		\chapter{\abstractname}\noindent
+		\ctufield[second]{abstract}\par
+		{ \raggedright
+		\paragraph{\keywordsname :}
+		\ctufield[second]{keywords}
+		\paragraph{\titletranslationname :}
+		\ctufield[second]{title}
+		\ctuiffield*[second]{subtitle}{
+			\ --- \ \ctufield[second]{subtitle}
+		} { }
+		\par }
+}
+
+\ctutemplateset{twocolumn.tableofcontents}{
+		\selectctulanguage{main}
+		\tableofcontents
+}
+
+\ctutemplateset{twocolumn.thanks}{
+		\selectctulanguage{title}
+		\chapter{\thanksname}\noindent
+		\ctufield{thanks}
+}
+
+\ctutemplateset{twocolumn.declaration}{
+		\selectctulanguage{title}
+		\chapter{\declarationname}\noindent
+		\ctufield{declaration}
+}
+
+\ctutemplateset{twocolumn.listoffigures}{
+		\selectctulanguage{main}
+		\listoffigures
+}
+
+\ctutemplateset{twocolumn.listoftables}{
+		\selectctulanguage{main}
+		\listoftables
+}
+
+% Abstract template includes the Acknowledgements, Declaration and two Abstracts
+% the abstracts are accompanied by the keywords and possibly other information
+\ctutemplateset{maketitle.twocolumn.default}{
+	\begin{twocolumnfrontmatterpage}
+		\ctutemplate{twocolumn.thanks}
+	\newpage
+		\ctutemplate{twocolumn.declaration}
+	\clearpage
+		\ctutemplate{twocolumn.abstract.in.titlelanguage}
+	\newpage
+		\ctutemplate{twocolumn.abstract.in.secondlanguage}
+	\clearpage
+		\ctutemplate{twocolumn.tableofcontents}
+	% The "loft" template is included only if at least one of the lists is enabled
+	\bool_if:nTF {
+		\ctuthesis_if_switch_p:n { front-list-of-figures }
+		|| \ctuthesis_if_switch_p:n { front-list-of-tables }
+	} {
+		\clearpage
+		\ctutemplate{twocolumn.loft}
+	} { }
+	\end{twocolumnfrontmatterpage}
+}
+
+% Lists of Figures and Tables
+\ctutemplateset{twocolumn.loft}{
+		\ctuifswitch { front-list-of-figures } { \ctutemplate{twocolumn.listoffigures} } { }
+	\newpage
+		\ctuifswitch { front-list-of-tables } { \ctutemplate{twocolumn.listoftables} } { }
+}
+
+% The maketitle command (moreorless): roman page numbering
+\ctutemplateset{maketitle}{
+	\frontmatter
+	% Start with the titlepage
+	\ctutemplate{titlepage}
+	% title verso is empty (the star makes it completely empty in our template)
+	\cleardoublepage*
+	% If the specification has to be in front, include it. It it's one page only,
+	% the verso is left empty
+	\ctuifswitch{front-specification}{
+		\ctutemplate{include.specification}
+		\cleardoublepage*
+	} { }
+	% The abstract and alike
+	\ctutemplate{maketitle.twocolumn.default}
+	\def\thepage{}
+	% Start the mainmatter
+	\mainmatter
+}
+
+% Minor change to \mainmatter: we add the star to \cleardoublepage
+\DeclareDocumentCommand \mainmatter { } {
+	\cleardoublepage*
+	\@mainmattertrue
+	\pagenumbering{arabic}
+	\pagestyle{headings}
+}
+
+% \maketitle command itself just calls the maketitle template
+\DeclareDocumentCommand \maketitle { } {
+	\ctutemplate{maketitle}
+}
+
+\endinput

@@ -1,0 +1,5 @@
+\chapter{Conclusion}
+
+We created easy-to-use framework for training, using and evaluating performance of Faster \rcnn type of networks. We were unable to succesfully re-train ZFNet network to increase its performance on our datasets. This fact appears to be quite unfortunate since ZFNet architecture is smaller and therefore faster at re-training and recognition stages which could be therefore harnessed in the applications where time is critical.
+
+We showed that VGG16 network is highly suitable for re-training on custom datasets. If you wish to use such network on classifying images from different domains, re-training on multiple datasets is feasible as well with reasonable trade-off in performance. If the training and testing data come from the domains that are quite close, the performance appears to be quite high as shown on Victims dataset. However, one must beware of overfitting the network.

@@ -1,0 +1,982 @@
+
+%!TEX ROOT = ctutest.tex
+
+\ProvidesExplFile{ctuth-pkg.tex}%
+	{2015/11/15}{0.1 t1511151022}%MY TIMESTAMP HERE {0.1}
+	{"Packages"\space part\space of\space the\space class\space ctuthesis}
+
+% A lot of the code here is not latex3, but rather the good'ol latex2e code. The reason is that
+% it heavily depends on l2e packages, and we decided not to mix the code together too much.
+
+\RequirePackage{lmodern}
+\RequirePackage[T1]{fontenc}
+\RequirePackage{microtype}
+\RequirePackage{graphicx}
+\RequirePackage{pdfpages}
+
+
+
+
+%%% BABEL -- LANGUAGE HANDLING
+
+% The loading of the languages is a bit wicked, but it works this way. We load the main language once more
+% to make it the default one.
+\RequirePackage[\seq_use:Nn \g_ctuthesis_languages_seq {,},\g_ctuthesis_field_mainlanguage_tl]{babel}
+
+% Used for setting title, main or second language
+\NewDocumentCommand \selectctulanguage { m } {
+	\exp_args:Nx \selectlanguage { \ctuthesis_field_use:n { #1 language } }
+}
+
+
+
+
+
+
+
+%%% COLORS, TEXT FLOW
+
+\RequirePackage{xcolor}
+
+% Define the colors, first in monochrome, then in colour.
+\ctuifswitch { savetoner } {
+	% savetoner: true
+	\definecolor { ctublue } { CMYK } { 100, 43, 0, 0 }
+	\definecolor { ctulightblue } { RGB }{ 172, 214, 238 }
+	\colorlet    { ctubluetext } { ctublue }
+	\colorlet    { ctubluerule } { ctulightblue }
+	\colorlet    { ctubluedarkbg } { white }
+	\colorlet    { ctubluedarkfg } { ctublue!50!black }
+	\colorlet    { ctubluedot } { white }%ctulightblue }
+	\colorlet    { ctubluebg } { white }
+	\colorlet    { ctulstbg } { ctubluebg }
+	\colorlet    { ctublueitemi } { ctublue }
+	\colorlet    { ctublueitemii } { ctulightblue }
+	\colorlet    { ctugray } { gray }
+	\definecolor { ctuorange } { Hsb } { 22, 0.5, 1 }
+} {
+	\ctuifswitch { monochrome } {
+		% savetoner: false, monochrome: true
+		\definecolor { ctublue } { gray } { 0.8 }
+		\definecolor { ctulightblue } { gray } { 0.9 }
+		\definecolor { ctubluetext } { gray } { 0.4 }
+		\definecolor { ctubluerule } { gray } { 0.4 }
+		\definecolor { ctubluedarkbg } { gray } { 0.2 }
+		\definecolor { ctubluedarkfg } { gray } { 1 }
+		\definecolor { ctubluedot } { gray } { 0.9 }
+		\definecolor { ctubluebg } { gray } { 0.95 }
+		\definecolor { ctulstbg } { gray } { 0.95 }
+		\definecolor { ctublueitemi } { gray } { 0.4 }
+		\definecolor { ctublueitemii } { gray } { 0.4 }
+		\definecolor { ctugray } { gray } { 0.5 }
+		\definecolor { ctuorange } { gray } { 0.9 }
+	} {
+		% savetoner: false, monochrome: false
+		\definecolor { ctublue } { cmyk } { 1, .43, 0, 0 }
+		\definecolor { ctulightblue } { cmyk }{ .3, .13, 0, 0 }
+		\colorlet    { ctubluetext } { ctublue }
+		\colorlet    { ctubluerule } { ctublue }
+		\colorlet    { ctubluedarkbg } { ctublue }
+		\colorlet    { ctubluedot } { ctulightblue }
+		\colorlet    { ctubluebg } { ctulightblue!50!white }
+		\colorlet    { ctulstbg } { ctulightblue!50!white }
+		\colorlet    { ctublueitemi } { ctublue }
+		\colorlet    { ctublueitemii } { ctulightblue }
+		\colorlet    { ctugray } { gray }
+		\definecolor { ctuorange } { cmyk } { 0, .51, 1, 0 }
+	}
+}
+
+\setlength{\parskip}{0pt plus 1pt}
+
+\setlength{\parindent}{11.2pt}
+
+
+
+
+
+
+%%% FRONT MATTER --- TWOCOLUMN HANDLING
+
+% This is a "ToC macro" for the twocolumn context
+% Arguments: 1) suffix, 2) ToC name
+\cs_new:Nn \ctuthesis_maketoc_twocol:nn {
+	% Start the chapter
+	\chapter* { #2 }
+	% locally make rugged pages
+	\begingroup
+	\raggedbottom
+	% We use this trick to add nothing, but also to make sure that
+	% any \addvspace for less than 20pt is going to be ignored.
+	\vspace*{-20pt}\addvspace{20pt}
+	% call the original \@starttoc
+	\@starttoc { #1 }
+	\newpage
+	\endgroup
+}
+
+% Environment for the twocolumn frontmatter. It can appear more times in a row
+% and should handle it nicely
+\NewDocumentEnvironment{ twocolumnfrontmatterpage } { } {
+	% Set the page geometry to the title one (it's a bit wider)
+	\ctuthesis_geometry_title:
+	\newpage
+	\pagestyle{twocol}
+	% Start the twocolumn.
+	\twocolumn[]\relax
+	% We are narrow, so we wanna be sloppy
+	\sloppy
+	% Chapter behaves differently. Both the [] argument and the star * are ignored.
+%	\DeclareDocumentCommand\chapter{ s o m }{\relax
+%		% Vertical adjustment
+%		\vspace* { -\baselineskip }
+%		\nointerlineskip
+%		% Zero measure vertical box, the contents are raised by something and typeset
+%		\vbox to 0pt{\noindent\leavevmode\smash{\raise6pt\hbox to \linewidth{%
+%			% In the first column its right-aligned, in the second left-aligned.
+%			% It can't be more than one line.
+%			\if@firstcolumn\hfil\fi
+%			\color{ctubluetext}\LARGE\bfseries\sffamily##3
+%			\if@firstcolumn\else\hfil\fi
+%		}}}
+%		\everypar{\noindent}
+%	}
+	\DeclareDocumentCommand\chapter{ s o m }{\relax
+		% Compute the vertical adjustment
+		\skip_gset:Nn \g_ctuthesis_tempa_skip { - \box_ht:N \strutbox }
+		{ \LARGE \skip_gsub:Nn \g_ctuthesis_tempa_skip { \box_ht:N \strutbox + \box_dp:N \strutbox } }
+		% Space used if not at the beginning of a column
+		\skip_vertical:n { 12pt - \g_ctuthesis_tempa_skip }
+		% Add the space below the chapter title to the adjustment
+		\skip_gsub:Nn \g_ctuthesis_tempa_skip { 2pt }
+		% Vertical adjustment
+		\vspace* { \g_ctuthesis_tempa_skip }
+		% Zero measure vertical box, the contents are raised by something and typeset
+		\noindent \leavevmode
+		\hbox_to_wd:nn \linewidth {
+			% In the first column its right-aligned, in the second left-aligned.
+			% It can't be more than one line.
+			\if@firstcolumn\hfil\fi
+			\leavevmode\color{ctubluetext}\LARGE\strut\bfseries\sffamily##3
+			\if@firstcolumn\else\hfil\fi
+		}\par
+		\skip_vertical:n { 2pt }
+		\everypar{\noindent}
+	}
+	\DeclareDocumentCommand \tableofcontents {  }{ \ctuthesis_maketoc_twocol:nn { toc } { \contentsname } }
+	\DeclareDocumentCommand \listoffigures {  }{ \ctuthesis_maketoc_twocol:nn { lof } { \listfigurename } }
+	\DeclareDocumentCommand \listoftables {  }{ \ctuthesis_maketoc_twocol:nn { lot } { \listtablename } }
+} {
+	\ctuthesis_geometry_plain:
+	\clearpage
+	\onecolumn
+	\pagestyle{plain}
+}
+
+
+
+
+
+
+%%% LANGUAGES
+
+% For every of the languages below, if it's initialized, add the
+% custom captions of the class
+\@ifundefined{captionsenglish}{}{\g@addto@macro\captionsenglish{\ctucaptionsenglish}}
+\@ifundefined{captionsczech}{}{\g@addto@macro\captionsczech{\ctucaptionsczech}}
+\@ifundefined{captionsslovak}{}{\g@addto@macro\captionsslovak{\ctucaptionsslovak}}
+
+
+
+
+
+%%% GEOMETRY
+
+% The ratios of inner:outer margins
+% Needs to be separate as this to make the colon ":" have the right catcode
+\cs_new:Nx \ctuthesis_geometry_hmarginratio: {4\string :6}
+
+% Target textwidth is 33*basesize (10pt to 12pt)
+\dim_const:Nn \g_ctuthesis_geometry_textwidth_dim { \tl_use:N \g_ctuthesis_fontsize_tl * 33 }
+
+% Text occupies 75% of the height of the page by default, less if layout-short is active
+% The vmargin ratio is set here in the same manner as the hmargin one above
+\ctuifswitch { layout-short } {
+	\dim_const:Nn \g_ctuthesis_geometry_textheight_dim { 1.5\g_ctuthesis_geometry_textwidth_dim }
+	\cs_new:Nx \ctuthesis_geometry_vmarginratio: {4\string :3}
+} {
+	\dim_const:Nn \g_ctuthesis_geometry_textheight_dim { 0.75\paperheight }
+	\cs_new:Nx \ctuthesis_geometry_vmarginratio: {5\string :6}
+}
+
+% Loading the geometry package.
+% Almost the same setting appears again in \ctuthesis_geometry_plain:
+\RequirePackage [ a4paper ,
+	hmarginratio = \ctuthesis_geometry_hmarginratio: ,
+	textwidth = \g_ctuthesis_geometry_textwidth_dim ,
+ 	textheight = \g_ctuthesis_geometry_textheight_dim ,
+	vmarginratio = \ctuthesis_geometry_vmarginratio: , ignoreheadfoot ,
+	% Should be at least \baselineskip
+	headheight = 16pt ,
+	marginparsep = 10pt ,
+] { geometry }
+
+% Inner margin is 1in + \oddsidemargin. We wanna preserve this value through all
+% the different page geometries
+\dim_const:Nn \g_ctuthesis_geometry_innermargin_dim { 1in + \the\oddsidemargin }
+
+% The frontmatter pages are a bit wider
+\cs_new:Nn \ctuthesis_geometry_title: {
+	\newgeometry {
+		% Use the stored innermargin value
+		inner = \g_ctuthesis_geometry_innermargin_dim ,
+		% Increase the width by 20%, but do not exceed 420pt
+		textwidth = \dim_min:nn { 420pt } { 1.2 \g_ctuthesis_geometry_textwidth_dim } ,
+	 	textheight = \g_ctuthesis_geometry_textheight_dim ,
+		vmarginratio = \ctuthesis_geometry_vmarginratio: ,
+		headheight = 16pt ,
+		ignoreheadfoot ,
+		columnsep=30pt ,
+	}
+}
+
+\cs_new:Nn \ctuthesis_geometry_plain: {
+	\newgeometry {
+		% Use the stored innermargin value
+		inner = \dim_use:N \g_ctuthesis_geometry_innermargin_dim ,
+		% Otherwise it's the same as in \RequirePackage[...]{geometry}
+		textwidth = \dim_use:N \g_ctuthesis_geometry_textwidth_dim ,
+	 	textheight = \g_ctuthesis_geometry_textheight_dim ,
+		vmarginratio = \ctuthesis_geometry_vmarginratio: , ignoreheadfoot ,
+		headheight = 16pt ,
+		marginparsep = 10pt ,
+	}
+	% Compute the marginparwidth so that we leave 40pt from the page boundary
+	\marginparwidth \dimexpr \evensidemargin + 1in - \marginparsep - 40pt
+}
+
+% Re-initialize the geometry
+\ctuthesis_geometry_plain:
+
+
+
+
+
+
+%%% TITLES
+
+\usepackage{titlesec}
+% two basic parameters: the rule width and distance
+\newlength \ctu@title@rulewidth
+\newlength \ctu@title@rulesep
+\setlength \ctu@title@rulewidth {11pt}
+\setlength \ctu@title@rulesep {11pt}
+% box used all the time
+\newbox\ctu@title@box
+% macro that boxifies the header and adds the rule
+\long\def\ctu@title@boxify#1#2#3#4{
+	\sffamily
+	\bfseries
+	\setbox\ctu@title@box\vbox{\hsize\dimexpr\linewidth-\ctu@title@rulewidth-\ctu@title@rulesep\relax
+		\vskip#1
+		\raggedright
+		#3
+		\vskip#2
+	}
+	#4
+	\noindent\begin{tabular}{@{}l@{\hspace*{\ctu@title@rulesep}}l@{}}
+		\color{ctubluerule}\rule[-\dp\ctu@title@box]{\ctu@title@rulewidth}{\dimexpr\ht\ctu@title@box+\dp\ctu@title@box}
+	&
+		\box\ctu@title@box
+	\end{tabular}\hspace*{-10pt}
+	\par
+}
+\long\def\ctu@title@boxify@x#1#2#3#4#5{
+	\sffamily
+	\bfseries
+	\setbox\ctu@title@box\vbox{\hsize\dimexpr\linewidth-\ctu@title@rulewidth-\ctu@title@rulesep\relax
+		\vskip#1
+		\raggedright
+		#4
+		\vskip#2
+	}
+	#5
+	\noindent\begin{tabular}{@{}l@{\hspace*{\ctu@title@rulesep}}l@{}}
+		\color{ctubluerule}
+		\rule
+			[\dimexpr\ht\ctu@title@box-#3-#1]
+			{\ctu@title@rulewidth}
+			{\dimexpr#1+#3}
+	&
+		\box\ctu@title@box
+	\end{tabular}\hspace*{-10pt}
+	\par
+}
+% the part style, very simply organized
+\def\ttlh@ctupt#1#2#3#4#5#6#7#8{
+	\bool_gset_true:N \g_ctuthesis_title_haspart_bool
+	\ctu@title@boxify{#5}{#3}{
+		{#1\strut\ifttl@label#2\fi\par}
+		\vskip30pt
+		{\color{ctubluetext}#4\strut#8\strut\par}
+	}{\dp\ctu@title@box\dimexpr\textheight-\ht\ctu@title@box-\baselineskip\relax
+	}
+}
+\def\ttlh@ctuch#1#2#3#4#5#6#7#8{
+	% If the chapter is starred, we still want to \chaptermark it, just we use the variant \chapterstarmark.
+	\ifttl@label\else\chapterstarmark{#8}\fi
+	% If the chapter is starred, we still want it in the ToC.
+	\ifttl@label\else\addcontentsline{toc}{chapter}{#8}\fi
+	\ctu@title@boxify{#5}{#3}{
+		{#1\strut\ifttl@label#2\fi\par}
+		\medskip
+		{\color{ctubluetext}#4\strut#8\strut\par}
+	}{}
+}
+% The section style, very simply organized, subsection style differs only by a missing check for star variant and mark inclusion
+% Comments to the chapter style apply here too.
+\def\ttlh@ctus#1#2#3#4#5#6#7#8{
+	\ifttl@label\else\sectionstarmark{#8}\fi	
+	\ifttl@label\else\addcontentsline{toc}{section}{#8}\fi
+	\ctu@title@boxify@x{#5}{0pt}{#3}{ #1{\ifttl@label#2\fi\strut\color{ctubluetext}#8\strut} }{}
+}
+\def\ttlh@ctuss#1#2#3#4#5#6#7#8{
+	\ifttl@label\else\addcontentsline{toc}{subsection}{#8}\fi
+	\ctu@title@boxify@x{#5}{0pt}{#3}{ #1{\ifttl@label#2\fi\strut\color{ctubluetext}#8\strut} }{}
+}
+\def\ttlh@ctusss#1#2#3#4#5#6#7#8{
+	\ifttl@label\else\addcontentsline{toc}{subsubsection}{#8}\fi
+	\ctu@title@boxify@x{#5}{0pt}{#3}{ #1{\ifttl@label#2\fi\strut\color{ctubluetext}#8\strut} }{}
+}
+% Modified \ttl@page@ii to use \cleardoublepage instead of some idiocy
+\def\ttl@page@ii#1#2#3#4#5#6#7{%
+  \ttl@assign\@tempskipa#3\relax\beforetitleunit
+  \if@openright
+    \cleardoublepage
+  \else
+    \clearpage
+  \fi
+  \@ifundefined{ttl@ps@#6}%
+    {\thispagestyle{plain}}%
+    {\thispagestyle{\@nameuse{ttl@ps@#6}}}%
+  \if@twocolumn
+    \onecolumn
+    \@tempswatrue
+  \else
+    \@tempswafalse
+  \fi
+  \vspace*{\@tempskipa}%
+  \@afterindenttrue
+  \ifcase#5 \@afterindentfalse\fi
+  \ttl@assign\@tempskipb#4\relax\aftertitleunit
+  \ttl@select{#6}{#1}{#2}{#7}%
+  \ttl@finmarks
+  \@ifundefined{ttlp@#6}{}{\ttlp@write{#6}}%
+  \vspace{\@tempskipb}%
+  \cleardoublepage
+  \if@tempswa
+    \twocolumn
+  \fi
+  \ignorespaces}
+% Part title setting
+\bool_new:N \g_ctuthesis_title_haspart_bool
+\titleformat \part [ctupt] {\Huge} {{\huge\partname\nobreakspace}\thepart} {0pt} {\huge} [0.6\textheight]
+\titlespacing* \part {0pt} {0pt} {0pt}
+% Tweak into titlesec to make part number contain \numberline. They did not include it for some reason.
+\def\ttl@tocpart{\def\ttl@a{\protect\numberline{\thepart}}}
+% Chapter title setting
+\titleformat \chapter [ctuch] {\huge} {{\LARGE\chaptertitlename\ }\thechapter} {-0\dp\strutbox} {\LARGE} [40pt]
+\titlespacing* \chapter {0pt} {40pt} {15pt}
+% Section title setting
+\titleformat \section [ctus] {\Large} {\thesection\quad} {14pt} {} [2pt]
+\titleformat \subsection [ctuss] {\large} {\thesubsection\quad} {11pt} {} [0pt]
+\titleformat \subsubsection [ctusss] {\normalsize} {\thesubsubsection\quad} {10pt} {} [0pt]
+% Paragraph title setting: runin, with a dot.
+\cs_new:Nn \ctuthesis_title_adddot:n {#1\@addpunct.\ignorespaces}
+\titleformat \paragraph [runin] {\normalfont\normalsize\bfseries\sffamily} {\theparagraph} {1em} {\ctuthesis_title_adddot:n}
+\titleformat \subparagraph [runin] {\normalfont\normalsize\itshape} {\thesubparagraph} {1em} {\ctuthesis_title_adddot:n}
+\titlespacing* \paragraph {0pt} {2.25ex plus 1ex minus .2ex} {1em plus 0.3em minus 0.2em}
+\titlespacing* \subparagraph {\parindent} {1.75ex plus 0.5ex minus .2ex} {0.7em plus 0.3em minus 0.15em}
+
+% Subsections are the lowest numbered titles, and also the lowest included in ToC.
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+
+% Appendix treatment: Even if a chapter in appendix has a star, it will get a number (letter in this case), since
+% once you get any appendix, it doesn't make sense not to number some of them.
+% Users can use \chapter** if-need-be to get an unnumbered chapter in appendix, but we think it's ridiculous.
+\cs_set_eq:NN \ctuthesis_title_orig_appendix: \appendix
+\cs_set_eq:NN \ctuthesis_title_orig_chapter: \chapter
+\cs_set_eq:NN \ctuthesis_title_orig_makeschapterhead: \@makeschapterhead
+% an \if that is true only after \appendix
+\newif\ifctu@app \ctu@appfalse
+% The new \appendix
+\DeclareDocumentCommand \appendix { s s } {
+	\ctu@apptrue
+	% Call the old \appendix
+	\ctuthesis_title_orig_appendix:
+	% If the document has \part division, let's make "Appendices" a part on their own
+	\bool_if:NT \g_ctuthesis_title_haspart_bool { 
+		% But only make the notice in ToC if * is used
+		\IfBooleanTF { #2 } {
+			% Two stars: If nothing in ToC, at least put there a space.
+			\addtocontents{toc}{\vskip 2ex plus 0.2pt}
+		} {
+			\IfBooleanTF { #1 } {
+				% One star: Only add "Appendices" in ToC
+				\cleardoublepage
+				\addcontentsline { toc } { part } { \appendicesname }
+			} {
+				% Zero stars: Make "Appendices" page (will be in ToC implicitly
+				\part*{ \appendicesname }
+			}
+		}
+	}
+	% \chapter ignores one star, so that things like {thebibliography} are numbered
+	\DeclareDocumentCommand \chapter { s } { \ctuthesis_title_orig_chapter: }
+	% another \appendix will generate a warning and be silently ignored
+	\DeclareDocumentCommand \appendix { s s } {
+		\msg_warning:nn { ctuthesis } { appendix-twice }
+	}
+}
+
+\msg_new:nnn { ctuthesis } { appendix-twice } { The~macro~ \token_to_str:N \appendix\ should~
+	be~used~only~once.~Silently~ignoring. }
+
+
+
+
+
+
+
+%%% TABLE OF CONTENTS, LISTS OF FIGURES AND TABLES
+
+% Right margin in TOC, note that it need not be wider than the page numbers, so we're fine with 1em.
+\def\@tocrmarg{1em}
+
+% New dottedtocline, differs from the default by having numberline variable-width and accomodating to the number
+\def\ctu@dottedtocline#1#2#3#4#5{\ifnum #1>\c@tocdepth \else
+	\addvspace{0pt plus .2pt}
+	{
+	\leftskip #2\relax
+	\rightskip\dimexpr\@tocrmarg plus 1fil
+	\parfillskip -\rightskip
+	\parindent #3\relax
+	\@afterindenttrue
+	\interlinepenalty\@M
+	\leavevmode
+	\null
+	\nobreak
+	\hskip -\leftskip
+	\def\numberline##1{##1\ }
+	{#4}
+	\nobreak
+	\leaders \hbox {$\m@th \mkern 2mu\hbox {.}\mkern 2mu$}\hfill
+	\nobreak
+	{\kern0.5em#5}
+	\par
+	}
+\fi}
+
+% Part in ToC: centered, with no pagenumber, bf sf, and with nice space above.
+\def\l@part#1#2{
+	\addvspace{2ex plus .2pt}
+	{
+	\centering
+	\@afterindenttrue
+	\interlinepenalty\@M
+	\leavevmode
+	\null
+	\nobreak
+	\def\numberline##1{\partname \nobreakspace ##1\\}%
+	\sffamily \bfseries
+	#1
+	\par
+	}\penalty10000\relax
+}
+% Chapter in ToC: bf sf, no leaders, completely left-aligned, the numberline is variable-width,
+% nice space above the chapter line
+\def\l@chapter#1#2{
+	\addvspace{1ex plus .2pt}
+	{
+	\raggedright
+	\rightskip\dimexpr\@tocrmarg plus 1fil
+	\parfillskip -\rightskip
+	\@afterindenttrue
+	\interlinepenalty\@M
+	\leavevmode
+	\null
+	\nobreak
+	\def\numberline##1{##1\hspace*{0.5em}}
+	\sffamily \bfseries
+	#1
+	\nobreak
+	\hfill
+	\nobreak
+	{\kern0.5em#2}
+	\par
+	}\penalty9999\relax
+}
+% The section and lower in Toc. We hope nobody would put `\paragraph`s in ToC
+\def\l@section{\ctu@dottedtocline{1}{0.6em}{0em}}
+\def\l@subsection{\ctu@dottedtocline{2}{1.2em}{0.6em}}
+\def\l@subsubsection{\ctu@dottedtocline{3}{1.8em}{1.2em}}
+% Figures and tables in LoF and LoT exactly as sections, just the level is set to -2 so that they're always shown
+\def\l@figure{\ctu@dottedtocline{-2}{0.6em}{0em}}
+\let\l@table\l@figure
+
+
+
+
+
+
+%%% FANCY HEADERS
+
+\RequirePackage{fancyhdr}
+
+% Spacial pagestyle for twocolumnpages in the frontmatter: includes centered pagenumber in the bottom
+% and we abuse \fancyhead[C] to include the dividing rule
+\fancypagestyle{twocol}{
+	\fancyhf { }
+	\fancyfoot [ RO, LE ] { \texttt { \ctufield { preprint } } }
+	\fancyfoot [ C ] { \thepage }
+	\fancyhead [ C ] {
+		\leavevmode
+		\smash {
+			\color{ctubluerule}
+			\rule [ \dimexpr - \textheight - \headsep - 6pt ]{ 11pt }{ \textheight } 
+		}
+	}
+	\renewcommand { \headrulewidth } { 0pt }
+	\renewcommand { \footrulewidth } { 0pt }
+	\dim_set_eq:NN \headwidth \textwidth
+}
+
+\fancypagestyle { cleardoublepage } {
+	% On \cleardoublepage (without star), we want the page number, but nothing else,
+	% that is, the same as plain pagestyle
+	\ps@plain
+}
+
+% Plain pagestyle for chapter and part titles: no rules, just the page number
+\fancypagestyle { plain } {
+	\fancyhf { }
+	\fancyfoot [ RO, LE ] { \texttt { \ctufield { preprint } } }
+	\fancyfoot [ C ] { \thepage }
+	\renewcommand \headrulewidth { 0pt }
+	\renewcommand \footrulewidth { 0pt }
+	% reset headwidth to the global textwidth
+	\dim_set_eq:NN \headwidth \g_ctuthesis_geometry_textwidth_dim
+}
+
+% Headings pagestyle for standard text pages
+\fancypagestyle { headings } {
+	% Copy the plain pagestyle
+	\ps@plain
+	% Include the left/rightmark and leaders
+	\fancyhead [ LE ] { \ctuthesis_fancy_xlap:nn { right } { \leftmark \ctuthesis_fancy_leaders:n { l } } }
+	\fancyhead [ RO ] { \ctuthesis_fancy_xlap:nn { left } { \ctuthesis_fancy_leaders:n { r } \rightmark } }
+}
+
+% The leaders macro for the fancyhead: nice little boxes. We make three of them: left, right and center-aligned
+
+\box_new:N \g_ctuthesis_fancy_bluerule_l_box
+\hbox_set_to_wd:Nnn \g_ctuthesis_fancy_bluerule_l_box { 10.5pt } {
+	{ \color{ctubluedot} \smash{\fontsize{28.88}{0}\fontfamily{lmss}\bfseries.} }
+	\hfil
+}
+
+\box_new:N \g_ctuthesis_fancy_bluerule_r_box
+\hbox_set_to_wd:Nnn \g_ctuthesis_fancy_bluerule_r_box { 10.5pt } {
+	\hfil
+	{ \color{ctubluedot} \smash{\fontsize{28.88}{0}\fontfamily{lmss}\bfseries.} }
+}
+
+\box_new:N \g_ctuthesis_fancy_bluerule_c_box
+\hbox_set_to_wd:Nnn \g_ctuthesis_fancy_bluerule_c_box { 10.5pt } {
+	\hfil
+	{ \color{ctubluedot} \smash{\fontsize{28.88}{0}\fontfamily{lmss}\bfseries.} }
+	\hfil
+}
+
+% The leaders macro for the fancyhead: nice little boxes,
+% the parameter #1 chooses one of the boxes above
+\cs_new:Nn \ctuthesis_fancy_leaders:n {
+	\hspace*{-1pt}
+	\leaders \box_use:c {g_ctuthesis_fancy_bluerule_#1_box} \hfill
+	\hspace*{-1pt}
+}
+
+% This macro works as follows: The width of the material is actually zero. We use \hbox_overlap_left/right
+% to make the headers as wide as we wish, the direction is in #1. In #2 is the contents, and we suppose
+% that it contains \ctuthesis_fancy_leaders: and \left/rightmark in desired order; it's typeset gray sf it
+\cs_new:Nn \ctuthesis_fancy_xlap:nn {
+	\color{ctugray} \sffamily\itshape
+	\leavevmode \use:c { hbox_overlap_#1:n } {
+		\hbox_to_wd:nn { \paperwidth - 1in - \evensidemargin + 1em } { #2 }
+	}
+}
+
+% We rename the original \mark... commands and disable them; we do it ourselves
+\cs_set_eq:NN \ctuthesis_fancy_markboth_orig:nn \markboth
+\cs_set_eq:NN \ctuthesis_fancy_markright_orig:n \markright
+\let\markboth\@gobbletwo
+\let\markright\@gobble
+
+% New chapter and section marks with no \MakeUppercase
+\renewcommand \chaptermark [1] { \ctuthesis_fancy_markboth_orig:nn { \thechapter.\ #1 }{ \thechapter.\ #1 } }
+\renewcommand \sectionmark [1] { \ctuthesis_fancy_markright_orig:n { \thesection.\ #1 } }
+
+% Newly defined \chapter/sectionstarmark to be used with unnumbered chapters and sections.
+% Not that we like unnumbered ones, but if they need to be there, they sould be in headings, too.
+\newcommand \chapterstarmark [1] { \ctuthesis_fancy_markboth_orig:nn { #1 } { #1 } }
+\newcommand \sectionstarmark [1] { \ctuthesis_fancy_markright_orig:n { #1 } }
+
+% Better \cleardoublepage that takes proper treatment of the empty pages.
+% The starred variant leaves the empty page inbetween really completely empty
+\DeclareDocumentCommand \cleardoublepage { s } {
+	\clearpage
+	\if@twoside\ifodd\c@page\else
+%		\IfBooleanTF { #1 } {
+			% Starred variant: completely empty page
+			\leavevmode
+			\thispagestyle{empty}
+%		} {
+			% Non-starred variant: include page number
+			\leavevmode
+			\thispagestyle{cleardoublepage}
+%		}
+		\newpage
+		% In twocolumn, we need \newpage twice
+		\if@twocolumn\hbox{}\newpage\fi
+	\fi\fi
+}
+
+
+
+
+
+
+%%% FLOATS
+
+\usepackage{float,caption}
+% default placement of all floats is `t`
+\floatplacement{figure}{t}
+\floatplacement{table}{t}
+\floatplacement{figure*}{t}
+\floatplacement{table*}{t}
+% minimum 70% of page height on float pages
+\renewcommand{\floatpagefraction}{0.7}
+% 2 floats on top, no on bottom
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{0}
+\setcounter{totalnumber}{4}
+% up to 90% of floats on a mixed page, at least 7% of text
+\renewcommand{\topfraction}{0.7}
+\renewcommand{\bottomfraction}{0.7}
+\renewcommand{\textfraction}{0.2}
+% float caption: justification with extra margins on both sides
+\DeclareCaptionJustification{myjustify}{\leftskip.8em \rightskip.8em \parfillskip.8em plus 1fil}
+% float caption: special format
+\DeclareCaptionFormat{myformat}{%
+  % float name bf sf
+  \begingroup\sffamily\bfseries#1#2:~\endgroup
+  % float caption normal font
+  \begingroup#3\par\endgroup
+}
+\DeclareCaptionFormat{mysubformat}{%
+  % float name small caps
+  #1#2 %
+  % float caption normal font
+  \begingroup#3\par\endgroup
+}
+% plain float style is what we like, with captions at the bottom
+\floatstyle{plain}
+% restyle already existing floats
+\restylefloat{figure}
+\restylefloat{table}
+% set up the captions: no indent of captions, no seperator (seperator is handled by {myformat})
+\captionsetup{format=myformat,indent=0pt,labelsep=none,justification=myjustify,font={small},position=below}
+% float-caption distance
+\abovecaptionskip 8pt plus 3pt minus 1pt
+% graphics allowed: pdf, png, jpg
+\DeclareGraphicsExtensions{.pdf,.png,.jpg}
+% floats should be centered by default:
+\g@addto@macro{\@floatboxreset}{\centering}
+% nice table rules
+\usepackage{booktabs}
+\newcommand \Midrule { \midrule[\heavyrulewidth] }
+% colored tables
+\newenvironment{ctucolortab}{\begin{lrbox}{0}}{\end{lrbox}\ht0\dimexpr\ht0 + 2pt\relax{\fboxsep0pt\colorbox{ctubluebg}{\usebox{0}}}}
+\newenvironment{ctucolortab*}{\begin{lrbox}{0}}{\end{lrbox}{\fboxsep0pt\colorbox{ctubluebg}{\usebox{0}}}}
+
+
+
+
+
+
+%%% LISTS
+
+% Temp box
+\box_new:N \g_ctuthesis_tempa_box
+% Macro used to generate the itemize labels
+% parameters 1:depth, 2: raise (without ex), 3: scale, 4:color
+\cs_new:Nn \ctuthesis_list_prepare_labelitem:nnnn {
+	% Each label stored in a box
+	\box_new:c { g_ctuthesis_list_label_#1_box }
+	% use the temp box to measure the symbol
+	\hbox_gset:Nn \g_ctuthesis_tempa_box {
+		\scalebox{#3}{\fontfamily{lmss}\bfseries\color{#4}.}
+	}
+	% The label is actually a shifted up, scaled, coloured lmss bf dot
+	\hbox_gset:cn { g_ctuthesis_list_label_#1_box } {
+		\box_move_up:nn { #2 ex } \hbox_to_wd:nn {
+			\box_ht:N \g_ctuthesis_tempa_box
+		} {
+			\hss
+			\scalebox{#3}{\fontfamily{lmss}\bfseries\color{#4}.}
+			\hss
+		}
+	}
+	\cs_set:cpn { labelitem #1 } { \box_use:c { g_ctuthesis_list_label_#1_box } }
+}
+% The four labels for itemize
+\ctuthesis_list_prepare_labelitem:nnnn { i } { 0.18 } { 3.6 } { ctublueitemi }
+\ctuthesis_list_prepare_labelitem:nnnn { ii } { 0.18 } { 3.6 } { ctublueitemii }
+\ctuthesis_list_prepare_labelitem:nnnn { iii } { 0.36 } { 2.4 } { black }
+\ctuthesis_list_prepare_labelitem:nnnn { iv } { 0.48 } { 1.2 } { black }
+
+% Macro for making the box with lmss bf dot "." scaled to the size of \strutbox
+% #1 is the width of the box (relative to the width of the resulting dot) and
+% #2 is the color of the box
+\cs_new:Nn \ctuthesis_list_enumdot:nn {
+	\hbox_to_wd:nn { #1\ht\strutbox + #1\dp\strutbox } {
+		\hss
+		\raisebox{-\dp\strutbox}{
+			\resizebox{!}{\dimexpr\ht\strutbox+\dp\strutbox}{
+				\fontfamily{lmss}\bfseries\color{#2}.
+			}
+		}
+		\hss		
+	}
+}
+
+% \itembox takes 5 parameters.
+% (#1)(#2) are the left and right padding
+% [#3][#4] are the box color and text color
+% #5 is the text
+\DeclareDocumentCommand \itembox { D(){0.15em} D(){0.15em} >{\TrimSpaces}O{ctubluebg} >{\TrimSpaces}O{black} >{\TrimSpaces}m } {
+	\ooalign{
+		\hfil \ctuthesis_list_enumdot:nn {1} {#3}
+	\cr
+		\ctuthesis_list_enumdot:nn {1} {#3} \hfil
+	\cr
+		\skip_horizontal:n { 0.34\ht\strutbox + 0.34\dp\strutbox }
+		\cleaders \ctuthesis_list_enumdot:nn {0.34} {#3} \hfil
+		\skip_horizontal:n { 0.34\ht\strutbox + 0.34\dp\strutbox }
+	\cr
+		\hfil
+		\hbox:n { \hspace{#1} { \color{#4} #5 } \hspace{#2} }
+		\hfil
+	}
+}
+
+% Redefine the enumerate labels. The first two levels are boxed,
+% the other two are not.
+%\def\labelenumi{{\normalfont\itembox[ctubluedarkbg][white]{\bfseries\theenumi.}}}
+\def\labelenumi{{\normalfont\itembox{\theenumi.}}}
+\def\labelenumii{{\normalfont\itembox(0.1em)(0.1em){\theenumii.}}}
+\def\labelenumiii{{\normalfont(\theenumiii)}}
+\def\labelenumiv{{\normalfont(\theenumiv)}}
+
+\leftmargini22.2pt
+\labelsep6pt
+
+
+
+
+
+
+
+%%% MATH, THEOREMS
+
+\usepackage{amsmath,amssymb,amsfonts}
+
+% Optional loading of amsthm
+\ctuthesis_if_switch:nT { pkg-amsthm } {
+
+	\usepackage{amsthm}
+
+	% Redefine standard styles: plain is slanted, definition is normal, note has an italic head (like proof)
+	\newtheoremstyle{plain}{3pt plus 1pt}{3pt plus 1pt}{\slshape}{}{\bfseries\sffamily}{.}{.5em}{}
+	\newtheoremstyle{plainit}{3pt plus 1pt}{3pt plus 1pt}{\slshape}{}{\bfseries\sffamily}{.}{.5em}{}
+	\newtheoremstyle{definition}{3pt plus 1pt}{3pt plus 1pt}{}{}{\bfseries\sffamily}{.}{.5em}{}
+	\newtheoremstyle{note}{3pt plus 1pt}{3pt plus 1pt}{}{}{\itshape}{.}{.5em}{}
+
+	% Default style: plain
+	\theoremstyle{plain}
+	
+	% We redefine proof to include a more reasonable spacing above it.
+	\DeclareDocumentEnvironment { proof } { O{\proofname} } {
+		\par
+		\pushQED{\qed}
+		\normalfont \topsep0pt plus 1pt
+		\trivlist
+		\item[
+			\hskip\labelsep
+		    \itshape
+			#1\@addpunct{.}
+		]
+		\ignorespaces
+	}{
+		\popQED\endtrivlist\@endpefalse
+	}
+
+}	
+
+
+
+
+
+
+%%% INDEX
+
+\ctuthesis_if_switch:nT { pkg-makeidx } {
+
+	% Initialize makeindex
+	\usepackage{makeidx}
+	\makeindex
+
+	% We use multicol rather than twocolumn for the index
+	\usepackage{multicol}
+	
+	% Redefine the index environment to just make the header and start the multicols* envrionment
+	% (starred because we don't want to balance the columns), then redefine \item as in original theindex
+	\DeclareDocumentEnvironment { theindex } { } {
+		\chapter* {\indexname }
+		\begin{multicols*}{2}
+		\let\item\@idxitem
+		% Do not put index sections in ToC. We save the tocdepth and set it to zero, only to restore it after.
+		\addtocontents{toc}{\protect\ctu@savetocdepth}
+		\addtocontents{toc}{\protect\setcounter{tocdepth}{0}}
+		% Inside index, the sections are tighter together
+		\titlespacing*\section{}{10pt}{4pt}
+	} {
+		\addtocontents{toc}{\protect\ctu@restoretocdepth}
+		\end{multicols*}
+		\clearpage
+	}
+	
+	% How does this work: in \ctu@tocdepth we save the current tocdepth
+	\newcommand\ctu@savetocdepth{\xdef\ctu@saved@tocdepth{\the\c@tocdepth}}
+	% This macro restores the saved value.
+	\newcommand\ctu@restoretocdepth{\global\c@tocdepth\ctu@saved@tocdepth\relax}
+}
+
+
+
+
+
+%%% LISTINGS
+
+\ctuthesis_if_switch:nT { pkg-listings } {
+	\RequirePackage{listings}
+	\lstset{
+		backgroundcolor = \color{ctubluebg},
+		basicstyle = \ttfamily,
+		columns = fullflexible,
+		keepspaces = true,
+		tabsize = 4,
+%		frame = leftline,
+%		framesep = 0pt,
+%		framexleftmargin = 3pt,
+%		framerule = 0.667pt,
+%		rulecolor = \color{ctubluerule},
+		frame = single,
+		framesep = 0pt,
+		framexleftmargin = 2pt,
+		framerule = 2pt,
+		rulecolor = \color{ctubluebg},
+		framexrightmargin = 2pt,
+		xleftmargin = 4pt,
+		xrightmargin = 4pt,
+	}
+	\cs_new_eq:NN \ctuthesis_lst_orig_lstinline:w \lstinline
+	\newsavebox \ctuthesis_lst_box
+	\newcommand* \ctulstsep {0.2em}
+	\DeclareDocumentCommand \ctuthesis_lst_do_ctulstinline:nnw { m m m v } {
+		\leavevmode
+		\microtypesetup{activate=false}
+		\begin{lrbox}{\ctuthesis_lst_box}
+		\ctuthesis_lst_orig_lstinline:w[#2]#3#4#3
+		\end{lrbox}
+		\str_if_eq:xnTF {#1} {none}
+			{{ \hbox:n {\strut\hspace*{\ctulstsep}\box\ctuthesis_lst_box\hspace*{\ctulstsep}} }}
+			{{ \fboxsep0pt\colorbox{#1} {\strut\hspace*{\ctulstsep}\box\ctuthesis_lst_box\hspace*{\ctulstsep}} }}
+		\microtypesetup{activate=true}
+	}
+	\DeclareDocumentCommand \ctulst { D(){\g_ctuthesis_ctulstbg_tl} O{} m } {
+		\ctuthesis_lst_do_ctulstinline:nnw { #1 } { #2 } { #3 } #3
+	}
+	\DeclareDocumentCommand \ctulstbr { D(){ctulstbg} O{} m } {
+		\leavevmode
+		\begin{lrbox}{\ctuthesis_lst_box}
+		\ctuthesis_lst_orig_lstinline:w[#2]{#3}
+		\end{lrbox}
+		\colorbox{#1}{\box\ctuthesis_lst_box}
+	}
+}
+
+
+
+
+
+
+%%% HYPERREF
+
+\ctuifswitch { pkg-hyperref } {
+	\usepackage[
+		pdftex,
+		pdfpagelayout=TwoPageRight, % Correct twopage layout with recto on the right
+	]{hyperref}
+	% Links with orange borders, in ToC only the page is linked
+	\hypersetup{
+		colorlinks=false,
+		linktocpage=true,
+		allbordercolors=ctuorange,
+	}
+	% Prepare PDFinfo
+	\cs_new:Nx \ctuthesis_hyperref_pdfinfo: {
+		pdfinfo = {
+			Title = \ctuthesis_field_use:n {title_\ctuthesis_field_use:n {mainlanguage}},
+			Author = \ctuthesis_field_use:n {author},
+		}
+	} 
+	\exp_args:NV \hypersetup \ctuthesis_hyperref_pdfinfo:
+}{}
+
+%\ctuifswitch { pkg-hyperref } {
+%	\hypersetup{colorlinks=false,linktocpage=true,linkbordercolor=0 122 195}
+%}
+
+
+
+
+
+
+%%% VARIOUS TWEAKS
+
+% Provide \phantomsection and \texorpdfstring to make them available in case hyperref wasn't loaded
+\providecommand\phantomsection{}
+\providecommand\texorpdfstring[2]{#1}
+% Provide \microtypesetup to make it available in case microtype wasn't loaded
+\providecommand\microtypesetup[1]{}
+
+
+
+
+
+
+
+
+\endinput

@@ -1,0 +1,195 @@
+
+%!TEX ROOT = ctutest.tex
+
+\ProvidesExplFile{ctuthesis-names.def}{2014/01/18}{0.1}{"Names" part of the class ctuthesis}
+
+% This code provides all language-dependent definitions that are needed.
+% That is, no "real text" should appear anywhere else.
+
+% We stick to the LaTeX2e syntax here for what's related directly to package `babel`
+% Also, we don't use utf8, because if someone decided to switch encodings, they can,
+% and we won't prevent them from doing so if we don't have to.
+
+% General titles
+\def\ctucaptionsenglish{
+	\def\appendicesname{Appendices}
+	\def\thanksname{Acknowledgements}
+	\def\declarationname{Declaration}
+	\def\listfigurename{Figures}
+	\def\listtablename{Tables}
+	\def\supervisorname{Supervisor}
+	\def\supervisorspecialistname{Supervisor--specialist}
+	\def\fieldofstudyname{Field\ of\ study}
+	\def\subfieldofstudyname{Subfield}
+	\def\specificationname{Project\ Specification}
+	\def\keywordsname{Keywords}
+	\def\titletranslationname{Title\ translation}
+}
+
+\def\ctucaptionsczech{
+	\def\appendicesname{P\v r\'ilohy}
+	\def\thanksname{Pod\v ekov\'an\'i}
+	\def\declarationname{Prohl\'a\v sen\'i}
+	\def\listfigurename{Obr\'azky}
+	\def\listtablename{Tabulky}
+	\def\supervisorname{\v Skolitel}
+	\def\supervisorspecialistname{\v Skolitel--specialista}
+	\def\fieldofstudyname{Obor}
+	\def\subfieldofstudyname{Zam\v e\v ren\'i}
+	\def\specificationname{Zad\'an\'i\ pr\'ace}
+	\def\keywordsname{Kl\'i \v cov\'a\ slova}
+	\def\titletranslationname{P\v reklad\ n\'azvu}
+}
+
+\def\ctucaptionsslovak{
+	\def\appendicesname{Pr\'i lohy}
+	\def\thanksname{Po\v dakovanie}
+	\def\declarationname{Prehl\'asenie}
+	\def\listfigurename{Obr\'azky}
+	\def\listtablename{Tabu\v lky}
+	\def\figurename{Obr\'azok}
+	\def\supervisorname{\v Skolite\v l}
+	\def\supervisorspecialistname{\v Skolite\v l--specialista}
+	\def\fieldofstudyname{Odbor}
+	\def\subfieldofstudyname{Zameranie}
+	\def\specificationname{Zad\'an\'i\ \ pr\'ace}
+	\def\keywordsname{K\v l\'u\v cov\'e\ slov\'a}
+	\def\titletranslationname{Preklad\ n\'azvu}
+}
+
+% Name of the university
+\ctusetup{
+	university-endl-czech = {\v Cesk\'e\\ vysok\'e \\ u\v cen\'i  ~ technick\'e \\ v ~ Praze},
+	university-endl-slovak = {\v Cesk\'e\\ vysok\'e \\ u\v cen\'i  ~ technick\'e \\ v ~ Praze},
+	university-endl-english = {Czech\\ Technical \\ University \\ in ~ Prague},
+	university-czech = {\v Cesk\'e ~ vysok\'e ~ u\v cen\'i  ~ technick\'e ~ v ~ Praze},
+	university-slovak = {\v Cesk\'e ~ vysok\'e ~ u\v cen\'i  ~ technick\'e ~ v ~ Praze},
+	university-english = {Czech ~ Technical ~ University ~ in ~ Prague},
+}
+
+% Month names handling
+\seq_gset_from_clist:Nn \g_ctuthesis_months_czech_seq { ledna, \'unora, b\v rezna, dubna, kv\v etna, \v cervna,
+	\v cervence, srpna, z\'a\v r\'i , \v r\'i jna, listopadu, prosince }
+
+\seq_gset_from_clist:Nn \g_ctuthesis_Months_czech_seq { Leden, \'Unor, B\v rezen, Duben, Kv\v eten, \v Cerven,
+	\v Cervenec, Srpen, Z\'a\v r\'i , \v R\'i jen, Listopad, Prosinec }
+
+\seq_gset_from_clist:Nn \g_ctuthesis_months_slovak_seq { janu\'ara, febru\'ara, marca, apr\'i la, m\'aja, j\'una,
+	j\'ula, augusta, septembera, okt\v obera, novembera, decembera }
+
+\seq_gset_from_clist:Nn \g_ctuthesis_Months_slovak_seq { Janu\'ar, Febru\'ar, Marec, Apr\'i l, M\'aj, J\'un,
+	J\'ul, August, September, Okt\v ober, November, December }
+
+\seq_gset_from_clist:Nn \g_ctuthesis_months_english_seq { January, February, March, April, May, June,
+	July, August, September, October, November, December }
+
+\seq_gset_eq:NN \g_ctuthesis_Months_english_seq \g_ctuthesis_months_english_seq
+
+\DeclareExpandableDocumentCommand \monthinlanguage { s m } {
+	\IfBooleanTF { #1 } {
+		\seq_item:cn { g_ctuthesis_Months_\tl_use:c { g_ctuthesis_field_#2language_tl }_seq }
+		{ \ctuthesis_field_use:n { month } }
+	} {
+		\seq_item:cn { g_ctuthesis_months_\tl_use:c { g_ctuthesis_field_#2language_tl }_seq }
+		{ \ctuthesis_field_use:n { month } }
+	}
+}
+
+
+
+% Document types and Faculty names in all langauges
+\keys_define:nn { ctuthesis } {
+
+	% Make doctype and faculty aliases for xdoctype and xfaculty
+	doctype .meta:n = { xdoctype = {#1} },
+	faculty .meta:n = { xfaculty = {#1} },
+
+	% Setup doctypes
+	xdoctype .meta:n = { xdoctype-#1 },
+	xdoctype .groups:n = { dc, nopre, nopost },
+
+	xdoctype-B .meta:n = {
+		doctype-english = { Bachelor ~ Project },
+		doctype-czech = { Bakalářská ~ práce },
+		doctype-slovak = { Bakalárska ~ práca }
+	},
+	xdoctype-M .meta:n = {
+		doctype-english = { Master ~ Thesis },
+		doctype-czech = { Diplomová ~ práce },
+		doctype-slovak = { Diplomová ~ práca }
+	},
+	xdoctype-D .meta:n = {
+		doctype-english = { Dissertation ~ Thesis },
+		doctype-czech = { Disertační ~ práce },
+		doctype-slovak = { Dizertačná ~ práca }
+	},
+
+	xfaculty .meta:n = { facultynum={#1}, xfaculty-#1, },
+
+	xfaculty-F1 .meta:n = {
+		faculty-english = { Faculty ~ of ~ Civil ~ Engineering },
+		faculty-czech = { Fakulta ~ stavební },
+		faculty-slovak = { Fakulta ~ stavební }
+	},
+	xfaculty-F2 .meta:n = {
+		faculty-english = { Faculty ~ of ~ Mechanical ~ Engineering },
+		faculty-czech = { Fakulta ~ strojní },
+		faculty-slovak = { Fakulta ~ strojní }
+	},
+	xfaculty-F3 .meta:n = {
+		faculty-english = { Faculty ~ of ~ Electrical ~ Engineering },
+		faculty-czech = { Fakulta ~ elektrotechnická },
+		faculty-slovak = { Fakulta ~ elektrotechnická }
+	},
+	xfaculty-F4 .meta:n = {
+		faculty-english = { Faculty ~ of ~ Nuclear ~ Sciences ~ and ~ Physical ~ Engineering },
+		faculty-czech = { Fakulta ~ jaderná ~ a ~ fyzikálně ~ inženýrská },
+		faculty-slovak = { Fakulta ~ jaderná ~ a ~ fyzikálně ~ inženýrská }
+	},
+	xfaculty-F5 .meta:n = {
+		faculty-english = { Faculty ~ of ~ Architecture },
+		faculty-czech = { Fakulta ~ architektury },
+		faculty-slovak = { Fakulta ~ architektury }
+	},
+	xfaculty-F6 .meta:n = {
+		faculty-english = { Faculty ~ of ~ Transportation ~ Sciences },
+		faculty-czech = { Fakulta ~ dopravní },
+		faculty-slovak = { Fakulta ~ dopravní }
+	},
+	xfaculty-F7 .meta:n = {
+		faculty-english = { Faculty ~ of ~ Biomedical ~ Engineering },
+		faculty-czech = { Fakulta ~ biomedicínského ~ inženýrství },
+		faculty-slovak = { Fakulta ~ biomedicínského ~ inženýrství }
+	},
+	xfaculty-F8 .meta:n = {
+		faculty-english = { Faculty ~ of ~ Information ~ Technology },
+		faculty-czech = { Fakulta ~ informačních ~ technologií },
+		faculty-slovak = { Fakulta ~ informačních ~ technologií }
+	},
+	xfaculty-KU .meta:n = {
+		faculty-english = { Klokner ~ Institute },
+		faculty-czech = { Kloknerův ~ ústav },
+		faculty-slovak = { Kloknerův ~ ústav },
+		facultynum = { KÚ },
+	},
+	xfaculty-CIIRC .meta:n = {
+		faculty-english = { Czech ~ Institute ~ of ~ Informatics, ~ Robotics ~ and ~ Cybernetics },
+		faculty-czech = { Český ~ institut ~ informatiky, ~ robotiky ~ a ~ kybernetiky },
+		faculty-slovak = { Český ~ institut ~ informatiky, ~ robotiky ~ a ~ kybernetiky },
+		facultynum = { CIIRC },
+	},
+	xfaculty-MUVS .meta:n = {
+		faculty-english = { Masaryk ~ Institute ~ of ~ Advanced ~ Studies },
+		faculty-czech = { Masarykův ~ ústav ~ vyšších ~ studií },
+		faculty-slovak = { Masarykův ~ ústav ~ vyšších ~ studií },
+		facultynum = { MÚVS },
+	},
+
+}
+
+
+
+
+
+
+\endinput

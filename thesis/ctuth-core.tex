@@ -1,0 +1,384 @@
+
+%!TEX ROOT = ctutest.tex
+
+\ProvidesExplFile{ctuth-core.tex}%
+	{2015/11/15}{0.1 t1511151022}%MY TIMESTAMP HERE {0.1}
+	{"Core"\space part\space of\space the\space class\space ctuthesis}
+
+
+
+
+
+
+%%% GENERAL LaTeX3 THINGIES
+
+\cs_generate_variant:Nn \keys_set:nn { nx }
+\cs_generate_variant:Nn \tl_if_eq:nnTF { xn }
+\cs_generate_variant:Nn \seq_gconcat:NNN { cc }
+\cs_generate_variant:Nn \str_if_eq:nnTF { xn }
+
+\skip_new:N \g_ctuthesis_tempa_skip
+
+
+
+
+
+
+%%% CLASS SETUP, FIELDS, TEMPLATES, THEMES
+
+% Set allowed languages: No other languages can ever be main, title or second
+\tl_gset:Nn \g_ctuthesis_alllanguages_tl {{czech}{english}{slovak}}
+
+% Error message for using \ctuprocess twice
+\msg_new:nnn { ctuthesis } { ctuprocess-twice } { The~macro~ \token_to_str:N \ctuprocess\ should~
+	be~used~only~once~in~preamble. }
+
+% Error message for not using \ctuprocess at all
+\msg_new:nnn { ctuthesis } { ctuprocess-none } { It~is~necessary~to~use~the~
+	macro~ \token_to_str:N \ctuprocess\ once~in~the~preamble. }
+
+
+
+
+
+
+
+
+%%% KEY-VALUE SETUP
+
+% Two seqs: one for keys that need disabling after \documentclass,
+% another one for keys that need disabling after \ctuprocess
+\seq_new:N \g_ctuthesis_keys_nop_seq
+\seq_new:N \g_ctuthesis_keys_nopost_seq
+% Add the clist #2 into seq #1
+\cs_new:Nn \ctuthesis_keys_add_no:nn {
+	\group_begin:
+	\seq_set_from_clist:Nn \l_temp_ctuthesis_a_seq { #2 }
+	\seq_gconcat:ccN { g_ctuthesis_keys_#1_seq } { g_ctuthesis_keys_#1_seq } \l_temp_ctuthesis_a_seq
+	\group_end:
+}
+
+% Error messages for the keyvalue interface
+\msg_new:nnn { ctuthesis } { keys-unknown } { The~key~'#1'~is~not~known~to~the~
+	class~'ctuthesis'~and~will~be~ignored. }
+
+\msg_new:nnn { ctuthesis } { keys-nopost } { The~key~'#1'~is~forbidden~after~
+	\token_to_str:N \ctuprocess \space and~will~be~ignored.~You~may~wish~to~
+	set~it~up~before. }
+
+\msg_new:nnn { ctuthesis } { keys-nop } { The~key~'#1'~is~forbidden~in~
+	\token_to_str:N \ctusetup \space and~will~be~ignored.~Use~the~optional~argument~
+	of~ \token_to_str:N \documentclass \space to~set~it~up. }
+
+% Very standard unknown key treatment
+\keys_define:nn { ctuthesis } {
+	unknown .code:n = \msg_error:nnx { ctuthesis } { keys-unknown } { \l_keys_key_tl },
+}
+
+% Disables keys marked '#1' (either 'nop' or 'nopost')
+\cs_new:Nn \ctuthesis_disable_keys:n {
+	\seq_map_inline:cn { g_ctuthesis_keys_#1_seq } {
+		\keys_define:nn { ctuthesis } {
+			##1 .code:n = \msg_error:nnx { ctuthesis } { keys-#1 } { ##1 },
+		}
+	}
+}
+
+% General keys
+\tl_gset:Nn \g_ctuthesis_fontsize_tl {11pt}
+\seq_new:N \g_ctuthesis_languages_seq
+\keys_define:nn { ctuthesis } {
+	
+	% Only 11pt fontsize is allowed
+	fontsize .choices:nn = { 11pt } { \tl_gset_eq:NN \g_ctuthesis_fontsize_tl \l_keys_choice_tl },
+	
+	% Oneside option
+	oneside .bool_gset:c = { g_ctuthesis_switch_oneside_bool },
+	oneside .initial:n = { false },
+	twoside .meta:n = { oneside = false },
+	
+	% Draft option
+	draft .bool_gset:c = { g_ctuthesis_switch_draft_bool },
+	draft .initial:n = { false },
+	
+	% We use three languages:
+	% main for the work itself, ToC and LoFT
+	mainlanguage .choice:,
+	% title for the titlepage, thanks, declaration and abstract
+	titlelanguage .choice:,
+	% second is the language of second abstract. First abstract is in title language,
+	% second abstract is either in main language, or in English for Czech/Slovak theses
+	% or Czech for English theses. It will be set automatically.
+	secondlanguage .choice:,
+
+	% otherlanguages will be simply passed on to babel
+	otherlanguages .code:n =
+		\seq_set_from_clist:Nn \l_temp_ctuthesis_a_seq { #1 }
+		\seq_gconcat:NNN \g_ctuthesis_languages_seq \g_ctuthesis_languages_seq \l_temp_ctuthesis_a_seq
+		,
+
+}
+
+\ctuthesis_keys_add_no:nn { nop } { draft, fontsize, oneside, twoside }
+\ctuthesis_keys_add_no:nn { nopost } { mainlanguage, titlelanguage, secondlanguage }
+
+% Switches defaulting to false
+\tl_map_inline:nn { {front-specification}{monochrome}{savetoner}{pkg-listings}{layout-short} } {
+	\keys_define:nn { ctuthesis } {
+		#1 .bool_gset:c = { g_ctuthesis_switch_#1_bool },
+		#1 .initial:n = { false },
+	}
+}
+\ctuthesis_keys_add_no:nn { nopost } { monochrome, savetoner, pkg-listings }
+
+% Switches defaulting to true
+\tl_map_inline:nn { {front-list-of-tables}{front-list-of-figures}{pkg-hyperref}{pkg-makeidx}{pkg-amsthm} } {
+	\keys_define:nn { ctuthesis } {
+		#1 .bool_gset:c = { g_ctuthesis_switch_#1_bool },
+		#1 .initial:n = { true },
+	}
+}
+\ctuthesis_keys_add_no:nn { nopost } { pkg-hyperref, pkg-makeidx }
+
+% We allow the key 11pt along with the key fontsize
+\tl_map_inline:nn { {11pt} } {
+	\keys_define:nn { ctuthesis } {
+		#1 .meta:n = { fontsize = #1 },
+	}
+	\ctuthesis_keys_add_no:nn { nop } { #1 }
+}
+
+% Basic fields that are not language-dependent
+\tl_map_inline:nn { {author}{supervisor}{supervisor-specialist}{supervisor-address}{day}{month}{year}
+	  {facultynum}{specification-file}{preprint} } {
+	\keys_define:nn { ctuthesis } {
+		#1 .tl_gset:c = { g_ctuthesis_field_#1_tl },
+	}
+}
+
+% Language-dependent keys and environments
+\tl_map_inline:Nn \g_ctuthesis_alllanguages_tl {
+	% Various fields in various languages
+	\tl_map_inline:nn { {title}{subtitle}{university}{university-endl}{faculty}{department}
+		  {doctype}{fieldofstudy}{subfieldofstudy}{keywords} } {
+		\keys_define:nn { ctuthesis } {
+			##1-#1 .tl_gset:c = g_ctuthesis_field_##1_#1_tl,
+		}
+	}
+	% Sets up the choice for each of the languages
+	\tl_map_inline:nn { {mainlanguage}{titlelanguage}{secondlanguage} } {
+		\keys_define:nn { ctuthesis } {
+			##1 / #1 .code:n =
+				\tl_gset:cn { g_ctuthesis_field_##1_tl } { #1 }
+				\seq_gput_right:Nn \g_ctuthesis_languages_seq { #1 },
+		}
+	}
+	% The abstract is now language-dependent
+	\NewEnviron { abstract-#1 } { \tl_gset:cV { g_ctuthesis_field_abstract_#1_tl } \BODY }
+	\tl_new:c { g_ctuthesis_field_abstract_#1_tl }
+}
+
+% "abstract" itself is not used, the language of the abstract has to be specified
+\msg_new:nnn { ctuthesis } { abstract-forbidden } { The~environment~'abstract'~should~be~replaced~
+	by~'abstract-lang'~with~the~proper~language~specified. }
+\DeclareDocumentEnvironment{ abstract }{ }{ \msg_error:nn { ctuthesis } { abstract-forbidden } }{ }
+
+% "thanks" and "declaration" are fields, but set up as environments rather then KVs
+\cs_undefine:c { thanks }
+\NewEnviron { thanks } { \tl_gset:cV { g_ctuthesis_field_thanks_tl } \BODY }
+\tl_new:c { g_ctuthesis_field_thanks_tl }
+\NewEnviron { declaration } { \tl_gset:cV { g_ctuthesis_field_declaration_tl } \BODY }
+\tl_new:c { g_ctuthesis_field_declaration_tl }
+
+\tl_gset:Nn \g_ctuthesis_ctulstbg_tl { ctulstbg }
+\keys_define:nn { ctuthesis } {
+		ctulstbg .tl_gset:N = \g_ctuthesis_ctulstbg_tl
+}
+
+
+
+
+
+
+
+% A macro called after every \keys_set{ctuthesis}{...}
+\cs_new:Nn \ctuthesis_ctusetup_trigger: {
+	% Remove duplicates from the language list
+	\seq_gremove_duplicates:N \g_ctuthesis_languages_seq
+	% Set up titlelanguage as mainlanguage if the latter is defined and the former is not
+	\bool_if:nT { \tl_if_exist_p:c { g_ctuthesis_field_mainlanguage_tl }
+		&& ! \tl_if_empty_p:c { g_ctuthesis_field_mainlanguage_tl }
+		&& ( ! \tl_if_exist_p:c { g_ctuthesis_field_titlelanguage_tl }
+			|| \tl_if_empty_p:c { g_ctuthesis_field_titlelanguage_tl } )
+	} {
+		\keys_set:nx { ctuthesis } { titlelanguage = \tl_use:c { g_ctuthesis_field_mainlanguage_tl } }
+	}
+	% Set up secondlanguage if it has not been set up before
+	\bool_if:nT { \tl_if_exist_p:c { g_ctuthesis_field_mainlanguage_tl }
+		&& \tl_if_exist_p:c { g_ctuthesis_field_titlelanguage_tl }
+		&& ( ! \tl_if_exist_p:c { g_ctuthesis_field_secondlanguage_tl }
+			|| \tl_if_empty_p:c { g_ctuthesis_field_secondlanguage_tl } )
+	} {
+		\tl_if_eq:ccTF { g_ctuthesis_field_mainlanguage_tl } { g_ctuthesis_field_titlelanguage_tl } {
+			\tl_if_eq:xnTF { \tl_use:c { g_ctuthesis_field_mainlanguage_tl } } { english } {
+				\keys_set:nn { ctuthesis } { secondlanguage = czech }
+			} {
+				\keys_set:nn { ctuthesis } { secondlanguage = english }
+			}
+		} {
+			\keys_set:nx { ctuthesis } { secondlanguage = \tl_use:c { g_ctuthesis_field_mainlanguage_tl } }
+		}
+	}
+}
+
+% Key setup to be used in the preamble
+\NewDocumentCommand \ctusetup { m } {
+	\keys_set:nn { ctuthesis } { #1 }
+	\ctuthesis_ctusetup_trigger:
+}
+
+
+
+
+
+
+%%% THEMES, TEMPLATES AND FIELDS
+
+% Theme, template and field hadling - "unknown" error messages
+\msg_new:nnn { ctuthesis } { unknown-theme } { Theme~'#1'~has~not~been~defined~
+	for~use~with~ \token_to_str:N \ctutheme . }
+
+\msg_new:nnn { ctuthesis } { unknown-template } { Template~'#1'~has~not~been~defined~
+	for~use~with~ \token_to_str:N \ctutemplate . }
+
+\msg_new:nnn { ctuthesis } { unknown-field } { Field~'#1'~has~not~been~defined~
+	for~use~with~ \token_to_str:N \ctufield . }
+
+% Theme and template hadling - setters
+\NewDocumentCommand \ctuthemeset { >{\TrimSpaces}m +m } {
+	\cs_set:cn { ctuthesis_theme_#1_var: } { #2 }
+}
+
+\NewDocumentCommand \ctutemplateset { >{\TrimSpaces}m +m } {
+	\cs_set:cn { ctuthesis_template_#1_var: } { #2 }
+}
+
+% Theme, template and field hadling - getters
+\NewDocumentCommand \ctutheme { >{\TrimSpaces}m } {
+	\cs_if_exist_use:cF { ctuthesis_theme_#1_var: } { \msg_error:nnx { ctuthesis } { unknown-theme } { #1 } }
+	}
+
+\NewDocumentCommand \ctutemplate { >{\TrimSpaces}m } {
+	\cs_if_exist_use:cF { ctuthesis_template_#1_var: } { \msg_error:nnx { ctuthesis } { unknown-template } { #1 } }
+	}
+
+% `\ctufield` supports the context language specifier as an optional argument
+\NewDocumentCommand \ctufield { >{\TrimSpaces}o >{\TrimSpaces}m } {
+	\IfValueTF { #1 } {
+%			\ctuthesis_field_exists:nF { #1 language } { \msg_error:nnx { ctuthesis } { unknown-field } { #1 } }
+%			\ctuthesis_field_use:n { #2_\ctuthesis_field_use:n { #1 language } }
+			\ctuthesis_field_use:nn { #1 } { #2 }
+	} {
+			\ctuthesis_field_use:n { #2 }
+	}
+}
+
+\cs_new:Nn \ctuthesis_field_use:n {
+	\cs_if_exist_use:cF { g_ctuthesis_field_#1_tl } { \msg_error:nnx { ctuthesis } { unknown-field } { #1 } }
+}
+
+% This one takes two arguments: the language and the field name
+\cs_new:Nn \ctuthesis_field_use:nn {
+	\cs_if_exist:cF { g_ctuthesis_field_#1language_tl } { \msg_error:nnx { ctuthesis } { unknown-field } { #1 } }
+	\ctuthesis_field_use:n { #2_\ctuthesis_field_use:n { #1 language } }
+}
+
+% Theme, template and field hadling - existance conditionals
+\prg_new_conditional:Nnn \ctuthesis_theme_exists:n { p, T, F, TF } {
+	\cs_if_exist:cTF { ctuthesis_theme_#1_var } { \prg_return_true: } { \prg_return_false: }
+}
+
+\prg_new_conditional:Nnn \ctuthesis_template_exists:n { p, T, F, TF } {
+	\cs_if_exist:cTF { ctuthesis_template_#1_var } { \prg_return_true: } { \prg_return_false: }
+}
+
+\prg_new_conditional:Nnn \ctuthesis_field_exists:n { p, T, F, TF } {
+	\cs_if_exist:cTF { g_ctuthesis_field_#1_tl } { \prg_return_true: } { \prg_return_false: }
+}
+
+% Theme, template and field hadling - publicly available conditionals with "true" and "false" branches
+\DeclareDocumentCommand \ctuiftheme { s >{\TrimSpaces}m +m +m } {
+	\ctuthesis_theme_exists:nTF { #2 } {
+		\IfBooleanTF { #1 } {
+			\tl_if_empty:cTF { g_ctuthesis_theme_#1_tl } { #4 } { #3 }
+		} {
+			#3
+		}
+	} {
+		#4
+	}
+}
+
+\DeclareDocumentCommand \ctuiftemplate { s >{\TrimSpaces}m +m +m } {
+	\ctuthesis_template_exists:nTF { #2 } {
+		\IfBooleanTF { #1 } {
+			\tl_if_empty:cTF { g_ctuthesis_template_#1_tl } { #4 } { #3 }
+		} {
+			#3
+		}
+	} {
+		#4
+	}
+}
+
+% The starred variant checks for emptiness rather than for existance
+\DeclareDocumentCommand \ctuiffield { s >{\TrimSpaces}o >{\TrimSpaces}m +m +m } {
+	\IfValueTF { #2 } {
+		\ctuthesis_field_exists:nF { #2 language } { \msg_error:nnx { ctuthesis } { unknown-field } { #1 } }
+		\IfBooleanTF { #1 } {
+			\ctuiffield * { #3_\ctuthesis_field_use:n { #2 language } } { #4 } { #5 }
+		} {
+			\ctuiffield { #3_\ctuthesis_field_use:n { #2 language } } { #4 } { #5 }
+		}
+	} {
+		\ctuthesis_field_exists:nTF { #3 } {
+			\IfBooleanTF { #1 } {
+				\tl_if_empty:cTF { g_ctuthesis_field_#3_tl } { #5 } { #4 }
+			} {
+				#4
+			}
+		} {
+			\ctuthesis_field_exists:nTF { #3 } { #5 } { #4 }
+		}
+	}
+}
+
+% We don't do any check for existance of a switch, so better be careful.
+\prg_new_conditional:Nnn \ctuthesis_if_switch:n { p, T, F, TF } {
+	\bool_if:cTF { g_ctuthesis_switch_#1_bool } { \prg_return_true: } { \prg_return_false: }
+}
+
+\DeclareDocumentCommand \ctuifswitch { >{\TrimSpaces}m +m +m } {
+	\bool_if:cTF { g_ctuthesis_switch_#1_bool } { #2 } { #3 }
+}
+
+
+
+
+
+
+%%% LOGGING
+
+% Create \ctuverlog which contains the automatically updated timestamp of the file.
+% It can be used for instance in \ctusetup{preprint = \ctuverlog} in order to show
+% the timestamp on every page.
+\cs_new:Npx \ctuverlog {
+	ctuthesis ~ \use_ii:nn
+	{2015/11/15}{ t1511151022}%MY TIMESTAMP HERE {}	
+}
+
+
+
+
+
+\endinput
