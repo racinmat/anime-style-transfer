@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.5.0 FATAL_ERROR)
 project(dat-unpacker)
 enable_testing()
 
-set(CMAKE_BUILD_TYPE "Debug") # ADTF won't link without it
+set(CMAKE_BUILD_TYPE Release)
 
-set(ADTF_STREAMING_DIR "../adtf-streaminglib")
-set(IBEO_DIR "../ibeo")
+set(ADTF_STREAMING_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external/adtf-streaminglib)
+set(IBEO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external/ibeo)
 set(IBEO_INCLUDE ${IBEO_DIR}/src)
 set(IBEO_LIB_DIR ${IBEO_DIR}/libs)
 
@@ -28,8 +28,8 @@ link_directories(
     )
 
 file(GLOB dat-unpacker_SRC
-    "src/*.cpp"
-	"include/*.h"
+    src/*.cpp
+	include/*.h
 )
 
 add_executable(dat-unpacker
