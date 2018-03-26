@@ -1,0 +1,17 @@
+VERSION "HNNBNNNYNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN/4/%%%/4/'%**4NNN///"
+
+
+NS_: 
+
+BS_:
+
+BU_:
+
+BO_ 256 ESP: 6 Vector__XXX
+ SG_ ESP_v_Signal : 32|16@1+ (0.01,0) [0|655.32] "Unit_KiloMeterPerHour" Vector__XXX
+
+BO_ 779 Kombi: 8 Vector__XXX
+ SG_ KBI_angez_Geschw : 48|10@1+ (0.32,0) [0|325.12] "Unit_KiloMeterPerHour" Vector__XXX
+
+
+

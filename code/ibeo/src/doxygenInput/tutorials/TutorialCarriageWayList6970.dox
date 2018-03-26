@@ -1,0 +1,30 @@
+/*!
+	\page page_tutorial_cwlist6970 Tutorial CarriageWayList6970
+	\tableofcontents
+
+	\section sec_introduction Introduction
+	This tutorial provides an overview for handling OELA (Object to Ego-Lane Association) processed files.
+	The output of the OELA processing is the lane of the ego vehicle within a certain range, as well
+	as the distances of surrounding objects. The lane itself is represented as a polyline.
+
+	A \ref ibeosdk::CarriageWayList6970 "CarriageWayList6970" holds a list of \ref ibeosdk::lanes::CarriageWay "CarriageWays"
+	which are segmented into \ref ibeosdk::lanes::CarriageWaySegment "CarriageWaySegments".
+	A \ref ibeosdk::lanes::CarriageWaySegment "CarriageWaySegment" can hold multiple lanes (currently only the ego lane).
+	A \ref ibeosdk::lanes::Lane "Lane" is again segmented into \ref ibeosdk::lanes::LaneSegment "LaneSegments" for approximation of curvature.
+
+	\section sec_getting_started Getting Started
+	For a demo application of the addon, have a look at the \ref addon_cw6970_demo_page "Demo File"
+
+	Some more explanations on the functionality can be found below:
+
+	\subsection sec_positioning Position Systems and Transformations
+	Since lanes are static elements in their environment, the points representing the polyline of a lane
+	are defined within the WGS84 (see also \ref ibeosdk::PositionWgs84 "PositionWgs84") system. However, filtering accurate WGS84
+	coordinates is still in development, the coordinates are calculated from WGS84(0,0,0) using the vehicle
+	odometrie and are therefore fictitious.
+
+	Coordinate System overview handled by \ref ibeosdk::lanes::LaneHandler "LaneHandler"
+
+	\image html obj2ego.png
+
+*/

@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="UserMacros">
+    <BoostVersionInLibname>1_59</BoostVersionInLibname>
+    <BoostVersionInPath>$(BoostVersionInLibname)_0</BoostVersionInPath>
+    <BoostDir>C:\boost\boost_$(BoostVersionInPath)</BoostDir>
+    <BoostLibDir>$(BoostDir)\lib32-msvc-11.0</BoostLibDir>
+  </PropertyGroup>
+  <PropertyGroup>
+    <_PropertySheetDisplayName>BoostX86SettingsPropertySheet_VS2012</_PropertySheetDisplayName>
+  </PropertyGroup>
+  <ItemGroup>
+    <BuildMacro Include="BoostVersionInLibname">
+      <Value>$(BoostVersionInLibname)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+    <BuildMacro Include="BoostVersionInPath">
+      <Value>$(BoostVersionInPath)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+    <BuildMacro Include="BoostDir">
+      <Value>$(BoostDir)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+    <BuildMacro Include="BoostLibDir">
+      <Value>$(BoostLibDir)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

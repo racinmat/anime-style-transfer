@@ -1,0 +1,403 @@
+/*!
+	\page page_tutorial_gettingstarted Getting Started
+	\tableofcontents
+
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+        \section sec_gettingstarted_requirements Requirements
+        \subsection ssec_cppCompiler C++-Compiler
+
+        Tested with (Linux: gcc 4.6.3, Microsoft VS2008, VS 2010 and VS 2012)
+
+        \subsection ssec_boost boost
+
+        Has to be installed.
+
+        Tested with
+          boost 1.48.0 (Linux)
+
+
+        <table class="doxtable">
+           <tr> <td style="border:0px">   </td>    <td style="border:0px">   </td>    \htmlonly<th colspan="2"> Boost Versions      </th>\endhtmlonly</tr>
+           \htmlonly<tr>  <th> OS </th> <th> Compiler </th>  <th> 1.48.0 </th>  <th> 1.52.0 </th> </tr> \endhtmlonly
+           <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+           <tr> <td> Windows </td> <td> VS 2008   </td> <td> 32 Bit </td> <td> 32 bit    </td>  </tr>
+           <tr> <td> Windows </td> <td> VS 2010   </td> <td> 32 Bit </td> <td> 32+64 Bit </td>  </tr>
+           <tr> <td> Windows </td> <td> VS 2012   </td> <td>        </td> <td> 32+64 Bit </td>  </tr>
+           <tr> <td> Linux </td>   <td> g++ 4.6.3 </td> <td> 32+64 Bit </td> <td> </td>  </tr>
+           <tr> <td> Linux </td>   <td> g++ 4.8.2 </td> <td> 32+64 Bit </td> <td> </td>  </tr>
+        </table>
+
+        \subsubsection sssec_boost_windows Precompiled boost Libraries for Windows
+        Windows is using precompiled boost libraries. boost precompiled libraries are not available from boost.org directly but
+        from e.g.<br>
+          http://sourceforge.net/projects/boost/files/boost-binaries/<br>
+          http://boost.teeks99.com/<br>
+        Choose the right boost version and the libraries for the right Visual Studio version, e.g. vc110 = Visual Studio 2012)
+
+
+        \subsection ssec_gmake gmake (Linux only)
+
+        provides the make command
+
+
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+        \section sec_gettingstarted_htmldoxgendoc HTML-Doxygen Documentation
+
+        You can open the doxygen documenation by opening the "start.html" file in your browser.
+        If you have installed doxygen on your system you may create this documentation yourself by running "make docs".
+
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+        \section sec_gettingstarted_buildIbeoSdkLib To build the IbeoSDK as library
+
+        \subsection ssec_gettingstarted_buildIbeoSdkLib_Linux Linux
+
+         <ul>
+                <li> open a shell window</li>
+                <li>  enter directory IbeoSDK</li>
+                <li>  type "make shared" for a shared library and<br>
+                type "make static" for a static library</li>
+                <li>  the libraries will be found in the newly created folder IbeoSDK/libs</li>
+        </ul>
+
+
+        \subsubsection sssec_gettingstarted_BuildIbeoSdkLib_availablemakefiletargets Available Makefile Targets
+
+        <table class="doxtable">
+           <tr>   <th> Target </th> <th> Description </th>  </tr>
+           <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+           <tr>   <td> shared      </td>    <td> Build ibeosdk as shared library. </td>    </tr>
+           <tr>   <td> shareddemos </td>    <td> Build ibeosdk as shared library and demos using<br>the shared library (demo binary will end with suffix _shared).</td>    </tr>
+           <tr>   <td> static      </td>    <td> Build ibeosdk as static library. </td>    </tr>
+           <tr>   <td> staticdemos </td>    <td> Build ibeosdk as static library and demos using<br> the shared library (demo binary will end with suffix _static).</td>    </tr>
+           <tr>   <td> clean       </td>    <td> Delete all object files and dependency files (*.o .d) and<br> demo binaries.</td>    </tr>
+           <tr>   <td> democlean   </td>    <td> Delete all demo binaries and demo object files and dependency<br> files.</td>    </tr>
+           <tr>   <td> distclean   </td>    <td> Like clean and the libs folder will be erased as well. </td>    </tr>
+           <tr>   <td> docs        </td>    <td> Create a documentation from the doxygen comments. The result<br> can be found in docs/html/index.html </td>    </tr>
+           <tr>   <td> docsclean   </td>    <td> Delete all generated documentation. </td>    </tr>
+           <tr>   <td> all         </td>    <td> Will generate the ibeosdk object files (static flags) and link<br> them directly to the demo binaries (no lib will be generated,<br> demo binaries won't have a suffix).</td>    </tr>
+        </table>
+
+
+        \note In case the compile flags used for the last build does not match with
+          the requested target, i.e. old: static, new: shared or vice versa, all ibeosdk
+          object files will be recompiled.
+
+        \subsection ssec_gettingstarted_buildIbeoSdkLib_Windows Windows
+                - see "To build the demos"
+
+
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+
+        \section sec_gettingstarted_buildthedemos To build the demos
+
+        \subsection ssec_gettingstarted_buildthedemos_Linux Linux
+
+        <ul>
+                <li> open a shell window  </li>
+                <li> enter directory IbeoSDK  </li>
+                <li> execute make, see \ref sssec_gettingstarted_BuildIbeoSdkLib_availablemakefiletargets   </li>
+                <li> the demo binaries will be found in IbeoSDK/src/demo  </li>
+        </ul>
+
+        \note On default the library and binary will be build as debug targets.<br>
+        To compile in release (optimized) mode add<br>
+         OPTIMIZE=on DEBUG=off<br>
+        to your parameters for the make call.<br>
+
+
+        \subsection ssec_gettingstarted_buildthedemos_Windows Windows (VS 2008/VS 2010/VS 2012)
+
+
+        <ul>
+                <li> start VS 2008, VS 2010 or VS2012 </li>
+                <li> load solution
+                        <table class="doxtable" style="border:0px">
+                                <tr>   <td> VS2008 (32 bit)      </td> <td> IbeoSDK/ibeosdk_VS2008.sln </td> </tr>
+                                <tr>   <td> VS2010 - 32bit only  </td> <td> IbeoSDK/ibeosdk.sln        </td> </tr>
+                                <tr>   <td> VS2010 - 32bit/64bit </td> <td> IbeoSDK/ibeosdk_VS2010.sln </td> </tr>
+                                <tr>   <td> VS2012 - 32bit/64bit </td> <td> IbeoSDK/ibeosdk_VS2012.sln </td> </tr>
+                        </table>
+                        \attention VS 2010: For 64 bit, one has to install WinSDK 7.1.<br>
+                        If you do not have installed WinSDK use ibeosdk.sln not ibeosdk_VS2010.sln.<br>
+                </li>
+                <li> only for VS2010/VS2012: Choose solution platform (32bit or 64bit)
+                        <ul>
+                                <li> Mark the solution in the Solution Explorer in VS2010/VS2012 by a mouse left click.</li>
+                                <li> In the popup menu (right mouse button), choose "Configuration Manager ..." </li>
+                                <li> Choose the active solution platform between Win32 (32bit) or x64 (64bit). </li>
+                        </ul>
+                </li>
+                <li> set your boost version and the path to it:
+                        <ul>
+                        <li>
+	                        Open the Property Manager (see VS menu bar: View/Property Manager).
+                                \note In VS 2010 the Property Manager may not be find in the View menu.
+                                     To see the Property Manager you need to have Expert Settings enabled.
+                                   You can find this option in:<br>
+                                   Menu Tools
+                                        <ul><li>Settings</li></ul>
+                        <li>unfold the ibeosdk item</li>
+                        <li>unfold the Debug | Win32 item</li>
+                        <li>open BoostX86SettingPropertySheet by double click</li>
+                        <li>Common Properties
+                                <ul>
+                                <li>User Macros
+			                <ul>
+                                        <li> Set the four environment variables so that the compiler and
+                                                linker will find the include files and libraries:
+                                        <table class="doxtable" style="border:0px">
+                                                <tr><td> BoostVersionInLibname </td>       <td> The version number of boost used in the library names, e.g. 1_52</td></tr>
+                                                <tr><td> BoostVersionInPath    </td>       <td> The version number of boost used in the directory path, e.g. 1_52_0</td></tr>
+                                                <tr><td> BoostDir              </td>       <td> The place where to find the include files, e.g. <br>C:\\boost\\boost_\$(BoostVersionInPath)</td></tr>
+                                                <tr><td> BoostLibDir           </td>       <td> The directory where to find the libraries to link with, e.g. <br>C:\\boost\\boost_\$(BoostVersionInPath)\\lib32  </td></tr>
+                                        </table>
+                                        </li>
+                                        </ul>
+                                </li>
+                                </ul>
+                        </li>
+                        <li>If you use Visual Studio 2012 or Visual Studio 2010 (with WinSDK 7.1) also
+                                <ul>
+                                <li>unfold the Debug | x64 item</li>
+	                        <li>open BoostX64SettingPropertySheet by double click proceed as for the Debug Win32 item but choose the paths to the 64 bit libraries.</li>
+                                </ul>
+                        </li>
+                \attention Known Problems: A problem has occured when the boost directory was located directly in "C:\Program Files (x86)"<br>
+                 as in "C:\Program Files (x86)\boost_1_47". The include files were not found. Moving the folder boost_1_47 into a subfolder
+                 solved the problem as in "C:\Program Files (x86)\boost\boost_1_47".
+               </li>
+       </ul>
+
+
+     - build the ibeosdk project
+
+        - build a demo project
+
+        - to run a demo you need to add arguments when you call it from the command
+          line or if you want to debug it with Visual Studio you can add these arguments
+          (like IP address, filename, logfile) in:
+                - Configuration -> "All Configurations"
+                - Configuration Properties
+                        - Debugging
+                                - Command Arguments
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+
+        \section sec_gettingstarted_concept Concept - IbeoDevice/DataBlock/DataListener
+
+        The connection to the hardware device, i.e. Ibeo laserscanner or ECU
+        will be handled by an ibeosdk::IbeoDevice. The ibeosdk::IbeoDevice will receive messages
+        (scan, object list, vehicle data, images) from the scanner/ECU and
+        deserialize each into a ibeosdk::DataBlock. On receive it will inform all
+        ibeosdk::DataListener for the specific type of the ibeosdk::DataBlock which has been
+        registered to the ibeosdk::IbeoDevice.<br>
+        Hence the ibeosdk::IbeoDevice receive the ibeosdk::DataBlock it will call the onData method
+        of all registered ibeosdk::DataListener where user action can be performed.
+        That means there is no active polling of a new ibeosdk::DataBlock from the ibeosdk::IbeoDevice.
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+
+        \section sec_gettingstarted_ownprogram Build your own programs, using ibeosdk
+
+        Decide which device to connect to.<br>
+        Currently available are
+        <table class="doxtable" style="border:0px">
+                <tr><td> ibeosdk::IbeoLux     </td>       <td> LUX3/4 Laserscanner </td></tr>
+                <tr><td> ibeosdk::IbeoEcu     </td>       <td> Ibeo ECU device, connected to a scanner </td></tr>
+                <tr><td> ibeosdk::IbeoScala   </td>       <td> Ibeo Scala (B1 or B2) Laserscanner </td></tr>
+                <tr><td> ibeosdk::IbeoMiniLux </td>       <td> Ibeo MiniLux laserscanner </td></tr>
+        </table>
+
+
+        A collection of all needed include will be included by include
+        the following files:
+                <table class="doxtable" style="border:0px">
+                        <tr><td> IbeoLux     </td>       <td> <ibeosdk/lux.hpp> </td></tr>
+                        <tr><td> IbeoEcu     </td>       <td> <ibeosdk/ecu.hpp> </td></tr>
+                        <tr><td> IbeoScala   </td>       <td> <ibeosdk/scala.hpp> </td></tr>
+                        <tr><td> IbeoMiniLux </td>       <td> <ibeosdk/minilux.hpp> </td></tr>
+                </table>
+
+        Decide which messages you are interested in and create a listner class
+        for each message type. (You will find examples in IbeoSdkFileDemo:
+        class MyScanListener, MyObjectListener, ... and in IbeoSdkEcuLiveDemo:
+        AllEcuListener where all listeners gathered into one single class).
+
+        -# Create the ibeosdk::Listener objects.
+        -# Create the ibeosdk::IbeoDevice providing the IP address and port as parameters.
+        -# Optional: Set the devices ibeosdk::LogFileManager
+        -# Register all listener
+        -# Establish connection between the hardware and the ibeosdk::IbeoDevice class.
+
+        The receiving will be handled in a separate thread. So the main thread has
+        to be kept alive.
+
+        \attention IMPORTANT: Exit your program calling exit (cstdlib) instead of just return
+        from the main function to close all open channels to prevent crashes due
+        to open channels.
+
+        \attention IMPORTANT: If you build static libibeosdk.a on Linux you have to link with
+        the link option --whole-archive (use "-Wl,--whole-archive" on the g++ command
+        line).<br>
+        Otherwise no DataBlocks will be received by the devices.<br>
+        On Windows Visual Studio will generate a list of linker include commands
+        automatically by calling "src/ibeosdk/generateDataBlockList.bat"<br>
+        as aprebuild event in the given projects to avoid the problem.
+
+        \subsection ssec_gettingstarted_ownprogram_example Example
+
+        See IbeoSdkEcuLiveDemo.cpp, class AllEcuListener.<br>
+        Since AllEcuListener is derived from many listeners, the AllEcuListener object
+        allEcuListener has to register in the function live_demo to the ibeosdk::IbeoEcu device for
+        all its ibeosdk::Listener ancestors.<br>
+        After the ecu object has been connected the task will kept alive.<br>
+        All the work will done by the ibeosdk::IbeoEcu receive thread. When receiving an new
+        ibeosdk::DataBlock it will inform all registered ibeosdk::Listener for this ibeosdk::DataBlock and call
+        their onData method.
+
+        In case an ibeosdk::ObjectListEcuEt ibeosdk::DataBlock has been received the onData method of all
+        registered ibeosdk::ObjectListEcuEtListener will be called. This call is within the
+        context of the receive thread of the ibeosdk::IbeoEcu object.
+
+        Here the user can perform some action. This should not take too long since the
+        TCP/IP interface will not be able to receive while this processing.<br>
+        For example one can show the ids of all received objects:
+
+        \code
+        virtual void onData(const ObjectListEcuEt* const objectList)
+        {
+                logInfo << "ET Objects received: # " << objectList->getNbOfObjects()
+                        << std::endl;
+                const std::vector<ObjectEcuEt>& objects = objectList->getObjects();
+                for (unsigned int i = 0; i < objects.size(); ++i) {
+                        std::cerr << "Object " << i
+                                  << " has id: " << objects.at(i).getObjectId() << std::endl;
+                }
+        }
+        \endcode
+
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+
+        \section sec_gettingstarted_typenameconflicts Type name conflicts
+
+        All types defined in the SDK are inside the ibeo namespace.<br>
+        In case of a name conflict, don't use the
+        \code
+                using namespace ibeosdk;
+        \endcode
+        so generous but selective inside methods where no conflict arises and the ibeosdk:: as prefix otherwise.
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+
+        \section sec_gettingstarted_logging Logging
+
+        The \ref ibeosdk::LogFile class provides you functions for logging output, e.g.
+        \ref ibeosdk::logError, \ref ibeosdk::logInfo, \ref ibeosdk::logWarning, \ref ibeosdk::logDebug which can be used instead of
+        cerr or cout with operator<<.<br>
+        These "functions" are actually macros which call the LogFile methods
+        _logError, _logInfo, etc. with predefined compiler macros as arguments,
+        i.e. file name, function name and current source code line number.<br>
+        The log file name can be either a regular file name or "cerr" which is
+        the default. In this case the output will be performed to the cerr
+        stream.
+
+        Using class \ref ibeosdk::LogFileManager one can implement a automatic synchronously
+        splitting of the log file and some other IDC output files, which are of
+        class \ref ibeosdk::SplitFile and has be registered to the \ref ibeosdk::LogFileManager object.<br>
+        A split of the files will be performed in case the log file has reached
+        (or slightly exceeded) its file size limit. Furthermore each registered
+        \ref ibeosdk::SplitFile can send a split request to its \ref ibeosdk::LogFileManager object in case
+        the size limit of this file has been exceeded. 
+
+        Splits will be performed only before a \ref ibeosdk::DataTypeId::DataType_LuxScan or \ref #ibeosdk::DataTypeId::DataType_EcuScan
+        object. I.e. \ref ibeosdk::LogFileManager::checkSplitRequired will be called by \ref ibeosdk::IbeoDevice
+        before notifying a newly received \ref ibeosdk::DataBlock. Only if the data type of this
+        \ref  ibeosdk::DataBlock is \ref ibeosdk::DataTypeId::DataType_LuxScan or \ref ibeosdk::DataTypeId::DataType_EcuScan, the method will actually
+        check the condition for and perform a split.<br>
+        This leads to the situation that the actually size of an output file
+        (or log file) will exceed the given size limit depending on how many
+        DataBlocks will be received before the next scan. This has to be taken
+        into account when setting the file size limit.
+
+        An example for a \ref ibeosdk::SplitFile you find with class \ref IdcWriter in IbeoSdkWriterDemo.
+
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+
+        \section sec_gettingstarted_howtouselogging How to use Logging
+
+        \subsection ssec_gettingstarted_howtouselogging_usinglogfilemanager Using ibeosdk::LogFileManager
+
+        - Create a \ref ibeosdk::LogFileManager object.
+        - call \ref ibeosdk::LogFile::setTargetFileSize   (to set the maximal file size)
+        - call \ref ibeosdk::LogFile::setLogFileBaseName  (optional; cerr is default)
+        - call \ref ibeosdk::LogFile::setLogLevel         (to set the log level filter)
+        - call logFileManager.start()                     (to open the log file)
+
+        Optional:
+        - create the \ref ibeosdk::IbeoDevice
+        - call lux.setLogFileManager        (Set the \ref ibeosdk::LogFileManager so that
+                                             the \ref ibeosdk::IbeoDevice can trigger a check
+                                             whether a split is necessary.)
+
+
+        \subsection ssec_gettingstarted_howtouselogging_notusinglogfilemanager Not Using ibeosdk::LogFileManager
+
+        - call \ref ibeosdk::LogFile::setLogFileBaseName  (optional; cerr is default)
+        - call \ref ibeosdk::LogFile::setLogLevel         (to set the log level filter)
+        - call \ref ibeosdk::LogFile::getLogFile          (to open the log file)
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+
+        \section sec_gettingstarted_capturingLoggingStream Capturing of the Logging Stream
+
+        To be able to use the Logging in an environment that is not providing
+        a cout/cerr or the possibility of file output, it is also possible to
+        capture the contents to be written by the logging output stream. The
+        capturing will happen linewise, i.e. whenever you send an endl to the
+        stream your callback method (see below) will be called with the line as
+        a c-string passed as a parameter.
+
+        An example can be found in IbeoSdkFileDemo.cpp.
+        Derive a class from
+	        \ref  ibeosdk::CustomLogStreamCallback
+        (in the example CustomLogStreamCallbackExample) and implement the method
+	        virtual void \ref ibeosdk::CustomLogStreamCallback::onLineEnd(const char* const s, const int)
+
+        Before starting the logging, create an object of your class and set the
+        \ref ibeosdk::CustomLogStreamCallback pointer of \ref ibeosdk::LogFile using \ref ibeosdk::LogFile::setCustomLogStreamCallback
+        (see IbeoSdkFileDemo.cpp:main) with a pointer on your object.
+        The ownership of the \ref ibeosdk::CustomLogStreamCallback object that is passed via pointer
+        remains at the caller. It has to be make sure that this object exists through
+        the whole time, when logging is active.
+
+        In the implementation of \ref ibeosdk::CustomLogStreamCallback::onLineEnd you can call a write or print method suitable
+        to environment. In the example std::cerr is used.
+
+        <!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------>
+
+
+        \section sec_gettingstarted_Troubleshooting Troubleshooting
+        \subsection sec_gettingstarted_Troubleshooting_ReceiveBufferTooSmall Receive Buffer too small
+
+        The following message indicates that the receive message buffer is too small.
+        Error  - MsgBuffer.cpp::recvMsg(134): Illegal message body size occured, buffer
+        size exceeded: XXXXX Bytes in received DataBlock: 0xHHHH Set to 0.
+        Where 0xHHHH is data block id that has been received.
+
+        To handle this problem increase the buffer size in
+        src/ibeosdk/IbeoTcpIpDeviceBase.hpp
+        \code
+	        static const int msgBufferSize = 196608;
+        \endcode
+        to a size suitable to you message to be received
+        and recompile you application.
+
+
+
+*/

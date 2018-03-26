@@ -24,7 +24,5 @@
 *.out
 *.synctex.gz
 code/cache
-faster_models
-faster_rcnn
 *eps-converted-to.pdf
 *.log

@@ -1,0 +1,105 @@
+ifeq ($(LIBTYPE),)
+	LIBTYPE:=shared
+endif
+
+export OBJFOLDER:=$(OBJFOLDER)/$(LIBTYPE)
+ifeq ($(WITHMONGODB), on)
+        export LIBSOURCES2=$(filter-out $(SKIPFILES), $(shell find . -name "*.cpp" -a ! -wholename "*unittests*"  -a ! -wholename "*demo*" | sed 's_\./__'))
+        export LIBHEADERS2=$(filter-out $(SKIPFILES), $(shell find . -name "*.hpp" -a ! -wholename "*unittests*"  -a ! -wholename "*demo*" | sed 's_\./__'))
+else
+        export LIBSOURCES2=$(filter-out $(SKIPFILES), $(shell find . -name "*.cpp" -a ! -wholename "*unittests*"  -a ! -wholename "*demo*" -a ! -path "*database*" | sed 's_\./__'))
+        export LIBHEADERS2=$(filter-out $(SKIPFILES), $(shell find . -name "*.hpp" -a ! -wholename "*unittests*"  -a ! -wholename "*demo*" -a ! -path "*database*" | sed 's_\./__'))
+endif
+
+ifeq ($(WITHJPEGSUPPORT), on)
+        export LIBSOURCES=$(LIBSOURCES2)
+        export LIBHEADERS=$(LIBHEADERS2)
+else
+        export LIBSOURCES=$(filter-out $(filter %jpegsupport/,$(dir $(LIBSOURCES2)))%,$(LIBSOURCES2))
+        export LIBHEADERS=$(filter-out $(filter %jpegsupport/,$(dir $(LIBHEADERS2)))%,$(LIBHEADERS2))
+endif 
+
+export LIBOBJECTS:=$(LIBSOURCES:%.cpp=$(OBJFOLDER)/%.o)
+
+export DEMOBINFOLDER
+#DEMOBINFOLDER:=$(DEMOBINFOLDER)/$(LIBTYPE)
+
+FOLDER_SRC=src
+MY_TARGETS=$(FOLDER_SRC)
+
+ifeq ($(LIBSUFFIX),)
+	IBEOSDK_SO=lib$(IBEOSDK_LIBNAME).so
+	IBEOSDK_LIB=$(IBEOSDK_LIBNAME).a
+else
+	IBEOSDK_SO=lib$(IBEOSDK_LIBNAME)_$(LIBSUFFIX).so
+	IBEOSDK_LIB=$(IBEOSDK_LIBNAME)_$(LIBSUFFIX).a
+endif
+
+LIBNAME_shared:=$(IBEOSDK_SO)-$(SDKVERSION)
+LIBNAME_static:=$(IBEOSDK_LIB)-$(SDKVERSION)
+
+ifeq ($(LIBTYPE),shared)
+	export LIBNAME:=$(LIBNAME_shared)
+	export LIBLINKNAME:=$(IBEOSDK_SO)
+	export LIBOBJCXXFLAGS:=-fPIC
+else
+	export LIBNAME:=$(LIBNAME_static)
+	export LIBLINKNAME:=$(IBEOSDK_LIB)
+	export LIBOBJCXXFLAGS:=
+endif
+
+.PHONY : all info tmpdir $(MY_TARGETS)
+.NOTPARALLEL :
+all: info subs
+
+subs: $(MY_TARGETS) libs/$(LIBNAME)
+
+info :
+	@echo Building Library: $(LIBNAME)
+	@echo Creating object files in: $(OBJFOLDER)
+
+libs/$(LIBNAME_shared):  $(LIBSOURCES) $(LIBHEADERS)
+	@echo "Create library "$(LIBNAME)
+	@$(CXX) $(CXXFLAGS) -shared -o libs/$(LIBNAME_shared) $(LIBOBJECTS)
+	@cd libs; rm -f $(IBEOSDK_SO); ln -s $(LIBNAME_shared) $(IBEOSDK_SO); cd ..
+
+libs/$(LIBNAME_static): $(LIBSOURCES) $(LIBHEADERS)
+	@echo "Create library "$(LIBNAME)
+	ar rs libs/$(LIBNAME) $(LIBOBJECTS)
+	@cd libs; rm -f $(IBEOSDK_LIB); ln -s $(LIBNAME_static) $(IBEOSDK_LIB); cd ..
+
+$(MY_TARGETS):
+	@if [ ! -d "$(OBJFOLDER)/$@" ]; then mkdir -p $(OBJFOLDER)/$@; fi;
+	$(MAKE) -C $@;
+
+
+################################################################################
+#  Demo Targets
+################################################################################
+.PHONY : shareddemos staticdemos
+
+shareddemos :  all
+	$(MAKE) -C src shareddemos LIBTYPE=shared
+
+staticdemos : all
+	$(MAKE) -C src staticdemos LIBTYPE=static
+
+
+
+#demos: shared | demobindir
+#demos: $(DEMOBINFOLDER)/$(DEMOBINARIES)
+
+#$(DEMOBINFOLDER)/${DEMOBINARIES} :
+#	$(CXX) $(CXXFLAGS) ${@:%=%.o} $(OBJFOLDER)/$(OBJECTS) $(LIBS) -o $@
+
+
+#demobindir:
+#	echo "$(DEMOBINFOLDER)"
+#	@if [ ! -d "$(DEMOBINFOLDER)" ]; then mkdir -p $(DEMOBINFOLDER); fi
+
+clean:
+	@if [ -d $(OBJFOLDER)/src ]; then $(MAKE) -C src/ clean; fi
+
+democlean:
+	@$(MAKE) -C src democlean
+

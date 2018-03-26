@@ -1,0 +1,7 @@
+.lastBuild
+*.ncb
+*.suo
+*.sdf
+*.ipch
+*.user
+

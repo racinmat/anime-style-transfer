@@ -1,0 +1,44 @@
+1. Indentation Rules
+	For leading indentations use tabs for all other SPACEs.
+
+2. Namensgebung
+2.1 Class Upper CamelNotation
+2.2 Files Upper CamelNotation
+2.3 Directory lower case
+2.4 Class Attribute static: ohne m_
+2.5 Class Attribute non-static: m_*
+2.6 Methode lower camle case
+
+Type upper camel case
+Types Enums Upper camel case
+Enum items upper camel case mit prefix + "_"
+
+Funktionen: lower camel case
+Macros: completely upper case
+Macros vermeiden, durch inline Funktionen ersetzen (oder const Variable)
+parameter/local variables lower camel notation
+
+
+Include Reihenfolge:
+this
+eigene Datein
+eigene Projekte
+boost
+C
+
+
+No white space at line end!!!
+(Make eclipse to remove all trailing white spaces when saving the files)
+
+Dokumenation: Doxygen
+Keine C-Style struct Definitionen
+
+Für jede Funktion/Methode muß angegeben werden, welche execptions sie werfen dürfen.
+
+Prefer C++-Style type casting!
+
+Keine Compiler-Warnungen sind erlaubt.
+
+Const-keyword wann immer möglich.
+Die Member einer Klasse werden sortiert. Order to be defined.
+

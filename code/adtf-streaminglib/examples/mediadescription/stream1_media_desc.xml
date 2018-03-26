@@ -1,0 +1,34 @@
+<adtf:ddl xmlns:adtf="adtf">
+  <header>
+    <language_version>2.00</language_version>
+    <author></author>
+    <date_creation>30.01.2013</date_creation>
+    <date_change>30.01.2013</date_change>
+    <description>ADTF generated</description>
+  </header>
+  <datatypes>
+    <datatype description="predefined ADTF tUInt32 datatype" name="tUInt32" size="32" />
+    <datatype description="predefined ADTF tUInt16 datatype" name="tUInt16" size="16" />
+  </datatypes>
+
+  <structs>
+    <struct alignment="1" comment="" name="myType" version="1">
+      <element alignment="1" arraysize="1" byteorder="LE" bytepos="4" comment="" description="Element testval1" name="testval1" type="tUInt32" />
+      <element alignment="1" arraysize="1" byteorder="BE" bytepos="8" comment="" description="Element testval2" name="testval2" type="tUInt16" />
+    </struct>
+    <struct alignment="1" comment="" name="adtf.core.media_type" version="1">
+      <element alignment="1" arraysize="1" byteorder="LE" bytepos="0" comment="" description="Element mediatype" name="mediatype" type="tMediaTypeInfo" />
+    </struct>
+    <struct alignment="1" comment="" name="tMediaTypeInfo" version="1">
+      <element alignment="1" arraysize="1" byteorder="LE" bytepos="0" comment="" description="Element ui32MajorType" name="ui32MajorType" type="tUInt32" />
+      <element alignment="1" arraysize="1" byteorder="LE" bytepos="4" comment="" description="Element ui32SubType" name="ui32SubType" type="tUInt32" />
+      <element alignment="1" arraysize="1" byteorder="LE" bytepos="8" comment="" description="Element ui32Flags" name="ui32Flags" type="tUInt32" />
+    </struct>
+  </structs>
+
+  <streams>
+    <stream description="streamid_1" name="test_serialize_basic" type="adtf.core.media_type">
+      <struct bytepos="0" type="myType" />
+    </stream>
+  </streams>
+</adtf:ddl>

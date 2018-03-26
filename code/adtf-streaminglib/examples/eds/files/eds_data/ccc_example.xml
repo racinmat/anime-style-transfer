@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="no"?>
+<settings>
+	<dbc>
+		<file channelmask="0xFFFF" name="example.dbc" />
+	</dbc>
+	<input name="Input">
+		<buffer name="MyBuffer">
+			<trigger start_msg="Kombi" />
+			<struct name="Speed">
+				<element name="Kombi.KBI_angez_Geschw" signal="Kombi.KBI_angez_Geschw" type="tFloat64" />
+			</struct>
+		</buffer>
+	</input>
+</settings>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="BoostX86SettingsPropertySheet_VS2008"
+	>
+	<UserMacro
+		Name="BoostVersionInLibname"
+		Value="1_59"
+		PerformEnvironmentSet="true"
+	/>
+	<UserMacro
+		Name="BoostVersionInPath"
+		Value="$(BoostVersionInLibname)_0"
+		PerformEnvironmentSet="true"
+	/>
+	<UserMacro
+		Name="BoostDir"
+		Value="C:\boost\boost_$(BoostVersionInPath)"
+		PerformEnvironmentSet="true"
+	/>
+	<UserMacro
+		Name="BoostLibDir"
+		Value="$(BoostDir)\lib32-msvc-9.0"
+		PerformEnvironmentSet="true"
+	/>
+</VisualStudioPropertySheet>

@@ -1,0 +1,139 @@
+ifeq ($(LIBTYPE),)
+	LIBTYPE:=shared
+endif
+
+export OBJFOLDER:=$(OBJFOLDER)/$(LIBTYPE)
+export LIBSOURCES_A=$(filter-out $(SKIPFILES), $(shell find . -name "*.cpp" -a ! -wholename "*unittests*" -a ! -wholename "*demo*" -a ! -wholename "*tool*" | sed 's_\./__'))
+export LIBHEADERS_A=$(filter-out $(SKIPFILES), $(shell find . -name "*.hpp" -o -name "*.h" -a ! -wholename "*unittests*" -a ! -wholename "*demo*" -a ! -wholename "*tool*" | sed 's_\./__'))
+
+ifeq ($(WITHJPEGSUPPORT), on)
+        export LIBSOURCES_B=$(LIBSOURCES_A)
+        export LIBHEADERS_B=$(LIBHEADERS_A)
+else
+        export LIBSOURCES_B=$(filter-out $(filter %jpegsupport/,$(dir $(LIBSOURCES_A)))%,$(LIBSOURCES_A))
+        export LIBHEADERS_B=$(filter-out $(filter %jpegsupport/,$(dir $(LIBHEADERS_A)))%,$(LIBHEADERS_A))
+endif
+
+FILTER=$(foreach v, $(2), $(if $(findstring $(1), $(v)),$(v),))
+FILTER_OUT=$(foreach v, $(2), $(if $(findstring $(1), $(v)),,$(v)))
+
+ifeq ($(WITHMONGODB), on)
+        export LIBSOURCES=$(LIBSOURCES_B)
+        export LIBHEADERS=$(LIBHEADERS_B)
+else
+#        $(info "dirs: " $(call FILTER_OUT,database,$(LIBSOURCES_B)))
+        export LIBSOURCES=$(call FILTER_OUT,database,$(LIBSOURCES_B))
+        export LIBHEADERS=$(call FILTER_OUT,database,$(LIBHEADERS_B))
+#        export LIBSOURCES=$(filter-out $(filter %database/,$(dir $(LIBSOURCES_B)))%,$(LIBSOURCES_B))
+#        export LIBHEADERS=$(filter-out $(filter %database/,$(dir $(LIBHEADERS_B)))%,$(LIBHEADERS_B))
+endif
+
+export LIBOBJECTS:=$(LIBSOURCES:%.cpp=$(OBJFOLDER)/%.o)
+
+export DEMOBINFOLDER
+export TOOLBINFOLDER
+export UNITTESTBINFOLDER
+#DEMOBINFOLDER:=$(DEMOBINFOLDER)/$(LIBTYPE)
+
+FOLDER_SRC=src
+MY_TARGETS=$(FOLDER_SRC)
+
+ifeq ($(LIBSUFFIX),)
+	IBEOSDK_SO=lib$(IBEOSDK_LIBNAME).so
+	IBEOSDK_LIB=$(IBEOSDK_LIBNAME).a
+else
+	IBEOSDK_SO=lib$(IBEOSDK_LIBNAME)_$(LIBSUFFIX).so
+	IBEOSDK_LIB=$(IBEOSDK_LIBNAME)_$(LIBSUFFIX).a
+endif
+
+LIBNAME_shared:=$(IBEOSDK_SO)-$(SDKVERSION)
+LIBNAME_static:=$(IBEOSDK_LIB)-$(SDKVERSION)
+
+ifeq ($(LIBTYPE),shared)
+	export LIBNAME:=$(LIBNAME_shared)
+	export LIBLINKNAME:=$(IBEOSDK_SO)
+	export LIBOBJCXXFLAGS:=-fPIC
+else
+	export LIBNAME:=$(LIBNAME_static)
+	export LIBLINKNAME:=$(IBEOSDK_LIB)
+	export LIBOBJCXXFLAGS:=
+endif
+
+.PHONY : all tmpdir $(MY_TARGETS)
+.NOTPARALLEL :
+all: info subs
+
+subs: $(MY_TARGETS) libs/$(LIBNAME)
+
+info :
+	@echo Building Library: $(LIBNAME)
+	@echo Creating object files in: $(OBJFOLDER)
+
+libs/$(LIBNAME_shared): $(LIBSOURCES) $(LIBHEADERS)
+	@echo "Create library "$(LIBNAME)
+	@$(CXX) $(CXXFLAGS) -shared -o libs/$(LIBNAME_shared) $(LIBOBJECTS)
+	@cd libs; rm -f $(IBEOSDK_SO); ln -s $(LIBNAME_shared) $(IBEOSDK_SO); cd ..
+
+libs/$(LIBNAME_static): $(LIBSOURCES) $(LIBHEADERS)
+	@echo "Create library "$(LIBNAME)
+	ar rs libs/$(LIBNAME) $(LIBOBJECTS)
+	@cd libs; rm -f $(IBEOSDK_LIB); ln -s $(LIBNAME_static) $(IBEOSDK_LIB); cd ..
+
+$(MY_TARGETS):
+	@if [ ! -d "$(OBJFOLDER)/$@" ]; then mkdir -p $(OBJFOLDER)/$@; fi;
+	$(MAKE) -C $@;
+
+
+################################################################################
+#  Demo Targets
+################################################################################
+.PHONY : shareddemos staticdemos
+
+shareddemos :  all
+	$(MAKE) -C src shareddemos LIBTYPE=shared
+
+staticdemos : all
+	$(MAKE) -C src staticdemos LIBTYPE=static
+
+
+################################################################################
+#  Tools Targets
+################################################################################
+.PHONY : sharedtools statictools
+
+sharedtools :  all
+	$(MAKE) -C src sharedtools LIBTYPE=shared
+
+statictools : all
+	$(MAKE) -C src statictools LIBTYPE=static
+
+
+################################################################################
+#  Test Targets
+################################################################################
+.PHONY : sharedtests statictests
+
+sharedtests :  all
+	$(MAKE) -C src sharedtests LIBTYPE=shared
+
+statictests : all
+	$(MAKE) -C src statictests LIBTYPE=static
+
+
+################################################################################
+#  Cleanup Targets
+################################################################################
+clean:
+	@if [ -d $(OBJFOLDER)/src ]; then $(MAKE) -C src/ clean; fi
+
+democlean:
+	@$(MAKE) -C src democlean
+	
+toolclean:
+	@$(MAKE) -C src toolclean
+
+unittestclean:
+	@$(MAKE) -C src unittestclean
+
+
+

@@ -1,0 +1,24 @@
+ //======================================================================
+/*! \page Copyright
+ * \copyright Ibeo Automotive Systems GmbH \b CONFIDENTIAL \n
+ *            \n
+ *             [2010] - [2015] Ibeo Automotive Systems GmbH, Hamburg, Germany
+ *             All Rights Reserved.\n\n
+ *            NOTICE:  All information contained herein is, and remains
+ *            the property of Ibeo Automotive Systems GmbH and its suppliers,
+ *            if any.  The intellectual and technical concepts contained
+ *            herein are proprietary to Ibeo Automotive Systems GmbH
+ *            and its suppliers and may be covered by German and Foreign Patents,
+ *            patents in process, and are protected by trade secret or copyright law.
+ *            Dissemination of this information or reproduction of this material
+ *            is strictly forbidden unless prior written permission is obtained
+ *            from Ibeo Automotive Systems GmbH.\n\n
+ *            THIS SOFTWARE IS PROVIDED BY IBEO AUTOMOTIVE SYSTEMS GMBH ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING,
+ *            BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *            IN NO EVENT SHALL IBEO AUTOMOTIVE SYSTEMS GMBH BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *            CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+ *            OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *            LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ *            ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *///-------------------------------------------------------------------
+ 

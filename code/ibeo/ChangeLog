@@ -1,0 +1,483 @@
+//======================================================================
+/*! \file ChangeLog
+ * \brief History of IbeoSDK.
+ * \copydoc Copyright
+ * \author Jan Christian Dittmer (jcd)
+ * \date July 25, 2017
+ *///-------------------------------------------------------------------
+//======================================================================
+Version 5.2.2
+• Change: Documentation update for IbeoEthDevice
+• Change: Removed ifa interface parameter of TCP devices
+• Change: Changed parameter class name from EthMulticast to EthUdpMulticast
+
+//======================================================================
+Version 5.2.1 (not released)
+• Feature: Extended support for udp communication
+• Change: IbeoUdpDeviceBase and IbeoTcpIpDevceBase merged to IbeoEthDevice for udp and tcp
+• Change: New class IbeoEthType to specify communication type for the IbeoEthDevice
+• Change: New class ThreadEnsemble as base class for UdpReceiveThreadEnsembel and TcpIpThreadEnsemble
+• Change: Removed obsolete class IbeoUdpScala
+
+//======================================================================
+Version 5.1.0
+• Feature: Add datablocks
+           SystemMonitoringCanStatus6700
+           SystemMonitoringDeviceStatus6701
+           SystemMonitoringSystemStatus6705
+           TimeRecord9000
+           GpsImu9001
+           Odometry9002.
+• Change: call std::isnan instead of isnan to maintain C++11 compatibility
+          and newer compiler. Provide a std::isnan function for older VS compiler.
+• Bugfix: Avoid crashing in case mutliple theads accessing a custom LogStreamBuf.
+• Bugfix: Fix error in tool IdcCompare, only if strncmp had return 1 or 0 in method
+          IdcComparator::onData the comparison was correct. The return value
+          -1 was treated wrongly.
+• Bugfix: Fix error in serialization of LaneSupportPoint. (Call serialize method
+          of Point2dFloat to avoid endianess problems).
+• Bugfix: Add missing framing policy trigger for LuxScan.
+• Bugfix: In IdcRepairTool do not copy old trailer and frame index to new file.
+• Bugfix: In IdcRepairTool start copying with a trigger (scan).
+• Fix: Add missing boost include for some compilers.
+
+//======================================================================
+Version 5.0.4
+• Bugfix: In CMakeLists.txt: Add option to link boost libs statically.
+
+//======================================================================
+Version 5.0.3
+• Bugfix: In ScalaFpgaRawData2310::extractScan start end end angle were swapped.
+
+//======================================================================
+Version 5.0.2
+• Bugfix: Add missing source files to shipped VS solutions to make them compile.
+• Bugfix: VS 2008 and 2010 had only 32 bit streamoff which causes errors when
+          dealing with file larger than 2GB.
+• Bugfix: Fix error in IdcCompare while comparing datablock body data.
+• Bugfix: Fix some exception messages in Measurement.cpp.
+• Bugfix: Get rid of some compiler warnings.
+
+//======================================================================
+Version 5.0.1
+• Feature: Add database access to Ibeo EvS R3 database (read-only).
+           Add new classes with database context to: "ibeosdk/database",
+                                                     "ibeosdk/devices",
+                                                     "ibeosdk/devices/database".
+           Update HOWTO.txt:
+             Add section: "Concept - Database access/Reader/DatabaseReplayer".
+             Add paragraph for building mongo-cxx-driver to section: "Requirements".
+             Add paragraph for building IbeoSDK with database support to 
+               section: "To build the IbeoSDK as library".
+• Feature: Add database demos
+             IbeoSdkDb2IdcDemo
+             IbeoSdkDbInfoDemo
+             IbeoSdkDbRoadmarkingDemo
+             IbeoSdkDbReplayDemo
+• Feature: Add classes
+             TimeInterval
+             CompressedPoint2d
+             Box2d
+• Feature: Add template function round int Math.hpp
+• Bugfix: Fix (de)serialization of Snippet ObjectLabel6503.
+• Change: Rename static method Point2d::getSerializedSize as getSerializedSize_static.
+          Add non-static method Point2d::getSerializedSize.
+
+//======================================================================
+Version 4.7.1
+• Feature: Add read-only SUTP ScaLa protocol support. (No device).
+
+//======================================================================
+Version 4.6.2
+• Bugfix: Fix problem in CMake project for Linux. Add linker option --whole-archive
+          to prevent removing assumed unused templates (methods).
+
+//======================================================================
+Version 4.6.1
+• Feature: Add copy constructor and assignment operator to class Image.
+• Feature: Add 3D transformations
+• Feature: Add templatized getAs function for measurement (boost::any) in class Measurement
+• Feature: Add operator == and != for classes: ObjectListEcu, ObjectListEcuEt, ObjectListEcuEtDyn,
+           ObjectEcu, ObjectEcuEt, ObjectEcuEtDyn, ScanEcu, ResolutionInfo, ScanPointEcu, ScannerInfo,
+           Measurementlist2821, VehicleStateBasicEcu,VehicleStateBasicEcu2808, ScanPointEcu
+• Feature: Add setter, getter for all members in ObjectListEcu, ObjectListEcuEt,
+           ObjectListEcuEtDyn, ObjectEcuEt, ObjectEcuEtDyn, ScanEcu, VehicleStateBasicEcu,
+           ScanPointEcu, ScannerInfo, Measurementlist2821,
+• Feature: Add demo IbeoSdkEcuSimDemo and IbeoSdkScalaSimDemo.
+• Feature: Add class IbeoTcpIpAcceptor which is able to accept TCP/IP connections
+           and send data. Adding derivations for ECU acceptor and Scala acceptor.
+• Feature: Add DataBlock ObjectAssociationList4001.
+• Feature: Add DataBlock ObjectLabelList6503.
+• Feature: Add typedefs for vector type in class ObjectListEcuEt and ObjectListEcuEtDyn.
+• Feature: Add unittests for class MeasurementList (Snippet).
+• Feature: Add method MeasurementList::getMeasurement.
+• Feature: Add tool IdcCompare, which compares two idc file but ignoring
+           differences in the IbeoDataHeader timestamps.
+• Change: Renaming setter ResolutionInfo::getResolution to ResolutionInfo::setResolution
+• Change: Box2dF is now a Snippet.
+• Change: Introduce functions fuzzyCompareT to replace fuzzyCompare.
+• Change: In future releases of Ibeo software RefObjectListEtDyn will be replaced
+          by ObjectListEcuEtDyn with the isRefObjList flag set.
+          (Apart from the DataTypeId, both class where identically).
+• Change: Replace ObjectEcutEtDyn::Flags (enum) by static const uint8_t values.
+          Add flag bit isRefObjList.
+• Change: Add full 3d WGS transformation.
+• Change: Add new object classes ObjectClass_Motorbike,  ObjectClass_Bicycle
+• Change: Changing to asynchronously receiving data (MsgBuffer.cpp)
+• Bugfix: Correct values for DynamicFlagDynState static attributes.
+• Bugfix: Remove attributes ScanEcu::nbOfScanPoints and nbOfScannerInfos to avoid inconsistency
+• Bugfix: Fix insufficient checks in unittests.
+• Bugfix: Lux/Scala and Ecu have different enums of object classes.
+
+//======================================================================
+Version 4.5.2
+• Feature: Add demo for MetaInformationList7110.
+• Feature: Add ObjectListEcuEtDyn flag ReferenceList.
+           (0x2281 is used instead of 0x2291 by EvS R3 with this flag set).
+
+//======================================================================
+
+Version 4.5.1
+• Feature: Add support for PointCloud data types 0x7500 (global) and 0x7510 (plane).
+• Feature: Add support for DataBlock MetaInformationList
+• Feature: Add support for DataBlock ContentSeparator
+• Feature: Add classes
+  • Matrix3dFloat
+  • RotationMatrix3dFloat
+  • PointCloudBase
+  • PointCloudGlobal7500
+  • PointCloudPlane7510
+  • GpsPoint
+  • GlobalPoint
+  • PointBase
+  • ReferencePlane
+  • PlanePoint
+  • Point3dFloat
+  • Point3dDouble
+  • EcefPoint
+  • MetaInformationFactory
+• Feature: Add snippets
+  • MetaInformation (base class)
+  • MetaInformationAppBaseConfig
+  • MetaInformationEcuId
+  • MetaInformationKeywords
+  • MetaInformationUnsupported
+  • MetaInformationVersionNumber
+• Feature: Add demo IbeoSdkPointCloudPlane7510.
+• Bugfix: Correct endianes when writing ObjectClass to big endianess. (Has no effect since only 1 byte is written).
+• Bugfix: Correct endianess when writing EventTag::TagClass to big endianess.
+• Change: In CMake build now building ibeosdk library static
+• Unittests: Add test MetaInformationTest
+ 
+//======================================================================
+Version 4.4.1
+• Feature: Add math functions floatEqual, floatInequal to take NaN into account.
+• Feature: Add getRandValue method for type float
+• Feature: Add helper class Tranform.
+• Change: CarriageWay now can hold global coordinates. VehicleStateBasicEcu2808 is nessasary.
+
+//======================================================================
+Version 4.3.2
+• Bugfix: In ReplyLuxGetParameter and ReplyMiniLuxGetParameter correct (de-)serialization of the command id.
+• Bugfix: Fix (16Bit) serialization of RefPointBoxLocation used in (Reference)ObjectEcuEt and (Refernce)ObjectEcuEtDyn. 
+• Fix: Some issues in ScalaFpgaRawData2310::extractScan, set correct start and end scan angle, mirror tilt, etc.
+• Fix: Add missing file ScalaFpgaRawScanPointBase to VS project filter.
+• Fix: Some issues with the CLang compiler.
+
+//======================================================================
+Version 4.3.1
+• Feature: Add methods to get the object box's center position for classes ObjectEcuEtDyn (used by 0x2281, 0x2291).
+• Feature: Add interface to access libjpeg in folder ibeosdk/jpegsupport.
+• Feature: Add ScannerType id for Sick LMS100/111, LMS200/291 and LMS500/511.
+• Feature: In ObjectClass enum add class Underdriveable.
+• Feature: Update the CMakeLists.txt to be used with CMake to create project files.
+• Feature: Add unittest support.
+• Feature: Add equal and non-equal predicates for classes
+  • Point2d
+  • PointSigma2d
+  • ContourPoint
+  • FilteredObjectAttributes
+  • UnfilteredObjectAttributes
+  • ObjectScala2271
+  • ObjectListScala2271 
+• Feature: Add Support for DataBlock VehicleStateBasicEcu2808 (0x2808).
+• Feature: Add device class IbeoTrackingBox.
+• Feature: New Demo: IbeoSdkLaneEvaluationDemo.cpp
+• Feature: New Demo: IbeoSdkTrackingBoxLiveDemo.cpp
+• Bugfix: Fix too small buffer for custom log stream created by CustomLogStreamCreator.
+• Bugfix: Fix the serialization of ContourPoint. m_posX was serialized a second time instead of m_posY. Used in FilteredObjectAttributes / UnfilteredObjectAttributes for ObjectScala2271.
+• Bugfix: FilteredObjectAttributes / UnfilteredObjectAttributes: add setter for attribute m_possibleNbOfContourPoints.
+• Bugfix: In ObjectScala2271: remove redundancies and source of inconsistency by removing class attribute m_attributeFlags. Setter and getter now directly access the FilteredObjectAttributes / UnfilteredObjectAttributes flags.
+• Bugfix: Correct ScanPoint2208Flags of class ScanPoint2208. 
+• Change: In ObjectScala2271: attribute flags are no longer defined in an enum but separatly defined as const static attributes.
+• Change: Set MsgBuffer size for TCP/IP devices (derived from IbeoTcpIpDeviceBase) to 4*64K. (Messages larger than this buffer size cannot be deserialized and will be skipped).
+• Change: Rename class lanes::mapConstructor as lanes::MapConstructor.
+• Change: Classes LogStreamBuf, TimeConversion and IbeoDeviceBase are now derived from boost::noncopyable to avoid coying by accident.
+• Internal-Feature: In ObjectScala2271: add getter of attribute ObjectScala2271::m_reserved and ObjectScala2271::m_internal to be used by equal predicate.
+• Internal-Feature: IN ObjectListScala2271: add getter of attribute ObjectListScala2271::m_reserved to be used by equal predicate.
+• Internal-Feature: Add DataBlock LogPolygonList2dFloat.
+• Internal-Feature: Add DataBlock ScalaFpgaRawData2310.
+• Internal-Bugfix: Fix deserialization of attribute ObjectEcuEt::m_reserved2.
+
+//======================================================================
+Version 4.2.1
+• Feature: Add subfolders unittests and tools.
+• Feature: Add boost unit test framework to makefiles and CMakeLists.txt files.
+• Feature: Add IdcRepairTool.
+• Feature: Add Non-SDK C-tool idcFixSizeOfPrevMsg.c
+• Feature: Add VS projects for IdcMergeTool (fka IdcMerger).
+• Feature: Add MeasurementKey RearMonitorFlag (705).
+• Feature: Add eclipse build targets for tests, tools, docs and cleaning.
+• Feature/Change: Simplify the handling of classes derived from more than
+           one Listener, e.g. AllListener classes in demos. Only on
+           registerListener call is needed to register all types the
+           object can listen to.
+• Change: Listener header are deprecated and will remain only for
+          compatibility.
+• Bugfix: Add missing DataTypeid DataType_CarriageWayList.
+• Bugfix: Add -lpthread when linking executables. (Issue with newer g++ compiles)
+• Bugfix: Remove restriction of ObjectListLux to 63 objects since a Lux8L can
+          generate more than 63 objects.
+• Bugfix: Add missing getter ScanPointEcu::getSegmentId.
+• Internal-Feature: Add writeBE and readBE template functions for enum types.
+• Internal-Feature: Add new dynamic flags for ScanPointEcu and ScanEcu::Flags_ObjIdAsSegId.
+
+//======================================================================
+Version 4.1.2
+• Bugfix: When writing the first IbeoDataHeader into a file, set the size
+          of the previous Datablock to 0 to be compatible with ILV.
+• Bugfix: Prevent crashing of FrameIndex::serialize if there is no entry
+          in the index at all.
+
+//======================================================================
+Version 4.1.1
+• Interface-Change: Signature of IdcFile::write has changed. It now takes an IbeoDataHeader and the
+                    buffer with the body data. Attributes m_strm and m_dh has become private.
+• Feature: Add command support for IbeoMiniLUX.
+• Feature: add command CommandMiniLuxGetParameter
+• Feature: add command CommandMiniLuxGetStatus
+• Feature: add command CommandMiniLuxReset
+• Feature: add command CommandMiniLuxResetToDefaultParameters
+• Feature: add command CommandMiniLuxSaveConfig
+• Feature: add command CommandMiniLuxSetNtpTimestampSync
+• Feature: add command CommandMiniLuxSetParameter
+• Feature: add command CommandMiniLuxStartMeasure
+• Feature: add command CommandMiniLuxStopMeasure
+• Feature: Add DataBlock IdcTrailer.
+• Feature: Add DataBlock FrameIndex.
+• Feature: IdcFile now adds a FrameIndex when closing an output IDC file.
+• Feature: IdcFile now adds a IdcTrailer when closing an output IDC file.
+• Feature: Define some MeasurementKeys used for XSensIMU data.
+• Feature: Add unregisterListener and unregisterStreamer to class IdcFile.
+• Bugfix: Correct the type of VehicleStateBasicLux::m_currentYawRate from uint16_T to int16_t.
+• Bugfix: Add missing initialization of output value in LogFile::getLogFile.
+• Bugfix: Clear the variable contents of DataBlock DeviceStatus6303 before deserialization.
+          Necessary when reusing the container.
+• Bugfix: Avoid some compiler warnings by explicit casting.
+• Bugfix: Avoid some compiler warnings by adding virtual destructor to All*Listener classes in demos.
+
+
+//======================================================================
+Version 4.0.1
+• Change: Introduce class IbeoDeviceBase as parent class of IbeoTcpIpDeviceBase.
+• Feature: Add DataBlock EventTag
+• Feature: Add class EventMonitor
+• Change: Rename class Serializable as Snippet.
+• Change: Move all Snippets from folder ibeosdk and ibeosdk/Serializable into ibeosdk/datablocks/snippets.
+• Change: Move class Command into ibeosdk/datablocks/commands.
+• Feature: Add command support for IbeoLux and IbeoEcu.
+• Feature: add command CommandEcuAppBaseCtrl
+• Feature: add command CommandEcuAppBaseStatus
+• Feature: add command CommandEcuSetFilter
+• Feature: add command CommandLuxGetParameter
+• Feature: add command CommandLuxGetStatus
+• Feature: add command CommandLuxReset
+• Feature: add command CommandLuxResetToDefaultParameters
+• Feature: add command CommandLuxSaveConfig
+• Feature: add command CommandLuxSetNtpTimestampSync
+• Feature: add command CommandLuxSetParameter
+• Feature: add command CommandLuxStartMeasure
+• Feature: add command CommandLuxStopMeasure
+• Feature: Add classes ParameterIndex and ParameterData for the set/getParameter
+• Bugfix: Avoid compiler warning in Point2dFloat::rotated.
+• Feature: Introduce global enum statuscodes::Codes
+
+
+//======================================================================
+Version 3.0.3
+• Change: moved CarriageWayList6970 Measurement keys to class MeasurementKey
+
+//======================================================================
+Version 3.0.2
+• Feature: Added support for new Datablock CarriageWayList6970.
+• Feature: Added demo file \ref addon_cw6970_demo_page "CarriageWayList6970Demo.cpp"
+• Feature: Added class lanes::LaneHandler
+• Feature: Added class lanes::CarriageWay
+• Feature: Added class lanes::CarriageWayList
+• Feature: Added class lanes::CarriageWaySegment
+• Feature: Added class lanes::Lane
+• Feature: Added class lanes::LaneSegment
+• Feature: Added class lanes::LaneSupportPoint
+
+//======================================================================
+Version 3.0.1
+• Interface-Change: Namespace ibeo has been renamed as ibeosdk.
+• Interface-Change: In class ScannerInfo, getResolutionInfo now returns a references instead of a pointer.
+• Interface-Change: In class ObjectEcuEtDyn getMesurementList now return a const reference.
+• Feature: Introduce datablock RefObjectLisEcuEt (0x2290).
+• Feature: Introduce datablock RefObjectListEcuEtDyn (0x2291).
+• Feature: Introduce datablock PositionWgs84_2604. PositionWgs84 is not a datablock any longer but a serializable attribute of PositionWgs84_2604.
+• Feature: Added class Line2dFloat
+• Feature: Added class Matrix2dFloat
+• Feature: Added class RotationMatrix2dFloat
+• Feature: Added class TransformationMatrix2dFloat
+• Feature: Added additional functions to Point2dFloat
+• Feature: Added additional functions to PositionWgs84
+• Feature: Add function to read/write bitwise from/into a char buffer.
+• Feature: Add ScanPointEcu flags ESPF_RoadMarking, ESPF_Curbstone and ESPF_Guardrail.
+• Feature: Add setter to class ScanPointEcu.
+• Feature: Add setter methods to class ResolutionInfo
+• Bugfix: In class ScannerInfo use automatic assignment operator. The old implementation was incomplete.
+• Bugfix: Linux: In makefiles use § instead of _ as delimiter for the sed command calls.
+• Change: For TCP/IP connections set the socket option "no_delay".
+• Change: Add and clarify some error messages.
+• Change: Definition of PositionWgs84 functions added.
+
+//======================================================================
+Version 2.11.1
+• Feature: Introduce datablock MeasurementList2281
+• Bugfix: Add missing getter for the variable content of datablock DeviceStatus6303.
+• Bugfix: Rename ObjectScala::m_objectBoxSigma as m_objectBoxSizeSigma.
+• Bugfix: Correct endianess in serialization of OxtsStatus.
+• Bugfix: Correct endianess in serialization of OxtsMessage. 
+
+//======================================================================
+Version 2.10.1
+• Feature: Introduce class MeasurementKey.
+• Feature: Add VS2010 solution "ibeosdk_VS2010.sln" which supports x64 configuration if WinSDK 7.1 is installed.
+• Feature: Add support for data type ObjectListScala2271.
+• Bugfix: Correct the serialization of 0x6301 (before BE now LE).
+• Bugfix: CanMessageListener was broken and not compilable. Fixed.
+• Bugfix: Improve receive thread termination in Ibeo TCP/IP devices.
+• Bugfix: Fix a memory hole in Measurement::deserialize when receiving string measurements.
+• Bugfix: Correct some boost include path in ibeosdk_VS2008.vcproj and all VS2010 projects.
+• Bugfix: Define symbols __LITTLE_ENDIAN and __BIG_ENDIAN for Visual Studio. 
+• Change: Set the setting in the VS property sheets in such a way, that it is easier to use
+  the same boost include files for both, the 32 bit and the 64 bit version. 
+
+//======================================================================
+Version 2.9.1
+• Feature: Add datablock OxtsMessage (0x2610)
+• Feature: Add datablock OxtsStatus (0x2611)
+• Change: In datablock ObjectEcutEtDyn rename attributes
+  • m_reserved1 as m_objectBoxHeightOffset
+  • m_reserved2 as m_objectBoxHeightOffsetSigma
+  • and add getter.
+
+//======================================================================
+Version 2.8.1
+• Bugfix: Prevent crash when destructing device object by unregister all listener and streamers in derived classes.
+• Bugfix: Add missing files to VS project filters.
+• Change: Add attribute m_flags to class ObjectListEcuEtDyn. m_reserved1 now is only 8 bits.dd attribute m_flags
+          to class ObjectListEcuEtDyn. m_reserved1 now is only 8 bits.
+• Change: Increase the size of the message receive buffer to handle also scans from larger fusion systems.
+• Feature: Add troubleshooting section in HOWTO.txt to handle the problem of too small receive buffer if needed. 
+ 
+ //======================================================================
+ Version 2.7.1
+• Feature: Add support for VS 2008
+• Bugfix: Remove the max number of point limitation in class ScanLux to be compatible with early Scala sensors.
+ 
+//======================================================================
+Version 2.6.1 - 2.6.2
+• Feature/Bugfix: Make all DataBlock classes copyable.
+• Bugfix: Fix some problems in the message receive function that led
+  • Untruely warnings due to skipped bytes that actually have already been processed.
+  • Lost messages due to misalignment of the buffer.
+• Change: Introduce properties sheets in Visual Studio project to simplify to switch to other boost versions.
+
+//======================================================================
+Version 2.5.1
+• Feature: Support of data block DeviceStatus6303.
+• Feature: Support of data block ObjectListEcuEtDyn 0x2281.
+• Feature: Implement possibility of log stream capturing.
+• Change: Add compiler flags -Wsign-conversion and -Wshadow in Linux Makefile.
+• Bugfix: Prevent possible deadlock situations in some data blocks deserialize method.
+• Bugfix: correct names of object orientation attributes in class ObjectEcu and ObjectEcuEt.
+• Bugfix: If there are skipped bytes due to the fact that the receiving MsgBuffer didn't contain any magic word, this will also be reported now.
+• Deprecated: ObjectEcu::getYawAngle/setYawAngle, use getObjectBoxOrientation/setObjectBoxOrientation instead.
+• Deprecated: ObjectEcu::getYawAngleSigma/setYawAngleSigma, use getObjectBoxOrientationSigma/setObjectBoxOrientationSigma instead.
+• Deprecated: ObjectEcuEt::getObjCourseAngle/setObjCourseAngle, use getObjBoxOrientation/setObjBoxOrientation instead.
+• Deprecated: ObjectEcuEt::getObjCourseAngleSigma/setObjCourseAngleSigma, use getObjBoxOrientationSigma/setObjBoxOrientationSigma instead.
+• Deprecated: ObjectListEcu::getScanStartTimestamp/setScanStartTimestamp, use getTimestamp/setTimestamp instead.
+• Deprecated: ObjectListEcuEt::getScanStartTimestamp, use getTimestamp instead.
+
+//======================================================================
+Version 2.4.0 - 2.4.2
+• Feature: Add class ScannerProperties to provide information regarding scanners.
+• Feature: Add enum for object flags in classes ObjectScala and ObjectEcuEt and
+           add getter and setter for these flags.
+• Feature: VS2012 solution now also contains a x64 configuration.
+• Feature: Streamer and Listener now can be unregistered from Devices.
+• Feature: Add streamer support to class IdcFile.
+• Feature: In class ObjectEcu rename m_reserved3 as m_yawAngleSigma.
+• Update the HOWTO.txt
+• Bugfix: Remove angle check during deserialization in class ScanLux, since the angle
+          range is not valid for older Scala B2 sensors which are sending also ScanLux
+          datablocks.
+• Bugfix: Correct many errors in doxygen documentation.
+• Bugfix: In enum ScannerType add symbol for MiniLux and remove unsupported AlascaXT.
+• Bugfix: Make the ethernet receive thread more robust against erroneous data received. 
+• Change: DataType now has been renamed as DataTypeId and is now a
+          ComparableUnconvertable.
+• Change: Small fixes to ensure (yet unsupported) VS2008 compatibility.
+
+//======================================================================
+Version 2.3.0
+* Bugfix: Handle not_a_date_time separately in TimeConversion::toString to
+          prevent crash due to exception.
+* Bugfix:In IbeoSdkWriterDemo allow file splitting also on ScanEcu and Scan2208.
+* IbeoSdkFileDemo do now use the notify-listener concept to avoid switch-case
+  to select the DataListener.
+* Add method setInvalid to class NTPTime.
+* Add eclipse target "staticdemos".
+
+* Internal: DataBlocks now automatically register to devices.
+* Internal: Enum DataTypes is deprecated and will be removed in future
+            releases.
+
+//======================================================================
+Version 2.2.0
+* Add Devices
+  * IbeoScala
+  * IbeoMiniLux
+* Add DataBlocks
+  * 0x1002: CanMessage
+  * 0x1100: FrameEndSeparator
+  * 0x2208: Scan2208
+  * 0x2270: ScalaObjectList
+  * 0x2604: PositionWgs84
+  * 0x2806: VehicleStateEcuBasic2806
+  * 0x6301: DeviceStatus
+* Add VS 2012 support
+* Demos
+  * IbeoSdkWriterDemo now supports all devices
+  * IbeoSdkDataLoggerDemo (Linux only)
+    * now supports all devices
+    * now uses boost program_options library to parse command line arguments
+
+//======================================================================
+Version 2.1.0
+* Add makefile targets to create shared and static libs
+* Fix some issues with template declaration/usage order
+  for g++ 4.7+ and --std=c++11
+* Fix a C++11 incompatiblity with std::make_pair reported for VS 2012
+* Clarify HOWTO, add source link for boost libraries
+
+
+//======================================================================
+Version 2.0.0
+* Initial release
+
+
+//======================================================================
