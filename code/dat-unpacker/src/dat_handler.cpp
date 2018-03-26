@@ -1,7 +1,6 @@
 #include "dat_handler.h"
 
 using namespace adtfstreaming;
-
 DatHandler::~DatHandler() {
 	deInitDatHandler();
 }
