@@ -1,0 +1,4 @@
+/home/otaj/files/dip/master-thesis/code/dat-unpacker-build/CMakeFiles/rebuild_cache.dir
+/home/otaj/files/dip/master-thesis/code/dat-unpacker-build/CMakeFiles/edit_cache.dir
+/home/otaj/files/dip/master-thesis/code/dat-unpacker-build/CMakeFiles/dat-unpacker.dir
+/home/otaj/files/dip/master-thesis/code/dat-unpacker-build/CMakeFiles/test.dir

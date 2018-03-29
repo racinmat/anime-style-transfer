@@ -1,0 +1,22 @@
+[
+{
+  "directory": "/home/otaj/files/dip/master-thesis/code/dat-unpacker-build",
+  "command": "/usr/bin/c++  -DQT_CORE_LIB -DQT_NO_DEBUG -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/../external/adtf-streaminglib/include -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/../external/ibeo/src -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/include -isystem /usr/include/qt -isystem /usr/include/qt/QtCore -isystem /usr/lib/qt/mkspecs/linux-g++  -O3 -DNDEBUG   -fPIC -std=gnu++11 -o CMakeFiles/dat-unpacker.dir/src/dat_handler.cpp.o -c /home/otaj/files/dip/master-thesis/code/dat-unpacker/src/dat_handler.cpp",
+  "file": "/home/otaj/files/dip/master-thesis/code/dat-unpacker/src/dat_handler.cpp"
+},
+{
+  "directory": "/home/otaj/files/dip/master-thesis/code/dat-unpacker-build",
+  "command": "/usr/bin/c++  -DQT_CORE_LIB -DQT_NO_DEBUG -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/../external/adtf-streaminglib/include -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/../external/ibeo/src -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/include -isystem /usr/include/qt -isystem /usr/include/qt/QtCore -isystem /usr/lib/qt/mkspecs/linux-g++  -O3 -DNDEBUG   -fPIC -std=gnu++11 -o CMakeFiles/dat-unpacker.dir/src/imu.cpp.o -c /home/otaj/files/dip/master-thesis/code/dat-unpacker/src/imu.cpp",
+  "file": "/home/otaj/files/dip/master-thesis/code/dat-unpacker/src/imu.cpp"
+},
+{
+  "directory": "/home/otaj/files/dip/master-thesis/code/dat-unpacker-build",
+  "command": "/usr/bin/c++  -DQT_CORE_LIB -DQT_NO_DEBUG -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/../external/adtf-streaminglib/include -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/../external/ibeo/src -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/include -isystem /usr/include/qt -isystem /usr/include/qt/QtCore -isystem /usr/lib/qt/mkspecs/linux-g++  -O3 -DNDEBUG   -fPIC -std=gnu++11 -o CMakeFiles/dat-unpacker.dir/src/main.cpp.o -c /home/otaj/files/dip/master-thesis/code/dat-unpacker/src/main.cpp",
+  "file": "/home/otaj/files/dip/master-thesis/code/dat-unpacker/src/main.cpp"
+},
+{
+  "directory": "/home/otaj/files/dip/master-thesis/code/dat-unpacker-build",
+  "command": "/usr/bin/c++  -DQT_CORE_LIB -DQT_NO_DEBUG -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/../external/adtf-streaminglib/include -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/../external/ibeo/src -I/home/otaj/files/dip/master-thesis/code/dat-unpacker/include -isystem /usr/include/qt -isystem /usr/include/qt/QtCore -isystem /usr/lib/qt/mkspecs/linux-g++  -O3 -DNDEBUG   -fPIC -std=gnu++11 -o CMakeFiles/dat-unpacker.dir/src/parse_input.cpp.o -c /home/otaj/files/dip/master-thesis/code/dat-unpacker/src/parse_input.cpp",
+  "file": "/home/otaj/files/dip/master-thesis/code/dat-unpacker/src/parse_input.cpp"
+}
+]

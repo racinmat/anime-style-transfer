@@ -1,5 +1,4 @@
 #pragma once
-
 #include <memory>
 #include <iostream>
 #include <string>
@@ -14,7 +13,7 @@
 
 class DatHandler {
 	public:
-		DatHandler() {};
+		DatHandler(bool raw_file) : raw_file(raw_file) {};
 
 		~DatHandler();
 
@@ -31,5 +30,6 @@ class DatHandler {
 		std::vector<const adtfstreaming::tADTFStreamDescriptor *> descriptors;
 		std::unique_ptr<adtfstreaming::IADTFFileReader> m_fileReader;
 		tInt stream_count;
+		bool raw_file;
 
 };

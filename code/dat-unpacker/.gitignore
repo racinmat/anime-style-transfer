@@ -2,3 +2,4 @@ build
 backup
 *.o
 *.gch
+compile_commands.json

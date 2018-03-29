@@ -16,6 +16,7 @@ int param_parser::parseInput(int argc, char *argv[]) {
 	("help,h", "Print help message")
 	("input-file-name,i", po::value<string>(&input)->required(), "Input DAT file(s)")
 	("stream-id,s", po::value<int>(&stream)->required(), "Stream id")
+	("raw,r", "Raw dat file?")
 	;
 
 	po::positional_options_description p;
@@ -35,6 +36,13 @@ int param_parser::parseInput(int argc, char *argv[]) {
 	if (vm.count("help")) {
 		cout << desc;
 		return -1;
+	}
+
+	if (vm.count("raw")) {
+		raw = true;
+	}
+	else {
+		raw = false;
 	}
 
 	try {

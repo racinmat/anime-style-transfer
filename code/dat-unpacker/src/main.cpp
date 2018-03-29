@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 
-	DatHandler *dat = new DatHandler();
+	DatHandler *dat = new DatHandler(pp.raw);
 
 	if (!dat->initDatHandler(pp.input)) {
 		return -1;
