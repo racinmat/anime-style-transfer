@@ -1,4 +1,7 @@
 import random
+import logging
+import os
+import os.path as osp
 import tensorflow as tf
 import numpy as np
 
@@ -49,19 +52,13 @@ class DataBuffer:
         return self.last_data
 
 class TFReader:
-    def __init__(self, tfrecords_file, name, shape, batch_size=1, num_threads=8):
-        """
-        Args:
-          tfrecords_file: string, tfrecords file path
-          min_queue_examples: Number of examples to retain in the queue (tf param)
-          batch_size: integer, number of images per batch
-          num_threads: integer, number of preprocess threads
-        """
-
+    def __init__(self, tfrecords_file, name, shape, normer, denormer, batch_size=1, num_threads=8):
         self.name = name
         self.batch_size = batch_size
         self.num_threads = num_threads
         self.shape = shape
+        self.normalize = normer
+        self.denormalize = denormer
         with tf.name_scope(self.name):
             self.data = tf.data.TFRecordDataset(tfrecords_file)
             self.data = self.data.map(self._parse_example, num_parallel_calls=num_threads)
@@ -73,22 +70,51 @@ class TFReader:
 
 
     def feed(self):
-        """
+        '''
         Returns:
           images: 4D tensor [batch_size, *shape]
-        """
+        '''
         return self.iterator.get_next()
 
     def _parse_example(self, serialized_example):
-        name = self.name + '_transform'
+        name = self.name + '_data'
         features = tf.parse_single_example(serialized_example,
                                            {name: tf.FixedLenFeature(self.shape, tf.float32)})
         return features[name]
 
-    @staticmethod
-    def normalize(example, name=''):
-        return tf.identity(example, name=name)
 
-    @staticmethod
-    def denormalize(example, name=''):
-        return tf.identity(example, name=name)
+class TFWriter:
+    def __init__(self, name, infiles, process_data=lambda x: x):
+
+        if not isinstance(infiles, list):
+            self.infiles = [infiles]
+        else:
+            self.infiles = infiles
+        self.name = name
+        self.process_data = process_data
+
+    def run(self, outfile):
+        if osp.isfile(outfile):
+            logging.warning('File %s already exists, it will be overwritten', outfile)
+        outfile = osp.abspath(outfile)
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+        writer = tf.python_io.TFRecordWriter(outfile)
+        name = self.name + '_data'
+        for f in self.infiles:
+            logging.info('Opening %s', f)
+            try:
+                data = np.load(f)
+                for j, d in enumerate(data):
+                    if j % 1000 == 0:
+                        logging.info('%d / %d : \t %s', j, data.shape[0], f)
+                    ex = tf.train.Example(features=tf.train.Features(
+                                          feature={
+                                              name : tf.train.Feature(float_list=
+                                                tf.train.FloatList(value=
+                                                    self.process_data(d).ravel()))
+                                          }))
+                    writer.write(ex.SerializeToString())
+            except (IOError, ValueError) as e:
+                logging.warning('Opening %s failed', f)
+                logging.warning(e)
+        writer.close()
