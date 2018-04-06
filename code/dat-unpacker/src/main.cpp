@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
 	}
 
 	dat->print_streams();
-	dat->get_stream_data(pp.stream);
+	std::cout << "abc" << std::endl;
 
 	return 0;
 }

@@ -52,7 +52,7 @@ class DataBuffer:
         return self.last_data
 
 class TFReader:
-    def __init__(self, tfrecords_file, name, shape, normer, denormer, batch_size=1, num_threads=8):
+    def __init__(self, tfrecords_file, name, shape, shuffle_buffer_size=100, normer=lambda x: x, denormer=lambda x: x, batch_size=1, num_threads=8):
         self.name = name
         self.batch_size = batch_size
         self.num_threads = num_threads
@@ -63,7 +63,7 @@ class TFReader:
             self.data = tf.data.TFRecordDataset(tfrecords_file)
             self.data = self.data.map(self._parse_example, num_parallel_calls=num_threads)
             self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
-            self.data = self.data.shuffle()
+            self.data = self.data.shuffle(shuffle_buffer_size)
             self.data = self.data.repeat()
             self.data = self.data.batch(self.batch_size)
             self.iterator = self.data.make_one_shot_iterator()
