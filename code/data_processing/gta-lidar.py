@@ -12,7 +12,7 @@ import sys
 DIR = osp.abspath('/datagrid/personal/jasekota/dip-dataset/gta/zipfiles')
 OUT_NPY = osp.abspath('/datagrid/personal/jasekota/dip-dataset/gta/npys')
 FILES = [osp.join(DIR, f) for f in os.listdir(DIR) if f.endswith('.zip')]
-THREADS = 16
+THREADS = 20
 
 def _func_wrap(timestamp, i):
     global dapool, OUT_NPY

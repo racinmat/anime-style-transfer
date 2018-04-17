@@ -18,8 +18,8 @@ def depth_to_pcl(depth, proji, viewi, bbox):
     y_data = (-2 / height) * y + 1
     x_data = (2 / width) * x - 1
     points = np.ones((4, len(y)))
-    points[0, :] = y_data
-    points[1, :] = x_data
+    points[0, :] = x_data
+    points[1, :] = y_data
     points[2, :] = depth[y, x]
 
     ego_points = proji @ points
@@ -35,7 +35,7 @@ def depth_to_pcl(depth, proji, viewi, bbox):
     return world_points[:3, :].astype(np.float32)
 
 
-def make_gta_zip(i, json_file, depth_im, outdir, bbox):
+def make_gta_zip(i, json_file, depth_im, bbox, outdir=None, return_data=False):
     with open(json_file, mode='r') as f:
         json_data = json.load(f)
     assert json_data['imagepath'] + '-depth.png' == osp.basename(depth_im)
@@ -58,12 +58,15 @@ def make_gta_zip(i, json_file, depth_im, outdir, bbox):
                     'bbox' : bbox,
                     'lidar_center' : lidar_center,
                     'orig_json' : json_data}
-    with zf.ZipFile(osp.join(outdir, '%04d.zip' % (i,)), 'w', zf.ZIP_LZMA) as cf:
-        cf.writestr('metadata.json', json.dumps(tmp_meta))
-        tmpf = io.BytesIO()
-        np.save(tmpf, world)
-        cf.writestr('pcl.npy', tmpf.getvalue())
-        
+    if outdir is not None:
+        with zf.ZipFile(osp.join(outdir, '%04d.zip' % (i,)), 'w', zf.ZIP_LZMA) as cf:
+            cf.writestr('metadata.json', json.dumps(tmp_meta))
+            tmpf = io.BytesIO()
+            np.save(tmpf, world)
+            cf.writestr('pcl.npy', tmpf.getvalue())
+    if return_data:
+        return world, tmp_meta
+
 
 def make_valeo_zips(datfile, binary, outputdir, remove=True):
     datfile = osp.abspath(datfile)
