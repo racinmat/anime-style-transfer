@@ -15,7 +15,7 @@ set(IBEO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external/ibeo)
 set(IBEO_INCLUDE ${IBEO_DIR}/src)
 set(IBEO_LIB_DIR ${IBEO_DIR}/libs)
 
-find_package(Boost COMPONENTS program_options system thread date_time REQUIRED)
+find_package(Boost COMPONENTS program_options system thread date_time filesystem REQUIRED)
 find_package(ADTF_STREAMING REQUIRED)
 find_package(Qt5Core)
 
@@ -41,4 +41,4 @@ add_executable(dat-unpacker
     ${dat-unpacker_SRC}
 )
 
-target_link_libraries(dat-unpacker ${ADTF_STREAMING_LIB} ${Boost_PROGRAM_OPTIONS_LIBRARY} Qt5::Core ibeosdk_d ${Boost_LIBRARIES})
+target_link_libraries(dat-unpacker ${ADTF_STREAMING_LIB} ${Boost_FILESYSTEM_LIBRARY} ${Boost_PROGRAM_OPTIONS_LIBRARY} Qt5::Core ibeosdk_d ${Boost_LIBRARIES})

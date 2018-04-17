@@ -1,54 +1,20 @@
 #include "imu.h"
-using namespace adtfstreaming;
 
-void PrecomputeCRC(unsigned int *apTable) {
-	unsigned int i, j, CRC;
-
-	for (i = 0; i < 256; i++) {
-		CRC = i;
-
-		for (j = 0; j < 8; ++j) {
-			if (CRC & 0x0001) {
-				CRC = (CRC >> 1) ^ 0xA6BC;
-			}
-			else {
-				CRC >>= 1;
-			}
-		}
-
-		apTable[i] = CRC;
-	}
-}
-
-unsigned int CalcCRC(const unsigned char *aInput, size_t aLength) {
-
-	static unsigned int table[256];
-	static bool setup = false;
-
-	if (!setup) {
-		PrecomputeCRC(table);
-		setup = true;
-	}
-
-	unsigned int CRC = 0;
-
-	for (size_t i = 0; i < aLength; i++) {
-		CRC = table[(CRC ^ aInput[i]) & 0xFF] ^ (CRC >> 8);
-	}
-
-	return (~CRC) & 0xFFFF;
-}
 
 bool OxtsImuProcessor::checkIntegrity(imuPacket &packet) {
 	//names taken from ncom manual pp 6
-	tUInt8 crc1 = 0, crc2 = 0, crc3 = 0;
+	if (packet.sync != 0xE7) {
+		return false;
+	}
 
-	//crc1 = calcCRC((tUInt8*)&packet, CRC1_POS);
-	//crc2 = calcCRC((tUInt8*)&packet, CRC2_POS);
-	crc3 = CalcCRC((tUInt8 *)&packet, CRC3_POS);
+	uint8_t *data = (uint8_t *)&packet;
+	uint8_t check = 0;
 
-	//packets with navigationStatus == 11 are NOT used (manual pp 7)
-	return packet.checksum3 == crc3 && packet.navigationStatus != internalUse;
+	for (int i = 1; i < CRC3_POS; i++) {
+		check += data[i];
+	}
+
+	return packet.checksum3 == check;
 }
 
 inline int getInt24(tUInt8 *buffer, tUInt8 pos) {
@@ -72,7 +38,7 @@ inline tFloat64 getFloat64(tUInt8 *buffer, tUInt8 pos) {
 	return *(tFloat64 *)&buffer[pos];
 }
 
-void OxtsImuProcessor::processPacket(imuPacket &packet) {
+imuData OxtsImuProcessor::processPacket(imuPacket &packet) {
 	now.navigationStatus = (imuStatus)packet.navigationStatus;
 
 	//batch A
@@ -120,6 +86,7 @@ void OxtsImuProcessor::processPacket(imuPacket &packet) {
 	out.ntpTime.setTime_s_us(correctedTime.toTime_t(), correctedTime.time().msec() * 1000);
 
 	out.valid = m_packetStatus.all();
+	return out;
 }
 
 void OxtsImuProcessor::processStatusInfo(imuPacket &packet) {

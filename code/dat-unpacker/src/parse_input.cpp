@@ -15,12 +15,14 @@ int param_parser::parseInput(int argc, char *argv[]) {
 	desc.add_options()
 	("help,h", "Print help message")
 	("input-file-name,i", po::value<string>(&input)->required(), "Input DAT file(s)")
-	("stream-id,s", po::value<int>(&stream)->required(), "Stream id")
+	("output-dir,o", po::value<string>(&output_dir)->required(), "Output direcotry")
 	("raw,r", "Raw dat file?")
+	("all,a", "Process full data?")
 	;
 
 	po::positional_options_description p;
 	p.add("input-file-name", 1);
+	p.add("output-dir", 2);
 
 	po::variables_map vm;
 
@@ -43,6 +45,13 @@ int param_parser::parseInput(int argc, char *argv[]) {
 	}
 	else {
 		raw = false;
+	}
+
+	if (vm.count("all")) {
+		all = true;
+	}
+	else {
+		all = false;
 	}
 
 	try {

@@ -105,7 +105,7 @@ class TFWriter:
             try:
                 data = np.load(f)
                 for j, d in enumerate(data):
-                    if j % 1000 == 0:
+                    if j % 10 == 0:
                         logging.info('%d / %d : \t %s', j, data.shape[0], f)
                     ex = tf.train.Example(features=tf.train.Features(
                                           feature={

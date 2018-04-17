@@ -1,5 +1,6 @@
 #include "dat_handler.h"
 #include "parse_input.h"
+#include "velo.h"
 
 int main(int argc, char **argv) {
 	param_parser pp;
@@ -8,14 +9,24 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 
-	DatHandler *dat = new DatHandler(pp.raw);
+	dat_file *dat;
 
-	if (!dat->initDatHandler(pp.input)) {
+	if (pp.raw) {
+		dat = new raw_datfile(pp.input, true, pp.output_dir);
+	}
+	else {
+		dat = new conv_datfile(pp.input, true, pp.output_dir);
+	}
+
+	if (!dat->is_valid) {
 		return -1;
 	}
 
 	dat->print_streams();
-	std::cout << "abc" << std::endl;
+
+	if (!dat->process_data(pp.all)) {
+		return -1;
+	}
 
 	return 0;
 }

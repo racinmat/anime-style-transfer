@@ -206,18 +206,16 @@ const QDateTime gpsStart = QDateTime(QDate(1980, 1, 6), QTime(0, 0));
 class OxtsImuProcessor {
 
 	public:
-		OxtsImuProcessor(const tChar *__info);
-		virtual ~OxtsImuProcessor();
+		OxtsImuProcessor() {};
+		~OxtsImuProcessor() {};
+		bool checkIntegrity(imuPacket &packet);
+		imuData processPacket(imuPacket &packet);
 
 	private:
 		imuData now;
 		tUInt32 oxMinutes;
 		std::bitset<channelStatusEnd> m_packetStatus;
 
-
-
-		bool checkIntegrity(imuPacket &packet);
-		void processPacket(imuPacket &packet);
 		void processStatusInfo(imuPacket &packet);
 
 		//status functions
