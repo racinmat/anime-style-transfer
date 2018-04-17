@@ -107,6 +107,4 @@ cpdef np.ndarray[DOUBLE_t, ndim=3] get_lidar_data(pool, DOUBLE_t timestamp):
         cam_rot = pool.get_rotmat(timestamp)
         intensity = pcl[3, :].copy()
         pcl_data = pcl[:3, :]
-    result = _compute_lidar_data(pcl, intensity, lidar_center, cam_rot, timestamp)
-    print('Got array')
-    return result
+    return _compute_lidar_data(pcl, intensity, lidar_center, cam_rot, timestamp)
