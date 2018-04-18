@@ -19,7 +19,7 @@ def process_file(indir, outfile):
     dapool = dp.DataPool(all_files, -1)
     data = []
     for i, ts in enumerate(dapool.tss):
-        data.append(rays.get_lidar_data(dapool, ts))
+        data.append(rays.get_lidar_data(dapool, ts, None).astype('<f4'))
         print('Got array %d for file %s' % (i, fname))
         sys.stdout.flush()
     data = np.array(data)

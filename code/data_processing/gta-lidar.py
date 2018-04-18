@@ -16,7 +16,7 @@ THREADS = 20
 
 def _func_wrap(timestamp, i):
     global dapool, OUT_NPY
-    data = rays.get_lidar_data(dapool, timestamp).astype('<f4')
+    data = rays.get_lidar_data(dapool, timestamp, np.array([0, 0, 1.])).astype('<f4')
     np.save(osp.join(OUT_NPY, '%05d.npy' % (i,)), data)
     print('Got one array!')
     sys.stdout.flush()

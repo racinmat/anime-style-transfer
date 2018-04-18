@@ -6,6 +6,9 @@ import io
 import numpy as np
 import rays
 
+FLOAT = '<f4'
+DOUBLE = '<f8'
+
 class DataPool:
     def __init__(self, filelist, threads=None):
         filelist = sorted(filelist)
@@ -20,7 +23,7 @@ class DataPool:
                 metas = pool.map(read_metadata, filelist)
         self.metas = dict(zip(self.filelist, metas))
         self.centers = {}
-        self.tss = np.array([m['timestamp'] for m in metas])
+        self.tss = np.array([m['timestamp'] for m in metas], dtype=DOUBLE)
         self.rots = None
 
     def _get_ith(self, i):
@@ -31,7 +34,7 @@ class DataPool:
             self.data[name] = d
         center = self.centers.get(name, None)
         if center is None:
-            center = np.array(self.metas[name]['lidar_center'])
+            center = np.array(self.metas[name]['lidar_center'], dtype=DOUBLE)
             self.centers[name] = center
         return d, center
 
@@ -56,7 +59,7 @@ class DataPool:
 
     def get_rotmat(self, timestamp, after=True):
         if self.rots is None:
-            self.rots = np.array([m['matrix'] for _, m in sorted(self.metas.items())])[:, :3, :3]
+            self.rots = np.array([m['matrix'] for _, m in sorted(self.metas.items())], dtype=DOUBLE)[:, :3, :3]
         i = self._get_i(timestamp, after)
         if i is False:
             return None
@@ -67,9 +70,9 @@ class GTADataPool(DataPool):
     def __init__(self, filelist, threads=None):
         super().__init__(filelist, threads)
         self.full_rot_pcls = weakref.WeakValueDictionary()
-        self.rots = np.array([rays.gta_cam_rot(np.array(m['orig_json']['camera_rot']),
-                                               np.array(m['orig_json']['camera_relative_rotation']))
-                              for _, m in sorted(self.metas.items())])
+        self.rots = np.array([rays.gta_cam_rot(np.array(m['orig_json']['camera_rot'], dtype=DOUBLE),
+                                               np.array(m['orig_json']['camera_relative_rotation'], dtype=DOUBLE))
+                              for _, m in sorted(self.metas.items())], dtype=DOUBLE)
 
     def _get_full_rot(self, se):
         d = self.full_rot_pcls.get(se, None)
@@ -83,19 +86,19 @@ class GTADataPool(DataPool):
         start = np.maximum(index - this_pos, 0)
         end = np.minimum(index + (4 - this_pos), self.size)
         lidar_positions = np.array([self.metas[name]['lidar_center']
-                                    for name in self.filelist[start:end]]).T
+                                    for name in self.filelist[start:end]], dtype=DOUBLE).T
         lidar_center = np.array([np.interp(timestamp, self.tss[start:end], pos)
-                                 for pos in lidar_positions])
+                                 for pos in lidar_positions], dtype=DOUBLE)
         to_return = [self._get_full_rot((start, end)), lidar_center]
 
         if return_straight:
             worldrots = np.array([self.metas[name]['orig_json']['camera_rot']
-                                  for name in self.filelist[start:end]])
+                                  for name in self.filelist[start:end]], dtype=DOUBLE)
             relrots = np.array([self.metas[name]['orig_json']['camera_relative_rotation']
-                                for name in self.filelist[start:end]])
+                                for name in self.filelist[start:end]], dtype=DOUBLE)
             relangles = np.radians(worldrots - relrots).T
             straight = np.array([np.interp(timestamp, self.tss[start:end], ang)
-                                 for ang in relangles])
+                                 for ang in relangles], dtype=DOUBLE)
             to_return.append(straight)
 
         return tuple(to_return)
@@ -112,7 +115,7 @@ def read_both(filename):
 def read_pcl(filename):
     with zf.ZipFile(filename, 'r') as cf:
         npdata = io.BytesIO(cf.read('pcl.npy'))
-    pcl = np.load(npdata)
+    pcl = np.load(npdata).astype(DOUBLE)
     return pcl
 
 
