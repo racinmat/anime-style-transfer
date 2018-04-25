@@ -6,6 +6,8 @@ cimport cython
 
 DOUBLE = '<f8'
 INT = '<i8'
+FLOAT = '<f4'
+ctypedef np.float32_t FLOAT_t
 ctypedef np.float64_t DOUBLE_t
 ctypedef np.uint8_t BOOL_t
 ctypedef np.int_t INT_t
@@ -15,13 +17,14 @@ cdef:
     int NUM_LASERS = 64
     DOUBLE_t HORIZONTAL_SHIFT = np.radians(0.1728)
     DOUBLE_t Y_WEDGE_ANG = 2 * HORIZONTAL_SHIFT/3
-    DOUBLE_t MAX_SQ_LASERDIST = 0.01
+    DOUBLE_t MAX_SQ_LASERDIST = 0.1
 
-    DOUBLE_t MAX_ZANGLE = np.radians(2.5)
-    DOUBLE_t MIN_ZANGLE = np.radians(-25)
+    DOUBLE_t MAX_ZANGLE = np.radians(5)
+    DOUBLE_t MIN_ZANGLE = np.radians(-30)
 
     DOUBLE_t MIN_RAY_FAR = 0.9
     DOUBLE_t MAX_RAY_FAR = 131.0
+    DOUBLE_t VALID_PT = 0.5
 
     tuple DATA_SHAPE = (NUM_LASERS, DATA_RAYS, 3)
 
@@ -50,27 +53,15 @@ cpdef np.ndarray[DOUBLE_t, ndim=2] gta_cam_rot(np.ndarray[DOUBLE_t, ndim=1] worl
     return (Rx @ Ry @ Rz)
 
 
-cdef tuple unique_argmin(np.ndarray[DOUBLE_t, ndim=2] dists):
+cdef tuple allowed_argmin(np.ndarray[DOUBLE_t, ndim=2] dists, np.ndarray[DOUBLE_t, ndim=1] allowance):
     cdef:
-        np.ndarray[BOOL_t, ndim=1, cast=True] mask, valid
+        np.ndarray[BOOL_t, ndim=1, cast=True] valid
         np.ndarray[INT_t, ndim=2] sids = np.argsort(dists, axis=1)
-        np.ndarray[INT_t, ndim=1] recter = np.zeros((NUM_LASERS,), dtype=INT), dist_ids = np.arange(NUM_LASERS, dtype=INT), counts, inv, uq, which
-        int i, winner, pts = dists[0,:].size
-    while True:
-        valid = (dists[dist_ids, sids[dist_ids, recter]] <= MAX_SQ_LASERDIST).reshape((-1))
-        dist_ids = dist_ids[valid]
-        recter = recter[valid]
-        uq, inv, counts = np.unique(sids[dist_ids,recter], return_inverse=True, return_counts=True)
-        mask = counts > 1
-        if not mask.any():
-            break
-        for i in np.where(mask)[0]:
-            which = np.where(inv == i)[0]
-            winner = np.argmin(dists[dist_ids[which], sids[dist_ids[which], recter[which]]])
-            which = which[np.where(which != winner)]
-            recter[which] += 1
-        dist_ids = dist_ids[recter < pts]
-        recter = recter[recter < pts]
+        np.ndarray[INT_t, ndim=1] recter = np.zeros((NUM_LASERS,), dtype=INT), dist_ids = np.arange(NUM_LASERS, dtype=INT)
+
+    valid = (dists[dist_ids, sids[dist_ids, recter]] <= allowance[sids[dist_ids, recter]]).reshape((-1))
+    dist_ids = dist_ids[valid]
+    recter = recter[valid]
 
     return sids[dist_ids, recter], dist_ids
 
@@ -78,14 +69,15 @@ cdef tuple unique_argmin(np.ndarray[DOUBLE_t, ndim=2] dists):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
-cdef np.ndarray[DOUBLE_t, ndim=3] _compute_lidar_data(np.ndarray[DOUBLE_t, ndim=2] pcl,
+cdef np.ndarray[FLOAT_t, ndim=3] _compute_lidar_data(np.ndarray[DOUBLE_t, ndim=2] pcl,
                                                       np.ndarray[DOUBLE_t, ndim=1] intensity,
                                                       np.ndarray[DOUBLE_t, ndim=1] lidar_center,
-                                                      np.ndarray[DOUBLE_t, ndim=2] cam_rot):
+                                                      np.ndarray[DOUBLE_t, ndim=2] cam_rot,
+                                                      DOUBLE_t percent_allowance):
     cdef:
         np.ndarray[BOOL_t, ndim=1, cast=True] wedge_mask, alive_mask, corr_dist_lasers, full_valid
         np.ndarray[DOUBLE_t, ndim=3] result = np.zeros(DATA_SHAPE), cross_res
-        np.ndarray[DOUBLE_t, ndim=1] ray = np.array([1.0, 0, 0]), yangles, ptdists, zangles, inten_copy
+        np.ndarray[DOUBLE_t, ndim=1] ray = np.array([1.0, 0, 0]), yangles, ptdists, zangles, inten_copy, precomp_dists, allowance
         np.ndarray[DOUBLE_t, ndim=2] pcl_copy, cur_rays, sqdists
         np.ndarray[INT_t, ndim=1] min_ids, valid_lasers
         int i
@@ -94,6 +86,8 @@ cdef np.ndarray[DOUBLE_t, ndim=3] _compute_lidar_data(np.ndarray[DOUBLE_t, ndim=
     zangles = (np.pi/2 - np.arccos(pcl_copy[2,:]/((pcl_copy ** 2).sum(axis=0) ** 0.5)))
     full_valid = (zangles <= MAX_ZANGLE) & (zangles >= MIN_ZANGLE)
     pcl_copy = pcl_copy[:,full_valid]
+    precomp_dists = (pcl_copy ** 2).sum(axis=0) ** 0.5
+    allowance = (precomp_dists * percent_allowance) ** 2
     inten_copy = intensity[full_valid].copy()
     wedge_mask = np.empty((pcl_copy[0,:].size,), dtype=np.bool)
     alive_mask = np.ones((pcl_copy[0,:].size,), dtype=np.bool)
@@ -108,18 +102,58 @@ cdef np.ndarray[DOUBLE_t, ndim=3] _compute_lidar_data(np.ndarray[DOUBLE_t, ndim=
                              -cur_rays[:, 0, None] * pcl_copy[None, 2, wedge_mask] + cur_rays[:, 2, None] * pcl_copy[None, 0, wedge_mask],
                               cur_rays[:, 0, None] * pcl_copy[None, 1, wedge_mask] - cur_rays[:, 1, None] * pcl_copy[None, 0, wedge_mask]], dtype=DOUBLE)
         sqdists = (cross_res ** 2).sum(axis=0)
-        min_ids, valid_lasers = unique_argmin(sqdists)
-        ptdists = (pcl_copy[:, wedge_mask][:, min_ids] ** 2).sum(axis=0) ** 0.5
+        min_ids, valid_lasers = allowed_argmin(sqdists, allowance[wedge_mask])
+        ptdists = precomp_dists[wedge_mask][min_ids]
         corr_dist_lasers = (ptdists >= MIN_RAY_FAR) & (ptdists <= MAX_RAY_FAR)
-        alive_mask[np.where(wedge_mask)[0][min_ids]] = 0
 
         result[valid_lasers[corr_dist_lasers], i, 0] = ptdists[corr_dist_lasers]
         result[valid_lasers[corr_dist_lasers], i, 1] = inten_copy[wedge_mask][min_ids[corr_dist_lasers]]
         result[valid_lasers[corr_dist_lasers], i, 2] = 1
-    return result
+    return result.astype(FLOAT)
 
 
-cpdef np.ndarray[DOUBLE_t, ndim=3] get_lidar_data(pool, DOUBLE_t timestamp, np.ndarray[DOUBLE_t, ndim=1] lidar_correction):
+cpdef np.ndarray[FLOAT_t, ndim=3] interpolate_lidar(np.ndarray[FLOAT_t, ndim=3] lidar_data, DOUBLE_t to_fill, INT_t mask_size=1, INT_t iters=1):
+    cdef:
+        np.ndarray[BOOL_t, ndim=1, cast=True] valid
+        np.ndarray[BOOL_t, ndim=3, cast=True] all_valid
+        np.ndarray[INT_t, ndim=1] x, y
+        np.ndarray[INT_t, ndim=2] x_shift, y_shift
+        np.ndarray[INT_t, ndim=3] xx, yy
+        np.ndarray[FLOAT_t, ndim=3] lidar_copy = np.pad(np.copy(lidar_data), ((mask_size, mask_size), (mask_size, mask_size), (0, 0)), 'constant'), valid_weights
+        INT_t i
+
+    x_shift, y_shift = np.meshgrid(np.arange(mask_size * 2 + 1) - mask_size, np.arange(mask_size * 2 + 1) - mask_size)
+
+    for i in range(iters):
+        x, y = np.where(lidar_copy[:,:,2] < VALID_PT)
+        valid = (x >= mask_size) & (x < NUM_LASERS + mask_size) & (y >= mask_size) & (y < DATA_RAYS + mask_size)
+        if valid.sum() == 0:
+            break
+        x = x[valid]
+        y = y[valid]
+        xx = x[:, np.newaxis, np.newaxis] + x_shift[np.newaxis, :]
+        yy = y[:, np.newaxis, np.newaxis] + y_shift[np.newaxis, :]
+
+        all_valid = (xx >= mask_size) & (xx < NUM_LASERS + mask_size) & (yy >= mask_size) & (yy < DATA_RAYS + mask_size)
+        valid_weights = np.multiply(lidar_copy[xx, yy, 2], lidar_copy[xx, yy, 2] >= VALID_PT)
+        valid = valid_weights.sum(axis=(1,2)) > (all_valid.sum(axis=(1,2)) * to_fill)
+        if valid.sum() == 0:
+            break
+        x = x[valid]
+        y = y[valid]
+        xx = xx[valid]
+        yy = yy[valid]
+        valid_weights = valid_weights[valid]
+
+        lidar_copy[x, y, 0] = np.average(lidar_copy[xx, yy, 0], weights=valid_weights, axis=(1,2))
+        lidar_copy[x, y, 1] = np.average(lidar_copy[xx, yy, 1], weights=valid_weights, axis=(1,2))
+        lidar_copy[x, y, 2] = 1
+        break
+
+    return lidar_copy[mask_size:(NUM_LASERS + mask_size), mask_size:(DATA_RAYS + mask_size), :]
+
+
+cpdef np.ndarray[FLOAT_t, ndim=3] get_lidar_data(pool, DOUBLE_t timestamp, np.ndarray[DOUBLE_t, ndim=1] lidar_correction, DOUBLE_t percent_allowance):
     if timestamp < pool.tss[0] or timestamp > pool.tss[-1]:
         return None
     cdef:
@@ -138,19 +172,19 @@ cpdef np.ndarray[DOUBLE_t, ndim=3] get_lidar_data(pool, DOUBLE_t timestamp, np.n
         pcl = pcl[:3, :]
     if lidar_correction is not None:
         lidar_center = lidar_center + lidar_correction
-    return _compute_lidar_data(pcl, intensity, lidar_center, cam_rot)
+    return _compute_lidar_data(pcl, intensity, lidar_center, cam_rot, percent_allowance)
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
-cpdef np.ndarray[DOUBLE_t, ndim=2] reconstruct_pcl(np.ndarray[DOUBLE_t, ndim=3] lidar_data):
+cpdef np.ndarray[FLOAT_t, ndim=2] reconstruct_pcl(np.ndarray[FLOAT_t, ndim=3] lidar_data):
     cdef:
         np.ndarray[INT_t, ndim=1] x, y
         np.ndarray[DOUBLE_t, ndim=1] ray = np.array([1., 0, 0], dtype=DOUBLE)
-        np.ndarray[DOUBLE_t, ndim=2] result
-    x, y = np.where(lidar_data[:,:,2] >= 0.5)
-    result = np.empty((4, x.size), dtype=DOUBLE)
-    result[3, :] = lidar_data[x, y, 1]
-    result[:3, :] = (lidar_data[x, y, 0, None] * (HOR_ROTMAT[y] @ VERT_ROTMAT[x] @ ray)).T
-    return result.astype(DOUBLE)
+        np.ndarray[FLOAT_t, ndim=2] result
+    x, y = np.where(lidar_data[:,:,2] >= VALID_PT)
+    result = np.empty((4, x.size), dtype=FLOAT)
+    result[3, :] = lidar_data[x, y, 1].astype(FLOAT)
+    result[:3, :] = ((lidar_data[x, y, 0, None] * (HOR_ROTMAT[y] @ VERT_ROTMAT[x] @ ray)).T).astype(FLOAT)
+    return result
