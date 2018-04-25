@@ -5,19 +5,6 @@ import os.path as osp
 import tensorflow as tf
 import numpy as np
 
-def convert2int(image):
-    return tf.image.convert_image_dtype((image+1.0)/2.0, tf.uint8)
-
-def convert2float(image):
-    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-    return (image/127.5) - 1.0
-
-def batch_convert2int(images, name=None):
-    return tf.map_fn(convert2int, images, dtype=tf.uint8, name=name)
-
-def batch_convert2float(images, name=None):
-    return tf.map_fn(convert2float, images, dtype=tf.float32, name=name)
-
 class DataBuffer:
     def __init__(self, pool_size, batch_size, old_prob=0.5):
         self.pool_size = pool_size
@@ -52,7 +39,7 @@ class DataBuffer:
         return self.last_data
 
 class TFReader:
-    def __init__(self, tfrecords_file, name, shape, shuffle_buffer_size=100, normer=lambda x: x, denormer=lambda x: x, batch_size=1, num_threads=8):
+    def __init__(self, tfrecords_file, name, shape, shuffle_buffer_size=100, normer=lambda x,*args,**kwargs: x, denormer=lambda x,*args,**kwargs: x, batch_size=1, num_threads=8):
         self.name = name
         self.batch_size = batch_size
         self.num_threads = num_threads
@@ -67,14 +54,11 @@ class TFReader:
             self.data = self.data.repeat()
             self.data = self.data.batch(self.batch_size)
             self.iterator = self.data.make_one_shot_iterator()
+        self.feeder = self.iterator.get_next()
 
 
     def feed(self):
-        '''
-        Returns:
-          images: 4D tensor [batch_size, *shape]
-        '''
-        return self.iterator.get_next()
+        return self.feeder
 
     def _parse_example(self, serialized_example):
         name = self.name + '_data'
@@ -103,7 +87,7 @@ class TFWriter:
         for f in self.infiles:
             logging.info('Opening %s', f)
             try:
-                data = np.load(f)
+                data = np.load(f, mmap_mode='r')
                 for j, d in enumerate(data):
                     if j % 10 == 0:
                         logging.info('%d / %d : \t %s', j, data.shape[0], f)

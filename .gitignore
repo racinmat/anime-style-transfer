@@ -23,7 +23,6 @@
 *.mtc1
 *.out
 *.synctex.gz
-code/cache
 *eps-converted-to.pdf
 *.log
-tmp
+data

@@ -71,15 +71,20 @@ class WGAN(GAN):
     def _gen_loss(self, data):
         return -tf.reduce_mean(data)
 
-    def _dis_loss(self, orig_real, orig_fake):
-        shape = [orig_real.shape[0]] + [1 for _ in range(len(orig_real.shape)-1)]
+    def grad_loss(self, orig_real, orig_fake):
+        shape = [orig_real.shape[0].value] + [1 for _ in range(len(orig_real.shape)-1)]
         rand_eps = tf.random_uniform(shape=shape, minval=0., maxval=1.)
         orig_hat = orig_real * rand_eps + orig_fake * (1-rand_eps)
         grads = tf.gradients(self.dis(orig_hat), [orig_hat])
-        return tf.square(tf.norm(grads[0], ord=2) - 1.0)
+        return self.grad_lambda * tf.square(tf.norm(grads[0], ord=2) - 1.0)
 
     def dis_loss(self, orig_real, orig_fake):
-        grad_loss = self._dis_loss(orig_real, orig_fake)
         real_l = -tf.reduce_mean(self.dis(orig_real))
         fake_l = tf.reduce_mean(self.dis(orig_fake))
-        return self.dis_lambda * (real_l + fake_l)/2 + self.grad_lambda * grad_loss
+        return self.dis_lambda * (real_l + fake_l)/2
+
+    def full_dis_loss(self, orig_real, orig_fake):
+        return self.dis_loss(orig_real, orig_fake) + self.grad_loss(orig_real, orig_fake)
+
+    def _dis_loss(self, *args):
+        raise(NotImplementedError('WGAN is called differently, mate!'))

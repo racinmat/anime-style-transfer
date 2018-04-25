@@ -1,6 +1,7 @@
-__all__ = ['CycleGAN', 'utils', 'nets', 'ops']
+__all__ = ['CycleGAN', 'utils', 'nets', 'ops', 'models']
 
 from ._model import CycleGAN
-from . import _network_bases as nets
+from . import _nets as nets
 from . import _utils as utils
 from . import _ops as ops
+from . import models

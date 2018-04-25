@@ -7,12 +7,13 @@ from datetime import datetime
 import tensorflow as tf
 from tensorflow import graph_util as gu
 from . import _utils as utils
+from . import _nets as nets
 
 class CycleGAN:
     SAVE_NODES = ['input', 'output', 'd_input', 'd_output']
     def __init__(self, XtoY, YtoX, X_name='X', Y_name='Y',
                  X_feed=None, Y_feed=None,
-                 cycle_lambda=10.0, tb_verbose=True, training=True, image_data=False,
+                 cycle_lambda=10.0, tb_verbose=True, training=True, visualizer=None,
                  learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5,
                  graph=None, history=True):
 
@@ -20,6 +21,10 @@ class CycleGAN:
         self.YtoX = YtoX
 
         assert XtoY.in_shape == YtoX.out_shape and XtoY.out_shape == YtoX.in_shape
+        assert X_feed.batch_size == Y_feed.batch_size
+
+        self.xybatch_shape = [X_feed.batch_size] + list(XtoY.in_shape)
+        self.yxbatch_shape = [Y_feed.batch_size] + list(YtoX.in_shape)
 
         self.X_name = X_name
         self.Y_name = Y_name
@@ -29,7 +34,7 @@ class CycleGAN:
         self.cycle_lambda = cycle_lambda
         self.tb_verbose = tb_verbose
         self.training = training
-        self.image_data = image_data
+        self.visualizer = visualizer
 
         self.learning_rate = learning_rate
         self.beta1 = beta1
@@ -44,10 +49,10 @@ class CycleGAN:
 
         with self.graph.as_default():
             if history:
-                self.prev_fake_x = tf.placeholder(tf.float32, shape=XtoY.in_shape)
-                self.prev_fake_y = tf.placeholder(tf.float32, shape=YtoX.in_shape)
-            self.cur_x = tf.placeholder(tf.float32, shape=XtoY.in_shape)
-            self.cur_y = tf.placeholder(tf.float32, shape=YtoX.in_shape)
+                self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape)
+                self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape)
+            self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape)
+            self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape)
 
         logging.info('Cycle GAN ready.\n'
             '%s_shape='+str(XtoY.in_shape)+'\t%s_shape='+str(YtoX.in_shape)+'\n'
@@ -65,26 +70,44 @@ class CycleGAN:
             x_gen_loss = self.YtoX.gen_loss(fake_x)
             y_gen_loss = self.XtoY.gen_loss(fake_y)
 
-            x_weight_loss_gen = self.XtoY.gen.weight_loss()
-            y_weight_loss_gen = self.YtoX.gen.weight_loss()
+            x_gen_weight_loss = self.XtoY.gen.weight_loss()
+            y_gen_weight_loss = self.YtoX.gen.weight_loss()
 
-            x_weight_loss_dis = self.XtoY.dis.weight_loss()
-            y_weight_loss_dis = self.YtoX.dis.weight_loss()
+            y_dis_weight_loss = self.XtoY.dis.weight_loss()
+            x_dis_weight_loss = self.YtoX.dis.weight_loss()
 
-            if self.history:
-                x_dis_loss = self.YtoX.dis_loss(self.cur_x, self.prev_fake_x)
+            if not isinstance(self.YtoX, nets.WGAN):
+                if self.history:
+                    x_dis_loss = self.YtoX.dis_loss(self.cur_x, self.prev_fake_x)
+                else:
+                    x_dis_loss = self.YtoX.dis_loss(self.cur_x, fake_x)
+                x_dis_full_loss = x_dis_loss + x_dis_weight_loss
             else:
-                x_dis_loss = self.YtoX.dis_loss(self.cur_x, fake_x)
-            x_dis_full_loss = x_dis_loss + x_weight_loss_dis
+                if self.history:
+                    x_dis_loss = self.YtoX.dis_loss(self.cur_x, self.prev_fake_x)
+                    x_dis_grad_loss = self.YtoX.grad_loss(self.cur_x, self.prev_fake_x)
+                else:
+                    x_dis_loss = self.YtoX.dis_loss(self.cur_x, fake_x)
+                    x_dis_grad_loss = self.YtoX.grad_loss(self.cur_x, fake_x)
+                x_dis_full_loss = x_dis_loss + x_dis_weight_loss + x_dis_grad_loss
 
-            if self.history:
-                y_dis_loss = self.XtoY.dis_loss(self.cur_y, self.prev_fake_y)
+            if not isinstance(self.XtoY, nets.WGAN):
+                if self.history:
+                    y_dis_loss = self.XtoY.dis_loss(self.cur_y, self.prev_fake_y)
+                else:
+                    y_dis_loss = self.XtoY.dis_loss(self.cur_y, fake_y)
+                y_dis_full_loss = y_dis_loss + y_dis_weight_loss
             else:
-                y_dis_loss = self.XtoY.dis_loss(self.cur_y, fake_y)
-            y_dis_full_loss = y_dis_loss + y_weight_loss_dis
+                if self.history:
+                    y_dis_loss = self.XtoY.dis_loss(self.cur_y, self.prev_fake_y)
+                    y_dis_grad_loss = self.XtoY.grad_loss(self.cur_y, self.prev_fake_y)
+                else:
+                    y_dis_loss = self.XtoY.dis_loss(self.cur_y, fake_y)
+                    y_dis_grad_loss = self.XtoY.grad_loss(self.cur_y, fake_y)
+                y_dis_full_loss = y_dis_loss + y_dis_weight_loss + y_dis_grad_loss
 
-            x_gen_full_loss = x_gen_loss + x_weight_loss_gen + cycle_loss
-            y_gen_full_loss = y_gen_loss + y_weight_loss_gen + cycle_loss
+            x_gen_full_loss = x_gen_loss + x_gen_weight_loss + cycle_loss
+            y_gen_full_loss = y_gen_loss + y_gen_weight_loss + cycle_loss
 
             if self.tb_verbose:
                 X_dis_fake = self.YtoX.dis(fake_x)
@@ -97,47 +120,40 @@ class CycleGAN:
                 tf.summary.histogram('D_{}/real'.format(self.Y_name), Y_dis_real)
                 tf.summary.histogram('D_{}/fake'.format(self.Y_name), Y_dis_fake)
 
-                tf.summary.scalar('{}_gen/weight_loss'.format(self.X_name), x_weight_loss_gen)
+                tf.summary.scalar('{}_gen/weight_loss'.format(self.X_name), x_gen_weight_loss)
                 tf.summary.scalar('{}_gen/gen_loss'.format(self.X_name), x_gen_loss)
                 tf.summary.scalar('{}_gen/full_loss'.format(self.X_name), x_gen_full_loss)
 
-                tf.summary.scalar('{}_gen/weight_loss'.format(self.Y_name), y_weight_loss_gen)
+                tf.summary.scalar('{}_gen/weight_loss'.format(self.Y_name), y_gen_weight_loss)
                 tf.summary.scalar('{}_gen/gen_loss'.format(self.Y_name), y_gen_loss)
                 tf.summary.scalar('{}_gen/full_loss'.format(self.Y_name), y_gen_full_loss)
 
-                tf.summary.scalar('{}_dis/weight_loss'.format(self.X_name), x_weight_loss_dis)
+                tf.summary.scalar('{}_dis/weight_loss'.format(self.X_name), x_dis_weight_loss)
                 tf.summary.scalar('{}_dis/dis_loss'.format(self.X_name), x_dis_loss)
                 tf.summary.scalar('{}_dis/full_loss'.format(self.X_name), x_dis_full_loss)
 
-                tf.summary.scalar('{}_dis/weight_loss'.format(self.Y_name), y_weight_loss_dis)
+                tf.summary.scalar('{}_dis/weight_loss'.format(self.Y_name), y_dis_weight_loss)
                 tf.summary.scalar('{}_dis/dis_loss'.format(self.Y_name), y_dis_loss)
                 tf.summary.scalar('{}_dis/full_loss'.format(self.Y_name), y_dis_full_loss)
 
+                if isinstance(self.YtoX, nets.WGAN):
+                    tf.summary.scalar('{}_dis/grad_loss'.format(self.X_name), x_dis_grad_loss)
+                if isinstance(self.XtoY, nets.WGAN):
+                    tf.summary.scalar('{}_dis/grad_loss'.format(self.Y_name), y_dis_grad_loss)
+
                 tf.summary.scalar('cycle_loss', cycle_loss)
 
-                if self.image_data:
-                    tf.summary.image('{}->{}'.format(self.Y_name, self.X_name),
-                                     utils.batch_convert2int(fake_x))
-                    tf.summary.image('{}->{}->{}'.format(self.Y_name, self.X_name, self.Y_name),
-                                     utils.batch_convert2int(self.XtoY.gen(fake_x)))
-                    tf.summary.image('{}->{}'.format(self.X_name, self.Y_name),
-                                     utils.batch_convert2int(fake_y))
-                    tf.summary.image('{}->{}->{}'.format(self.X_name, self.Y_name, self.X_name),
-                                     utils.batch_convert2int(self.YtoX.gen(fake_y)))
-                else:
-                    tf.summary.tensor_summary('{}->{}'.format(self.Y_name, self.X_name), fake_x)
-                    tf.summary.tensor_summary('{}->{}->{}'.format(self.Y_name, self.X_name, self.Y_name),
-                                              self.XtoY.gen(fake_x))
-                    tf.summary.tensor_summary('{}->{}'.format(self.X_name, self.Y_name), fake_y)
-                    tf.summary.tensor_summary('{}->{}->{}'.format(self.X_name, self.Y_name, self.X_name),
-                                              self.YtoX(fake_y))
+                if self.visualizer:
+                    tf.summary.image('{}-{}-{}'.format(self.X_name, self.Y_name, self.X_name),
+                                     self.visualizer(self.cur_x, fake_y, self.YtoX.gen(fake_y)))
+                    tf.summary.image('{}-{}-{}'.format(self.Y_name, self.X_name, self.Y_name),
+                                     self.visualizer(self.cur_y, fake_x, self.YtoX.gen(fake_x)))
 
             with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
                 if self.training:
                     with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
                         global_step = tf.get_variable('global_step',
                                                       shape=(),
-                                                      dtype=tf.int32,
                                                       initializer=tf.zeros_initializer)
                     x_gen_opt = self._optimizer(x_gen_full_loss,
                                                 self.YtoX.gen.variables,
@@ -194,6 +210,7 @@ class CycleGAN:
             while osp.exists(checkpoints_dir_try):
                 i += 1
                 checkpoints_dir_try = full_checkpoints_dir + '-' + str(i)
+            full_checkpoints_dir = checkpoints_dir_try
         os.makedirs(full_checkpoints_dir, exist_ok=True)
 
         with self.graph.as_default():
@@ -229,7 +246,6 @@ class CycleGAN:
                             self.cur_x : cur_x,
                             self.cur_y : cur_y
                         })
-
                     cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
                     if self.history:
                         feeder_dict = {
@@ -256,12 +272,12 @@ class CycleGAN:
                     if log_verbose and step % 100 == 0:
                         logging.info('------ Step {:d} ------'.format(step))
                         losses = sess.run(model_ops['losses'], feed_dict=feeder_dict)
-                        for k, v in losses:
+                        for k, v in losses.items():
                             logging.info('\t{}:\t{:8f}'.format(k, v))
 
                     if step % 10000 == 0:
                         save_path = saver.save(sess,
-                                               full_checkpoints_dir + '/model.ckpt',
+                                               osp.join(full_checkpoints_dir, 'model.ckpt'),
                                                global_step=step)
                         logging.info('Model saved in file: %s', save_path)
 
@@ -270,12 +286,15 @@ class CycleGAN:
                     if step >= self.steps:
                         logging.info('Stopping after %d iterations', self.steps)
                         coord.request_stop()
-            except:
+            except Exception as e:
                 if log_verbose:
                     logging.info('Interrupted')
+                    logging.info(e)
                 coord.request_stop()
             finally:
-                save_path = saver.save(sess, checkpoints_dir + '/model.ckpt', global_step=step)
+                save_path = saver.save(sess,
+                                       osp.join(full_checkpoints_dir, 'model.ckpt'),
+                                       global_step=step)
                 if log_verbose:
                     logging.info('Model saved in file: %s', save_path)
                 if export_final:
@@ -285,21 +304,21 @@ class CycleGAN:
 
     def export(self, sess, export_dir):
         self._export_one_part(sess, export_dir, True, '{}2{}.pb'.format(self.X_name, self.Y_name))
-        self._export_one_part(sess, export_dir, False, '{}2{}.pb'.format(self.X_name, self.Y_name))
+        self._export_one_part(sess, export_dir, False, '{}2{}.pb'.format(self.Y_name, self.X_name))
 
     def _export_one_part(self, sess, export_dir, XtoY, model_name):
         with self.graph.as_default():
             normer = self.X_feed.normalize if XtoY else self.Y_feed.normalize
             denormer = self.Y_feed.denormalize if XtoY else self.X_feed.denormalize
-            data_in = normer(tf.placeholder(tf.float32,
+            data_in = tf.expand_dims(normer(tf.placeholder(tf.float32,
                                     shape=self.XtoY.in_shape if XtoY else self.YtoX.out_shape,
-                                    name='input'))
+                                    name='input')), 0)
             out = self.XtoY.gen(data_in) if XtoY else self.YtoX.gen(data_in)
             d_in = self.XtoY.dis(data_in) if XtoY else self.YtoX.dis(data_in)
             d_out = self.YtoX.dis(out) if XtoY else self.XtoY.dis(out)
-            denormer(out, name='output')
-            tf.reduce_mean(d_in, 'd_input')
-            tf.reduce_mean(d_out, 'd_output')
+            denormer(tf.squeeze(out, axis=0), name='output')
+            tf.reduce_mean(d_in, name='d_input')
+            tf.reduce_mean(d_out, name='d_output')
 
         output_graph_def = gu.extract_sub_graph(
                                 gu.remove_training_nodes(
@@ -329,13 +348,15 @@ class CycleGAN:
                             cp_dir, export_dir, model_name):
         graph = tf.Graph()
         with graph.as_default():
-            data_in = normer(tf.placeholder(tf.float32, shape=in_shape, name='input'))
+            data_in = tf.expand_dims(normer(tf.placeholder(tf.float32,
+                                                           shape=in_shape,
+                                                           name='input')), 0)
             out = gen(data_in)
             d_in = in_dis(data_in)
             d_out = out_dis(out)
-            denormer(out, name='output')
-            tf.reduce_mean(d_in, 'd_input')
-            tf.reduce_mean(d_out, 'd_output')
+            denormer(tf.squeeze(out, axis=0), name='output')
+            tf.reduce_mean(d_in, name='d_input')
+            tf.reduce_mean(d_out, name='d_output')
             restore = tf.train.Saver()
 
         with tf.Session(graph=graph) as sess:
