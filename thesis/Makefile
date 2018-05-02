@@ -1,0 +1,9 @@
+FILENAME = jasek
+TARGET ?= pdf
+
+.PHONY: $(FILENAME).$(TARGET)
+
+all: $(FILENAME).$(TARGET)
+
+$(FILENAME).$(TARGET):
+	latexmk -$(TARGET) $(FILENAME)

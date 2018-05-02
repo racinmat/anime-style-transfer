@@ -1,0 +1,67 @@
+\chapter{Programs} \label{programs}
+
+The main program developed for the purpose of this thesis was a Python package \texttt{cycle} implementing modular CycleGAN~\cite{cyclegan} in Tensorflow~\cite{tensorflow} and two programs built on top of this package. This package and associated programs reside in a directory \texttt{mod-cycle-gan} at \url{https://gitlab.fel.cvut.cz/jasekota/master-thesis/tree/master/code/mod-cycle-gan} and will be therefore together referenced as \texttt{mod-cycle-gan}. There is also an utility program written in C++ called \texttt{dat-unpacker} which reads ADTF DAT files used by Valeo company and extracts data from them into an intermediate format similar to the one gathered from GTA. Last portion of code developed for this thesis is a simple Python module (with critical part of the code written in Cython) with simple name \texttt{data-processing}. These three programs/packages will be described more in-depth in following sections.
+
+\section[\texttt{mod-cycle-gan}]{\texttt{mod-cycle-gan} -- Python package \texttt{cycle} and programs \texttt{train.py} and \texttt{test.py}}
+
+Python package \texttt{cycle} is the implementation of CycleGAN~\cite{cyclegan} with large inspiration from GitHub repository of Van Huy at \url{https://github.com/vanhuyz/CycleGAN-TensorFlow}.
+
+\subsection{Exported classes}
+
+
+\begin{itemize}
+\item \texttt{CycleGAN} -- Main class implementing CycleGAN.
+\begin{description}
+\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes numerous arguments. First two arguments correspond to GANs to be set in cycle fashion (instances of \texttt{nets.GAN} or its subclasses), another two are for tfrecords file readers (\texttt{utils.TFReader}) and another two correspond to names of the dataset for pretty printing of logs and Tensorboard messages.
+\descitem{\texttt{get\_model()}}
+\descitem{\texttt{train()}}
+\descitem{\texttt{export()}}
+\descitem{\texttt{export\_from\_checkpoint()} -- static method}
+\descitem{\texttt{test\_one\_part()} -- static method}
+\end{description}
+\item \texttt{utils.TFReader} -- Class for reading tfrecords file, which is a TensorFlow binary format for efficient storage of data and features based on Protobuf.
+\begin{description}
+\descitem{\texttt{\_\_init\_\_()}}
+\descitem{\texttt{feed()}}
+\end{description}
+\item \texttt{utils.TFWriter} -- Class for creating tfrecords file from NumPy files.
+\begin{description}
+\descitem{\texttt{\_\_init\_\_()}}
+\descitem{\texttt{run()}}
+\end{description}
+\item \texttt{utils.DataBuffer} -- Class implementing history pool according to \cite{historypool}.
+\begin{description}
+\descitem{\texttt{\_\_init\_\_()}}
+\descitem{\texttt{query()}}
+\end{description}
+\item \texttt{nets.BaseNet} -- Base class for mapping networks (Generator and Discriminator). All implemented models must subclass this class.
+\begin{description}
+\descitem{\texttt{\_\_init\_\_()}}
+\descitem{\texttt{transform()}}
+\descitem{\texttt{weight\_loss()}}
+\end{description}
+\item \texttt{nets.GAN} -- Implementation of GAN~\cite{origgan}. Uses original loss functions.
+\begin{description}
+\descitem{\texttt{\_\_init\_\_()}}
+\descitem{\texttt{gen\_loss()}}
+\descitem{\texttt{dis\_loss()}}
+\end{description}
+\item \texttt{nets.LSGAN} -- Implementation of Least Squares GAN~\cite{lsgan}. Subclass of \texttt{nets.GAN}.
+\begin{description}
+\descitem{\texttt{\_\_init\_\_()}}
+\descitem{\texttt{gen\_loss()}}
+\descitem{\texttt{dis\_loss()}}
+\end{description}
+\item \texttt{nets.WGAN} -- Implementation of Wasserstein GAN with gradient penalty~\cite{wgan}. Subclass of \texttt{nets.GAN}.
+\begin{description}
+\descitem{\texttt{\_\_init\_\_()}}
+\descitem{\texttt{gen\_loss()}}
+\descitem{\texttt{dis\_loss()}}
+\descitem{\texttt{grad\_loss()}}
+\descitem{\texttt{full\_dis\_loss()}}
+\end{description}
+\end{itemize}
+
+\section[\texttt{dat-unpacker}]{\texttt{dat-unpacker} -- C++ utility}
+
+\section[\texttt{data-processing}]{\texttt{data-processing} -- Python package}

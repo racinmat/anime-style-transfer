@@ -11,11 +11,8 @@
 #include <cstring>
 #include <boost/filesystem.hpp>
 #include <fstream>
-#include "velo.h"
-#include "imu.h"
 
-#define VELO_NAME 	"velodyne"
-#define XNAV_NAME	"xnav"
+
 #define MATRIX_NAME "matrix"
 #define CONV_SCANS_NAME "scan"
 #define CHECK_STREAM_NAME "3dod"
@@ -42,21 +39,6 @@ class dat_file {
 		std::unique_ptr<adtf::IADTFFileReader> file_reader;
 		bool stdout_off;
 		fs::path output_dir;
-};
-
-
-class raw_datfile : public dat_file {
-	public:
-		using dat_file::dat_file;
-		bool process_data(bool all);
-	private:
-		int32_t process_velo(adtf::cADTFDataBlock *block);
-		int32_t process_xnav(adtf::cADTFDataBlock *block);
-		bool process_xnav_packet(const void *data, off_t offset);
-
-		std::vector<velo_packet_t> velo_packets;
-		std::vector<imuData> imu_data;
-		velo_calib_t calibration;
 };
 
 class conv_datfile: public dat_file {

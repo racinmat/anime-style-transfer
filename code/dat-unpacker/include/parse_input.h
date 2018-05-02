@@ -8,7 +8,6 @@ class param_parser {
 		std::string input;
 		std::string output_dir;
 		std::vector<std::string> to_dump;
-		bool raw;
 		bool all;
 
 		int parseInput(int argc, char *argv[]);

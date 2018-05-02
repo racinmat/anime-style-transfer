@@ -11,9 +11,9 @@ def biases(name, shape, constant=0.0):
     return tf.get_variable(name, shape, initializer=tf.constant_initializer(constant))
 
 def norm(data, is_training, normtype):
-    if normtype == 'instance':
+    if normtype.casefold() == 'instance'.casefold():
         return tf.contrib.layers.instance_norm(data)
-    if normtype == 'batch':
+    if normtype.casefold() == 'batch'.casefold():
         return tf.contrib.layers.batch_normalization(data, training=is_training, decay=0.9)
     return data
 
@@ -42,10 +42,10 @@ def reconv_block(inputs, kernel_size, stride, out_channels, activation, out_size
         inshape = inputs.get_shape().as_list()
         if out_size is None:
             out_size = [2*inshape[1], 2*inshape[2]]
-        kernel_shape = [kernel_size, kernel_size, out_channels, inshape[3]]
-        out_shape = [inshape[0]] + list(out_size) + [out_channels]
+        kernel_shape = [kernel_size, kernel_size, inshape[3], out_channels]
         strides = [1, stride, stride, 1]
-        c_out = tf.nn.conv2d_transpose(inputs, weights('weights', kernel_shape), out_shape, strides)
+        resized = tf.image.resize_images(inputs, out_size, tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        c_out = tf.nn.conv2d(resized, weights('weights', kernel_shape), strides, padding='SAME')
         if bias:
             c_out = c_out + biases('bias', c_out.get_shape())
         nc_out = norm(c_out, is_training, normtype)

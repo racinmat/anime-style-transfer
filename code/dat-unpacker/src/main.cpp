@@ -1,6 +1,5 @@
 #include "dat_handler.h"
 #include "parse_input.h"
-#include "velo.h"
 
 int main(int argc, char **argv) {
 	param_parser pp;
@@ -11,12 +10,9 @@ int main(int argc, char **argv) {
 
 	dat_file *dat;
 
-	if (pp.raw) {
-		dat = new raw_datfile(pp.input, true, pp.output_dir);
-	}
-	else {
-		dat = new conv_datfile(pp.input, true, pp.output_dir);
-	}
+
+	dat = new conv_datfile(pp.input, true, pp.output_dir);
+
 
 	if (!dat->is_valid) {
 		return -1;

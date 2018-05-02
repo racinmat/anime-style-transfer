@@ -17,13 +17,11 @@
 	subfieldofstudy-english = {Computer Vision and Digital Image},
 	fieldofstudy-czech = {Otevřená Informatika},
 	subfieldofstudy-czech = {Počítačové vidění a digitální obraz},
-%	specification-file = zadani.pdf,
-%	front-specification = true,
+	specification-file = zadani.pdf,
+	front-specification = true,
 	day = 25,
 	month = 5,
 	year = 2018,
-%	monochrome = true,
-%	savetoner = true,
 	pkg-listings = true,
 	ctulstbg = none,
 %	layout-short = true,
@@ -32,13 +30,14 @@
 \ctuprocess
 
 \usepackage[all]{hypcap}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage{gensymb}
+\usepackage{subfig}
 
 \begin{abstract-english}
-%In this thesis we created a framework for easy evaluation and training of Faster \rcnn{} type of networks. We fine-tuned VGG16 and ZFNet networks on our internal Victims dataset as well as standard KITTI dataset. We later showed that VGG16 architecture is far more suitable for fine-tuning on data from slightly different training and target domains. This framework can later serve as a baseline for further improvements in the field.
 \end{abstract-english}
 
 \begin{abstract-czech}
-%V této práci jsme vytvořili framework pro jednoduché vyhodnocení a trénování konvolučních neuronových sítí typu Faster \rcnn{}. Přetrénovali jsme sítě architektur VGG16 a ZFNet jak na našich interních datech z datasetu obětí, tak i na standartním KITTI datasetu. Dále jsme ukázali, že architektura VGG16 je o mnoho vhodnější k přetrénování pomocí dat, které pocházejí z málo rozdílných trénovacích a testovacích domén. Vytvořený framework může do budoucna sloužit jako výchozí bod pro budoucí vylepšení architektur tohoto typu.
 \end{abstract-czech}
 
 \begin{thanks}
@@ -58,6 +57,16 @@
 \begin{document}
 \maketitle
 
+\input{text/introduction.tex}
 \input{text/theory.tex}
+\input{text/dataset.tex}
+\input{text/programs.tex}
+\input{text/experiments.tex}
+\input{text/conclusion.tex}
+
+\newpage
+\bibliography{jasek}
+\bibliographystyle{unsrt}
+
 
 \end{document}

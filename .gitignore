@@ -23,6 +23,8 @@
 *.mtc1
 *.out
 *.synctex.gz
+*.fdb_latexmk
+*.fls
 *eps-converted-to.pdf
 *.log
 data

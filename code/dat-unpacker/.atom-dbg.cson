@@ -1,9 +1,0 @@
-"dat-unpacker-conv":
-	path: "/home/otaj/files/dip/master-thesis/code/dat-unpacker/build/dat-unpacker"
-	args: ["-i ../../data/valeo-data/datfiles/city/LB-VS_1408_20170328_175414_Y650_BL184_zFAS_005_TTX_11_0_nFR_map_conv_woVideo.dat -o ../../data/valeo-data/dataset/city/conv/LB-VS_1408_20170328_175414_Y650_BL184_zFAS_005_TTX_11_0_nFR_map_conv_woVideo"]
-	cwd: "/home/otaj/files/dip/master-thesis/code/dat-unpacker"
-
-"dat-unpacker-raw":
-	path: "/home/otaj/files/dip/master-thesis/code/dat-unpacker/build/dat-unpacker"
-	args: ["-i ../../data/valeo-data/datfiles/city/LB-VS_1408_20170328_175414_Y650_BL184_zFAS_005_TTX_11_0_woVideo.dat -o ../../data/valeo-data/dataset/city/raw/LB-VS_1408_20170328_175414_Y650_BL184_zFAS_005_TTX_11_0_woVideo -r"]
-	cwd: "/home/otaj/files/dip/master-thesis/code/dat-unpacker"

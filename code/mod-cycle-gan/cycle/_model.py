@@ -6,20 +6,22 @@ import logging
 from datetime import datetime
 import tensorflow as tf
 from tensorflow import graph_util as gu
-from . import _utils as utils
-from . import _nets as nets
+import numpy as np
+from . import utils, nets
+
 
 class CycleGAN:
     SAVE_NODES = ['input', 'output', 'd_input', 'd_output']
-    def __init__(self, XtoY, YtoX, X_name='X', Y_name='Y',
-                 X_feed=None, Y_feed=None,
+    OUTPUT_NODES = SAVE_NODES[1:]
+    def __init__(self, XtoY, YtoX, X_feed, Y_feed, X_name='X', Y_name='Y',
                  cycle_lambda=10.0, tb_verbose=True, training=True, visualizer=None,
                  learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5,
-                 graph=None, history=True):
+                 history=True, graph=None):
 
         self.XtoY = XtoY
         self.YtoX = YtoX
 
+        assert isinstance(XtoY, nets.GAN) and isinstance(YtoX, nets.GAN)
         assert XtoY.in_shape == YtoX.out_shape and XtoY.out_shape == YtoX.in_shape
         assert X_feed.batch_size == Y_feed.batch_size
 
@@ -198,8 +200,8 @@ class CycleGAN:
 
     def train(self,
               checkpoints_dir,
-              dis_train=1, gen_train=1,
-              pool_size=50, load_model=None, log_verbose=True, export_final=True):
+              gen_train=1, dis_train=1, pool_size=50,
+              load_model=None, log_verbose=True, param_string=None, export_final=True):
         if load_model is not None:
             full_checkpoints_dir = osp.join(checkpoints_dir, load_model)
         else:
@@ -212,6 +214,10 @@ class CycleGAN:
                 checkpoints_dir_try = full_checkpoints_dir + '-' + str(i)
             full_checkpoints_dir = checkpoints_dir_try
         os.makedirs(full_checkpoints_dir, exist_ok=True)
+
+        if param_string is not None:
+            with open(osp.join(full_checkpoints_dir, 'params.json'), 'w') as f:
+                f.write(param_string)
 
         with self.graph.as_default():
             model_ops = self.get_model()
@@ -370,6 +376,43 @@ class CycleGAN:
                                         CycleGAN.SAVE_NODES),
                                     CycleGAN.SAVE_NODES)
             tf.train.write_graph(output_graph_def, export_dir, model_name, as_text=False)
+
+    @staticmethod
+    def test_one_part(pb_model, infile, outfile, include_input=False):
+        all_data = np.load(infile, mmap_mode='r')
+        in_shape = all_data.shape[1:]
+        graph = tf.Graph()
+        with graph.as_default():
+            graph_def = tf.GraphDef()
+            with tf.gfile.FastGFile(pb_model, 'rb') as model_file:
+                graph_def.ParseFromString(model_file.read())
+            input_var = tf.placeholder(all_data.dtype, shape=in_shape)
+            output, d_input, d_output = list(
+                                             map(lambda x: x.outputs[0],
+                                                 tf.import_graph_def(graph_def,
+                                                                     input_map={'input': input_var},
+                                                                     return_elements=CycleGAN.OUTPUT_NODES)))
+        outputs = []
+        d_inputs = []
+        d_outputs = []
+        with tf.Session(graph=graph) as sess:
+            sess.run(tf.global_variables_initializer())
+            for data in all_data:
+                out, din, dout = sess.run([output, d_input, d_output], feed_dict={input_var: data})
+                outputs.append(out)
+                d_inputs.append(din)
+                d_outputs.append(dout)
+        kwarg_map = {'output' : np.array(outputs),
+                     'd_input' : np.array(d_inputs),
+                     'd_output' : np.array(d_outputs)
+                    }
+        if include_input:
+            kwarg_map['input'] = all_data
+        if osp.exists(outfile):
+            logging.warning('File %s exists, it will be overwritten', outfile)
+        np.savez_compressed(outfile, **kwarg_map)
+        logging.info('Saved file %s', outfile)
+
 
     def _optimizer(self, loss, variables, global_step, name):
         with tf.variable_scope(name):

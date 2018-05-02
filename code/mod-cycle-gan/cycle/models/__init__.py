@@ -1,4 +1,3 @@
-__all__ = ['image', 'lidar']
+__all__ = ['lidar']
 
-from . import image
 from . import lidar
