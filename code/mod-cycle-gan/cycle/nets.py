@@ -2,17 +2,29 @@
 
 import tensorflow as tf
 from . import _ops as ops
-import abc
 
-REAL_LABEL = 1
+_act_map = {'r' : tf.nn.relu,
+            't' : tf.nn.tanh,
+            'l' : tf.nn.leaky_relu,
+            's' : tf.nn.sigmoid}
 
-class BaseNet(abc.ABC):
-    def __init__(self, name, is_training, weight_lambda, norm='instance'):
+_layer_map = {'c' : ops.conv_block,
+              'b' : ops.res_block,
+              'r' : ops.reconv_block}
+
+REAL_LABEL = 0.9
+
+# 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc' - generator
+# 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;' - discriminator
+
+class BaseNet:
+    def __init__(self, name, is_training, weight_lambda, transform_string, norm='instance'):
         self.name = name
         self.is_training = is_training
         self.variables = None
         self.weight_lambda = weight_lambda
         self.norm = norm
+        self.transform_string = transform_string.split(';')
 
 
     def __call__(self, data):
@@ -22,9 +34,20 @@ class BaseNet(abc.ABC):
         return result
 
 
-    @abc.abstractmethod
     def transform(self, data):
-        raise NotImplementedError()
+        out = data
+        for t in self.transform_string[:-1]:
+            tins = t.split('-')
+            out = _layer_map[tins[0]](out, *tuple(map(int, tins[1:-1])), activation=_act_map[tins[-1]], normtype=self.norm, is_training=self.is_training, name=t)
+        if self.transform_string[-1] != '':
+            for t in self.transform_string[-1]:
+                if t == 's':
+                    out = out + data
+                if t == 'c':
+                    out = tf.clip_by_value(out, -1, 1)
+                if t == 'a':
+                    out = tf.nn.tanh(out)
+        return out
 
 
     def weight_loss(self):
@@ -51,7 +74,7 @@ class GAN:
 
 
     def gen_loss(self, orig_data):
-        return self._gen_loss(self.dis(orig_data)) * self.gen_lambda
+        return self._gen_loss(self.dis(self.gen(orig_data))) * self.gen_lambda
 
 
     def _dis_loss(self, orig_real, orig_fake):

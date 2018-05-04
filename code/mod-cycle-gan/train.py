@@ -9,7 +9,7 @@ import cycle
 def _valid_names(module):
     return [mod for mod in dir(module) if not mod.startswith('_')]
 
-NEEDED_IMPORTS = ['XY_Discriminator', 'XY_Generator', 'YX_Discriminator', 'YX_Generator',
+NEEDED_IMPORTS = ['X_Discriminator', 'XY_Generator', 'Y_Discriminator', 'YX_Generator',
                   'X_denormer', 'X_normer', 'Y_denormer', 'Y_normer',
                   'X_DATA_SHAPE', 'Y_DATA_SHAPE']
 FLAGS = tf.flags.FLAGS
@@ -19,17 +19,21 @@ tf.flags.DEFINE_string('model', 'lidar', 'Model dir to use. Can choose from %s.\
 tf.flags.DEFINE_string('Xtfr', '/datagrid/personal/jasekota/dip-dataset/valeo/valeo-trn.interp.tfrecords', 'tfrecords file for X dataset')
 tf.flags.DEFINE_string('Ytfr', '/datagrid/personal/jasekota/dip-dataset/gta/gta-trn.interp.tfrecords', 'tfrecords file for Y dataset')
 tf.flags.DEFINE_string('gantype', 'LSGAN', 'Type of GAN to use within CycleGAN. Can choose from GAN/LSGAN/WGAN.\nWhile it is theoretically possible to use different GAN type for each part of training, it is generally not advised.')
+tf.flags.DEFINE_string('XYgenstr', 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc', 'Param string for XY generator')
+tf.flags.DEFINE_string('YXgenstr', 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc', 'Param string for YX generator')
+tf.flags.DEFINE_string('Xdisstr', 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;' , 'Param string for X discriminator')
+tf.flags.DEFINE_string('Ydisstr', 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;' , 'Param string for Y discriminator')
 tf.flags.DEFINE_float('XYgll', 2, 'Lambda for XY Generator loss')
 tf.flags.DEFINE_float('YXgll', 2, 'Lambda for YX Generator loss')
-tf.flags.DEFINE_float('XYdll', 2, 'Lambda for XY Discriminator loss')
-tf.flags.DEFINE_float('YXdll', 2, 'Lambda for YX Discriminator loss')
+tf.flags.DEFINE_float('Xdll', 2, 'Lambda for X Discriminator loss')
+tf.flags.DEFINE_float('Ydll', 2, 'Lambda for Y Discriminator loss')
 tf.flags.DEFINE_float('XYgwl', 2, 'Lambda for XY Generator weight loss')
 tf.flags.DEFINE_float('YXgwl', 2, 'Lambda for YX Generator weight loss')
-tf.flags.DEFINE_float('XYdwl', 2, 'Lambda for XY Discriminator weight loss')
-tf.flags.DEFINE_float('YXdwl', 2, 'Lambda for YX Discriminator weight loss')
+tf.flags.DEFINE_float('Xdwl', 2, 'Lambda for X Discriminator weight loss')
+tf.flags.DEFINE_float('Ydwl', 2, 'Lambda for Y Discriminator weight loss')
 tf.flags.DEFINE_float('cll', 2, 'Cycle loss lambda')
-tf.flags.DEFINE_float('XYgrl', 2, 'Lambda for gradient loss for XY gan (applicable only if gantype is WGAN)')
-tf.flags.DEFINE_float('YXgrl', 2, 'Lambda for gradient loss for YX gan (applicable only if gantype is WGAN)')
+tf.flags.DEFINE_float('Ygrl', 2, 'Lambda for gradient loss for Y discriminator (applicable only if gantype is WGAN)')
+tf.flags.DEFINE_float('Xgrl', 2, 'Lambda for gradient loss for X discriminator (applicable only if gantype is WGAN)')
 tf.flags.DEFINE_bool('visualise', True, 'Whether to visualize during training. in tensorboard. model than must have function visualise. Only valid if tbverbose.')
 tf.flags.DEFINE_bool('tbverbose', True, 'Whether to export tensorboard data for visualization using Tensorboard.')
 tf.flags.DEFINE_bool('verbose', True, 'Verbose mode.')
@@ -47,7 +51,7 @@ tf.flags.DEFINE_integer('poolsize', 50, 'How large a history buffer will be. Val
 
 def main(_):
     logging.getLogger().setLevel(logging.INFO)
-    flagdict = dict(((k, getattr(FLAGS, k)) for k in dir(FLAGS)))
+    flagstr = '\n'.join(('--' + k + ' ' + str(getattr(FLAGS,k)) for k in dir(FLAGS)))
     try:
         modellib = importlib.import_module('cycle.models.' + FLAGS.model)
         modelnames = _valid_names(modellib)
@@ -65,39 +69,39 @@ def main(_):
                                      modellib.Y_DATA_SHAPE, normer=modellib.Y_normer,
                                      denormer=modellib.Y_denormer, batch_size=FLAGS.batchsize)
         xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen',
-                                   True, FLAGS.XYgwl, FLAGS.norm)
+                                   True, FLAGS.XYgwl, FLAGS.XYgenstr, FLAGS.norm)
         yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen',
-                                   True, FLAGS.YXgwl, FLAGS.norm)
-        xydis = modellib.XY_Discriminator(FLAGS.Xname + '-' + FLAGS.Yname + '-dis',
-                                       True, FLAGS.XYdwl, FLAGS.norm)
-        yxdis = modellib.YX_Discriminator(FLAGS.Yname + '-' + FLAGS.Xname + '-dis',
-                                       True, FLAGS.YXdwl, FLAGS.norm)
+                                   True, FLAGS.YXgwl, FLAGS.YXgenstr, FLAGS.norm)
+        xdis = modellib.X_Discriminator(FLAGS.Xname + '-dis',
+                                       True, FLAGS.Xdwl, FLAGS.Xdisstr, FLAGS.norm)
+        ydis = modellib.Y_Discriminator(FLAGS.Yname + '-dis',
+                                       True, FLAGS.Ydwl, FLAGS.Ydisstr, FLAGS.norm)
 
         if FLAGS.gantype.casefold() == 'GAN'.casefold():
-            xy = cycle.nets.GAN(xygen, xydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
-                                FLAGS.XYgll, FLAGS.XYdll)
-            yx = cycle.nets.GAN(yxgen, yxdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
-                                FLAGS.YXgll, FLAGS.YXdll)
+            xy = cycle.nets.GAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+                                FLAGS.XYgll, FLAGS.Ydll)
+            yx = cycle.nets.GAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+                                FLAGS.YXgll, FLAGS.Xdll)
         elif FLAGS.gantype.casefold() == 'LSGAN'.casefold():
-            xy = cycle.nets.LSGAN(xygen, xydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
-                                  FLAGS.XYgll, FLAGS.XYdll)
-            yx = cycle.nets.LSGAN(yxgen, yxdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
-                                  FLAGS.YXgll, FLAGS.YXdll)
+            xy = cycle.nets.LSGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+                                  FLAGS.XYgll, FLAGS.Ydll)
+            yx = cycle.nets.LSGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+                                  FLAGS.YXgll, FLAGS.Xdll)
         elif FLAGS.gantype.casefold() == 'WGAN'.casefold():
-            xy = cycle.nets.WGAN(xygen, xydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
-                                 FLAGS.XYgll, FLAGS.XYdll, FLAGS.XYgrl)
-            yx = cycle.nets.WGAN(yxgen, yxdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
-                                 FLAGS.YXgll, FLAGS.YXdll, FLAGS.YXgrl)
+            xy = cycle.nets.WGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+                                 FLAGS.XYgll, FLAGS.Ydll, FLAGS.Ygrl)
+            yx = cycle.nets.WGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+                                 FLAGS.YXgll, FLAGS.Xdll, FLAGS.Xgrl)
         else:
             raise ValueError('You did not specify any gantype that would be recognizible!')
         cygan = cycle.CycleGAN(xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname,
-                               FLAGS.cll, FLAGS.tbverbose, True,
+                               FLAGS.cll, FLAGS.tbverbose,
                                modellib.visualise if FLAGS.visualise else None,
                                FLAGS.lr, FLAGS.beta1, FLAGS.steps,
                                (FLAGS.decayfrom * FLAGS.steps), FLAGS.history)
 
         cygan.train(FLAGS.cpdir, FLAGS.gtsteps, FLAGS.dtsteps,
-                    FLAGS.poolsize, FLAGS.rundir, FLAGS.verbose, json.dumps(flagdict, indent='\t'))
+                    FLAGS.poolsize, FLAGS.rundir, FLAGS.verbose, flagstr)
 
 
 

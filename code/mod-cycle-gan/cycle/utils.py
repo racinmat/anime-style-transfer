@@ -5,6 +5,9 @@ import os.path as osp
 import tensorflow as tf
 import numpy as np
 
+def _identity(x, *args, **kwargs):
+    return x
+
 class DataBuffer:
     def __init__(self, pool_size, batch_size, old_prob=0.5):
         self.pool_size = pool_size
@@ -39,7 +42,7 @@ class DataBuffer:
         return self.last_data
 
 class TFReader:
-    def __init__(self, tfrecords_file, name, shape, shuffle_buffer_size=100, normer=lambda x,*args,**kwargs: x, denormer=lambda x,*args,**kwargs: x, batch_size=1, num_threads=8):
+    def __init__(self, tfrecords_file, name, shape, shuffle_buffer_size=100, normer=_identity, denormer=_identity, batch_size=1, num_threads=8):
         self.name = name
         self.batch_size = batch_size
         self.num_threads = num_threads

@@ -12,12 +12,16 @@ Python package \texttt{cycle} is the implementation of CycleGAN~\cite{cyclegan} 
 \begin{itemize}
 \item \texttt{CycleGAN} -- Main class implementing CycleGAN.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes numerous arguments. First two arguments correspond to GANs to be set in cycle fashion (instances of \texttt{nets.GAN} or its subclasses), another two are for tfrecords file readers (\texttt{utils.TFReader}) and another two correspond to names of the dataset for pretty printing of logs and Tensorboard messages.
-\descitem{\texttt{get\_model()}}
-\descitem{\texttt{train()}}
-\descitem{\texttt{export()}}
-\descitem{\texttt{export\_from\_checkpoint()} -- static method}
-\descitem{\texttt{test\_one\_part()} -- static method}
+\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes numerous arguments. First two arguments (\texttt{XtoY, YtoX}) correspond to GANs to be set in cycle fashion (instances of \texttt{nets.GAN} or its subclasses), another two (\texttt{X\_feed, Y\_feed}) are for tfrecords file readers (\texttt{utils.TFReader}) and another two (\texttt{X\_name, Y\_name}) correspond to names of the dataset for pretty printing of logs and Tensorboard messages. Following argument (\texttt{cycle\_lambda}) is a $\lambda$ for cyclic loss function (for more detail see section \ref{cyclegan}). Next argument (\texttt{tb\_verbose}) is a boolean for deciding whether to create summaries for Tensorboard and following argument (\texttt{visualizer}) is a function to use for visualising the data in Tensorboard -- if this argument is set to \texttt{False} or \texttt{None} then no function will be used for visualisation.
+
+Next four arguments (\texttt{learning\_rate, beta1, steps, decay\_from}) control optimization process -- namely initial learning rate for Adam optimizer~\cite{adam}, parameter beta1 of said optimizer, number of steps (where one step corresponds to one batch) and number of steps after which the learning rate starts to decay to eventually stop at zero. Following argument (\texttt{history}) indicates, whether to use history pool according to~\cite{historypool} and finally, last argument (\texttt{graph}) specifies the computational Tensorflow graph in which the model should be created. If it is left as \texttt{None}, then new graph will be created.
+\descitem{\texttt{get\_model()}} This metod actually creates the full model in Tensorflow graph. As such, it should be only called once. It sets up all the losses and their respective optimizers. This method has no arguments.
+\descitem{\texttt{train()}} This method is the main training loop. The only required argument (\texttt{checkpoints\_dir}) is the top-level checkpoints directory in which a new directory for this session is either created if needed or selected as a loading point in case of retrying training. Next two arguments (\texttt{gen\_train, dis\_train}) specify how often should be generator and discriminator trained within one training step. Next argument (\texttt{pool\_size}) specifies the size of the history pool. Following argument (\texttt{load\_model}) specifies a directory from which to load a saved model if retrying. Note that it is a path relative to top-level checkpoints directory. If this argument is \texttt{None}, new directory with current timestamp is created and new training starts. Next argument (\texttt{log\_verbose}) is a boolean specifying whether to log current loss periodically or not. Next argument (\texttt{param\_string}) specifies string which is a serialized version of arguments with which \hyperref[trainpy]{\texttt{train.py}} script was executed. This string will be saved to checkpoint directory with name \texttt{params.flagfile}. Last argument (\texttt{export\_final}) specifies whether to export final model after training as a binary protobuf used for testing.
+\descitem{\texttt{export()}} This method requires two arguments -- first argument (\texttt{sess}) is a session in which a model was run and the second (\texttt{export\_dir}) is a directory in which to save the model. There will be two saved models of names \texttt{\{Xname\}2\{Yname\}.pb} and \texttt{\{Yname\}2\{Xname\}.pb} which can then be used for testing. This method is automatically at the end of the \texttt{train()} method if the last argument (\texttt{export\_final}) was set to \texttt{True}.
+\descitem{\texttt{export\_from\_checkpoint()} -- static method} This method is a static counterpart of the \texttt{export()} method. It requires more arguments than method \texttt{export()} because it does not have all the book-keeping information the instance method has. First two arguments (\texttt{XtoY, YtoX}) are instances of GANs with the same model as used for training, another four arguments (\texttt{X\_normer, X\_denormer, Y\_normer, Y\_denormer}) are normalization and denormalization functions to be used for both datasets prior feeding the examples to network and converting them back to useful values. Next argument (\texttt{checkpoint\_dir}) corresponds to checkpoint directory where the model is stored and following argument (\texttt{export\_dir}) specifies directory in which the output models will be saved. Last two arguments (\texttt{X\_name, Y\_name}) correspond to the names of the datasets for easier identification of created models.
+\descitem{\texttt{test\_one\_part()} -- static method} This method tests the stored exported model with a NumPy file and saves the important outputs of the network to a new NumPy file. First argument (\texttt{pb\_model}) is a path to an exported binary protobuf model of the network to test. Another argument (\texttt{infile}) specifies the path to the input file to test and next argument (\texttt{outfile}) corresponds to a path of output file. This output file will be a Npz NumPy file with three fields -- \texttt{output} (output generated by corresponding generator) \texttt{d\_input} (value of corresponding discriminator evaluated on input data) and \texttt{d\_output} (value of corresponding discriminator evaluated on output data).
+
+Last argument (\texttt{include\_input}) is a boolean specifying whether to include input data in the output file or not. If set to \texttt{True}, outfile will become larger, however it will be more self-contained.
 \end{description}
 \item \texttt{utils.TFReader} -- Class for reading tfrecords file, which is a TensorFlow binary format for efficient storage of data and features based on Protobuf.
 \begin{description}
@@ -29,12 +33,12 @@ Python package \texttt{cycle} is the implementation of CycleGAN~\cite{cyclegan} 
 \descitem{\texttt{\_\_init\_\_()}}
 \descitem{\texttt{run()}}
 \end{description}
-\item \texttt{utils.DataBuffer} -- Class implementing history pool according to \cite{historypool}.
+\item \texttt{utils.DataBuffer} -- Class implementing history pool according to~\cite{historypool}.
 \begin{description}
 \descitem{\texttt{\_\_init\_\_()}}
 \descitem{\texttt{query()}}
 \end{description}
-\item \texttt{nets.BaseNet} -- Base class for mapping networks (Generator and Discriminator). All implemented models must subclass this class.
+\item \texttt{nets.BaseNet} -- Base class for mapping networks (Generator and Discriminator).
 \begin{description}
 \descitem{\texttt{\_\_init\_\_()}}
 \descitem{\texttt{transform()}}

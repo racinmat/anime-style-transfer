@@ -14,7 +14,7 @@ class CycleGAN:
     SAVE_NODES = ['input', 'output', 'd_input', 'd_output']
     OUTPUT_NODES = SAVE_NODES[1:]
     def __init__(self, XtoY, YtoX, X_feed, Y_feed, X_name='X', Y_name='Y',
-                 cycle_lambda=10.0, tb_verbose=True, training=True, visualizer=None,
+                 cycle_lambda=10.0, tb_verbose=True, visualizer=None,
                  learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5,
                  history=True, graph=None):
 
@@ -35,7 +35,6 @@ class CycleGAN:
 
         self.cycle_lambda = cycle_lambda
         self.tb_verbose = tb_verbose
-        self.training = training
         self.visualizer = visualizer
 
         self.learning_rate = learning_rate
@@ -56,7 +55,7 @@ class CycleGAN:
             self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape)
             self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape)
 
-        logging.info('Cycle GAN ready.\n'
+        logging.info('Cycle GAN instantiated.\n'
             '%s_shape='+str(XtoY.in_shape)+'\t%s_shape='+str(YtoX.in_shape)+'\n'
             'cycle_lambda=%f\n'
             'learning_rate=%f\tbeta1=%f\tsteps=%d\tdecay_from=%d',
@@ -69,11 +68,11 @@ class CycleGAN:
             fake_y = self.XtoY.gen(self.cur_x)
             fake_x = self.YtoX.gen(self.cur_y)
 
-            x_gen_loss = self.YtoX.gen_loss(fake_x)
-            y_gen_loss = self.XtoY.gen_loss(fake_y)
+            yx_gen_loss = self.YtoX.gen_loss(self.cur_y)
+            xy_gen_loss = self.XtoY.gen_loss(self.cur_x)
 
-            x_gen_weight_loss = self.XtoY.gen.weight_loss()
-            y_gen_weight_loss = self.YtoX.gen.weight_loss()
+            xy_gen_weight_loss = self.XtoY.gen.weight_loss()
+            yx_gen_weight_loss = self.YtoX.gen.weight_loss()
 
             y_dis_weight_loss = self.XtoY.dis.weight_loss()
             x_dis_weight_loss = self.YtoX.dis.weight_loss()
@@ -108,8 +107,8 @@ class CycleGAN:
                     y_dis_grad_loss = self.XtoY.grad_loss(self.cur_y, fake_y)
                 y_dis_full_loss = y_dis_loss + y_dis_weight_loss + y_dis_grad_loss
 
-            x_gen_full_loss = x_gen_loss + x_gen_weight_loss + cycle_loss
-            y_gen_full_loss = y_gen_loss + y_gen_weight_loss + cycle_loss
+            xy_gen_full_loss = xy_gen_loss + xy_gen_weight_loss + cycle_loss
+            yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss
 
             if self.tb_verbose:
                 X_dis_fake = self.YtoX.dis(fake_x)
@@ -122,13 +121,13 @@ class CycleGAN:
                 tf.summary.histogram('D_{}/real'.format(self.Y_name), Y_dis_real)
                 tf.summary.histogram('D_{}/fake'.format(self.Y_name), Y_dis_fake)
 
-                tf.summary.scalar('{}_gen/weight_loss'.format(self.X_name), x_gen_weight_loss)
-                tf.summary.scalar('{}_gen/gen_loss'.format(self.X_name), x_gen_loss)
-                tf.summary.scalar('{}_gen/full_loss'.format(self.X_name), x_gen_full_loss)
+                tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.X_name, self.Y_name), xy_gen_weight_loss)
+                tf.summary.scalar('{}-{}_gen/gen_loss'.format(self.X_name, self.Y_name), xy_gen_loss)
+                tf.summary.scalar('{}-{}_gen/full_loss'.format(self.X_name, self.Y_name), xy_gen_full_loss)
 
-                tf.summary.scalar('{}_gen/weight_loss'.format(self.Y_name), y_gen_weight_loss)
-                tf.summary.scalar('{}_gen/gen_loss'.format(self.Y_name), y_gen_loss)
-                tf.summary.scalar('{}_gen/full_loss'.format(self.Y_name), y_gen_full_loss)
+                tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.Y_name, self.X_name), yx_gen_weight_loss)
+                tf.summary.scalar('{}-{}_gen/gen_loss'.format(self.Y_name, self.X_name), yx_gen_loss)
+                tf.summary.scalar('{}-{}_gen/full_loss'.format(self.Y_name, self.X_name), yx_gen_full_loss)
 
                 tf.summary.scalar('{}_dis/weight_loss'.format(self.X_name), x_dis_weight_loss)
                 tf.summary.scalar('{}_dis/dis_loss'.format(self.X_name), x_dis_loss)
@@ -152,37 +151,34 @@ class CycleGAN:
                                      self.visualizer(self.cur_y, fake_x, self.YtoX.gen(fake_x)))
 
             with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-                if self.training:
-                    with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
-                        global_step = tf.get_variable('global_step',
-                                                      shape=(),
-                                                      initializer=tf.zeros_initializer)
-                    x_gen_opt = self._optimizer(x_gen_full_loss,
-                                                self.YtoX.gen.variables,
-                                                global_step,
-                                                'Adam/{}_gen'.format(self.X_name))
-                    y_gen_opt = self._optimizer(y_gen_full_loss,
-                                                self.XtoY.gen.variables,
-                                                global_step,
-                                                'Adam/{}_gen'.format(self.Y_name))
-                    x_dis_opt = self._optimizer(x_dis_loss,
-                                                self.YtoX.dis.variables,
-                                                global_step,
-                                                'Adam/{}_dis'.format(self.X_name))
-                    y_dis_opt = self._optimizer(y_dis_loss,
-                                                self.XtoY.dis.variables,
-                                                global_step,
-                                                'Adam/{}_dis'.format(self.Y_name))
+                with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
+                    global_step = tf.get_variable('global_step',
+                                                  shape=(),
+                                                  initializer=tf.zeros_initializer)
+                yx_gen_opt = self._optimizer(yx_gen_full_loss,
+                                            self.YtoX.gen.variables,
+                                            global_step,
+                                            'Adam/{}-{}_gen'.format(self.Y_name, self.X_name))
+                xy_gen_opt = self._optimizer(xy_gen_full_loss,
+                                            self.XtoY.gen.variables,
+                                            global_step,
+                                            'Adam/{}-{}_gen'.format(self.X_name, self.Y_name))
+                x_dis_opt = self._optimizer(x_dis_loss,
+                                            self.YtoX.dis.variables,
+                                            global_step,
+                                            'Adam/{}_dis'.format(self.X_name))
+                y_dis_opt = self._optimizer(y_dis_loss,
+                                            self.XtoY.dis.variables,
+                                            global_step,
+                                            'Adam/{}_dis'.format(self.Y_name))
 
-                    with tf.control_dependencies([x_gen_opt, y_gen_opt]):
-                        train_gen = tf.no_op('optimizers_gen')
-                    with tf.control_dependencies([x_dis_opt, y_dis_opt]):
-                        train_dis = tf.no_op('optimizers_dis')
-                    global_step_op = tf.assign_add(global_step, 1)
+                with tf.control_dependencies([xy_gen_opt, yx_gen_opt]):
+                    train_gen = tf.no_op('optimizers_gen')
+                with tf.control_dependencies([x_dis_opt, y_dis_opt]):
+                    train_dis = tf.no_op('optimizers_dis')
+                global_step_op = tf.assign_add(global_step, 1)
 
-                else:
-                    train_gen = tf.no_op()
-                    train_dis = tf.no_op()
+            logging.info('Created CycleGAN model')
 
             return {'train': {
                         'gen': train_gen,
@@ -191,15 +187,14 @@ class CycleGAN:
                     },
                     'losses': {
                         'cycle': cycle_loss,
-                        '{}_gen_full'.format(self.X_name): x_gen_full_loss,
-                        '{}_gen_full'.format(self.Y_name): y_gen_full_loss,
+                        '{}-{}_gen_full'.format(self.X_name, self.Y_name): xy_gen_full_loss,
+                        '{}-{}_gen_full'.format(self.Y_name, self.X_name): yx_gen_full_loss,
                         '{}_dis_full'.format(self.X_name): x_dis_full_loss,
                         '{}_dis_full'.format(self.Y_name): y_dis_full_loss,
                     },
                     'fakes': [fake_x, fake_y]}
 
-    def train(self,
-              checkpoints_dir,
+    def train(self, checkpoints_dir,
               gen_train=1, dis_train=1, pool_size=50,
               load_model=None, log_verbose=True, param_string=None, export_final=True):
         if load_model is not None:
@@ -216,7 +211,7 @@ class CycleGAN:
         os.makedirs(full_checkpoints_dir, exist_ok=True)
 
         if param_string is not None:
-            with open(osp.join(full_checkpoints_dir, 'params.json'), 'w') as f:
+            with open(osp.join(full_checkpoints_dir, 'params.flagfile'), 'w') as f:
                 f.write(param_string)
 
         with self.graph.as_default():
@@ -424,7 +419,7 @@ class CycleGAN:
                                      self.learning_rate)
 
             if self.tb_verbose:
-                tf.summary.scalar('learning_rate/{}'.format(name), learning_rate)
+                tf.summary.scalar('learning_rate', learning_rate)
 
             adam = tf.train.AdamOptimizer(learning_rate, beta1=self.beta1, name=name)
             learning_step = adam.minimize(loss, var_list=variables)

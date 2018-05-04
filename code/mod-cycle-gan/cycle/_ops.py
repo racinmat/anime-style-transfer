@@ -37,11 +37,10 @@ def res_block(inputs, kernel_size, num_res, activation, normtype='instance', is_
             out = conv_block(out, kernel_size, 1, out.get_shape()[3], activation, normtype, is_training, name+str(i), bias)
         return inputs + out
 
-def reconv_block(inputs, kernel_size, stride, out_channels, activation, out_size=None, normtype='instance', is_training=True, name=None, bias=False):
+def reconv_block(inputs, kernel_size, stride, out_channels, out_coeff, activation, normtype='instance', is_training=True, name=None, bias=False):
     with tf.variable_scope(name):
         inshape = inputs.get_shape().as_list()
-        if out_size is None:
-            out_size = [2*inshape[1], 2*inshape[2]]
+        out_size = [out_coeff*inshape[1], out_coeff*inshape[2]]
         kernel_shape = [kernel_size, kernel_size, inshape[3], out_channels]
         strides = [1, stride, stride, 1]
         resized = tf.image.resize_images(inputs, out_size, tf.image.ResizeMethod.NEAREST_NEIGHBOR)
