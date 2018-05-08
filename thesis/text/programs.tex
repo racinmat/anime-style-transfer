@@ -1,6 +1,6 @@
 \chapter{Programs} \label{programs}
 
-The main program developed for the purpose of this thesis was a Python package \texttt{cycle} implementing modular CycleGAN~\cite{cyclegan} in Tensorflow~\cite{tensorflow} and two programs built on top of this package. This package and associated programs reside in a directory \texttt{mod-cycle-gan} at \url{https://gitlab.fel.cvut.cz/jasekota/master-thesis/tree/master/code/mod-cycle-gan} and will be therefore together referenced as \texttt{mod-cycle-gan}. There is also an utility program written in C++ called \texttt{dat-unpacker} which reads ADTF DAT files used by Valeo company and extracts data from them into an intermediate format similar to the one gathered from GTA. Last portion of code developed for this thesis is a simple Python module (with critical part of the code written in Cython) with simple name \texttt{data-processing}. These three programs/packages will be described more in-depth in following sections.
+The main program developed for the purpose of this thesis was a Python package \texttt{cycle} implementing modular CycleGAN~\cite{cyclegan} in TensorFlow~\cite{tensorflow} and two programs built on top of this package. This package and associated programs reside in a directory \texttt{mod-cycle-gan} at \url{https://gitlab.fel.cvut.cz/jasekota/master-thesis/tree/master/code/mod-cycle-gan} and will be therefore together referenced as \texttt{mod-cycle-gan}. There is also an utility program written in C++ called \texttt{dat-unpacker} which reads ADTF DAT files used by Valeo company and extracts data from them into an intermediate format similar to the one gathered from GTA. Last portion of code developed for this thesis is a simple Python module (with critical part of the code written in Cython) with simple name \texttt{data-processing}. These three programs/packages will be described more in-depth in following sections.
 
 \section[\texttt{mod-cycle-gan}]{\texttt{mod-cycle-gan} -- Python package \texttt{cycle} and programs \texttt{train.py} and \texttt{test.py}}
 
@@ -12,59 +12,156 @@ Python package \texttt{cycle} is the implementation of CycleGAN~\cite{cyclegan} 
 \begin{itemize}
 \item \texttt{CycleGAN} -- Main class implementing CycleGAN.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes numerous arguments. First two arguments (\texttt{XtoY, YtoX}) correspond to GANs to be set in cycle fashion (instances of \texttt{nets.GAN} or its subclasses), another two (\texttt{X\_feed, Y\_feed}) are for tfrecords file readers (\texttt{utils.TFReader}) and another two (\texttt{X\_name, Y\_name}) correspond to names of the dataset for pretty printing of logs and Tensorboard messages. Following argument (\texttt{cycle\_lambda}) is a $\lambda$ for cyclic loss function (for more detail see section \ref{cyclegan}). Next argument (\texttt{tb\_verbose}) is a boolean for deciding whether to create summaries for Tensorboard and following argument (\texttt{visualizer}) is a function to use for visualising the data in Tensorboard -- if this argument is set to \texttt{False} or \texttt{None} then no function will be used for visualisation.
+\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes numerous arguments. First two arguments (\texttt{XtoY, YtoX}) correspond to GANs to be set in cycle fashion (instances of \texttt{nets.GAN} or its subclasses), another two (\texttt{X\_feed, Y\_feed}) are for TFRecords file readers (\texttt{utils.TFReader}) and another two (\texttt{X\_name, Y\_name}) correspond to names of the dataset for pretty printing of logs and Tensorboard messages. Following argument (\texttt{cycle\_lambda}) is a $\lambda$ for cyclic loss function (for more detail see section \ref{cyclegan}). Next argument (\texttt{tb\_verbose}) is a boolean for deciding whether to create summaries for Tensorboard and following argument (\texttt {visualizer}) is a function to use for visualizing the data in Tensorboard -- if this argument is set to \texttt{False} or \texttt{None} then no function will be used for visualisation.
 
-Next four arguments (\texttt{learning\_rate, beta1, steps, decay\_from}) control optimization process -- namely initial learning rate for Adam optimizer~\cite{adam}, parameter beta1 of said optimizer, number of steps (where one step corresponds to one batch) and number of steps after which the learning rate starts to decay to eventually stop at zero. Following argument (\texttt{history}) indicates, whether to use history pool according to~\cite{historypool} and finally, last argument (\texttt{graph}) specifies the computational Tensorflow graph in which the model should be created. If it is left as \texttt{None}, then new graph will be created.
-\descitem{\texttt{get\_model()}} This metod actually creates the full model in Tensorflow graph. As such, it should be only called once. It sets up all the losses and their respective optimizers. This method has no arguments.
+Next four arguments (\texttt{learning\_rate, beta1, steps, decay\_from}) control optimization process -- namely initial learning rate for Adam optimizer~\cite{adam}, parameter beta1 of said optimizer, number of steps (where one step corresponds to one batch) and number of steps after which the learning rate starts to decay to eventually stop at zero. Following argument (\texttt{history}) indicates, whether to use history pool according to~\cite{historypool} and finally, last argument (\texttt{graph}) specifies the computational TensorFlow graph in which the model should be created. If it is left as \texttt{None}, then new graph will be created.
+\descitem{\texttt{get\_model()}} This method actually creates the full model in TensorFlow graph. As such, it should be only called once. It sets up all the losses and their respective optimizers. This method has no arguments.
 \descitem{\texttt{train()}} This method is the main training loop. The only required argument (\texttt{checkpoints\_dir}) is the top-level checkpoints directory in which a new directory for this session is either created if needed or selected as a loading point in case of retrying training. Next two arguments (\texttt{gen\_train, dis\_train}) specify how often should be generator and discriminator trained within one training step. Next argument (\texttt{pool\_size}) specifies the size of the history pool. Following argument (\texttt{load\_model}) specifies a directory from which to load a saved model if retrying. Note that it is a path relative to top-level checkpoints directory. If this argument is \texttt{None}, new directory with current timestamp is created and new training starts. Next argument (\texttt{log\_verbose}) is a boolean specifying whether to log current loss periodically or not. Next argument (\texttt{param\_string}) specifies string which is a serialized version of arguments with which \hyperref[trainpy]{\texttt{train.py}} script was executed. This string will be saved to checkpoint directory with name \texttt{params.flagfile}. Last argument (\texttt{export\_final}) specifies whether to export final model after training as a binary protobuf used for testing.
 \descitem{\texttt{export()}} This method requires two arguments -- first argument (\texttt{sess}) is a session in which a model was run and the second (\texttt{export\_dir}) is a directory in which to save the model. There will be two saved models of names \texttt{\{Xname\}2\{Yname\}.pb} and \texttt{\{Yname\}2\{Xname\}.pb} which can then be used for testing. This method is automatically at the end of the \texttt{train()} method if the last argument (\texttt{export\_final}) was set to \texttt{True}.
 \descitem{\texttt{export\_from\_checkpoint()} -- static method} This method is a static counterpart of the \texttt{export()} method. It requires more arguments than method \texttt{export()} because it does not have all the book-keeping information the instance method has. First two arguments (\texttt{XtoY, YtoX}) are instances of GANs with the same model as used for training, another four arguments (\texttt{X\_normer, X\_denormer, Y\_normer, Y\_denormer}) are normalization and denormalization functions to be used for both datasets prior feeding the examples to network and converting them back to useful values. Next argument (\texttt{checkpoint\_dir}) corresponds to checkpoint directory where the model is stored and following argument (\texttt{export\_dir}) specifies directory in which the output models will be saved. Last two arguments (\texttt{X\_name, Y\_name}) correspond to the names of the datasets for easier identification of created models.
-\descitem{\texttt{test\_one\_part()} -- static method} This method tests the stored exported model with a NumPy file and saves the important outputs of the network to a new NumPy file. First argument (\texttt{pb\_model}) is a path to an exported binary protobuf model of the network to test. Another argument (\texttt{infile}) specifies the path to the input file to test and next argument (\texttt{outfile}) corresponds to a path of output file. This output file will be a Npz NumPy file with three fields -- \texttt{output} (output generated by corresponding generator) \texttt{d\_input} (value of corresponding discriminator evaluated on input data) and \texttt{d\_output} (value of corresponding discriminator evaluated on output data).
+\descitem{\texttt{test\_one\_part()} -- static method} This method tests the stored exported model with a NumPy file and saves the important outputs of the network to a new NumPy file. First argument (\texttt{pb\_model}) is a path to an exported binary protobuf model of the network to test. Another argument (\texttt{infile}) specifies the path to the input file to test and next argument (\texttt{outfile}) corresponds to a path of output file. This output file will be a Npz NumPy file with three fields -- \texttt{output} (output generated by corresponding generator), \texttt{d\_input} (value of corresponding discriminator evaluated on input data) and \texttt{d\_output} (value of corresponding discriminator evaluated on output data).
 
-Last argument (\texttt{include\_input}) is a boolean specifying whether to include input data in the output file or not. If set to \texttt{True}, outfile will become larger, however it will be more self-contained.
+Last argument (\texttt{include\_input}) is a boolean specifying whether to include input data in the output file or not. If set to \texttt{True}, \texttt{outfile} will become larger, however it will be more self-contained.
 \end{description}
-\item \texttt{utils.TFReader} -- Class for reading tfrecords file, which is a TensorFlow binary format for efficient storage of data and features based on Protobuf.
+\item \texttt{utils.TFReader} -- Class for reading TFRecords file, which is a TensorFlow binary format for efficient storage of data and features based on Protobuf.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}}
-\descitem{\texttt{feed()}}
+\descitem{\texttt{\_\_init\_\_()}} First argument (\texttt{tfrecords\_file}) specifies the path to the TFRecords file to read. Another argument (\texttt{name}) specifies the name of the dataset. This name is rather important, because it needs to be the same as set in TFRecords file \texttt{utils.TFWriter} for parsing of the TFRecords file to be successful. Next argument (\texttt{shape}) is a shape of one example stored in TFRecords file. Since all the data in TFRecords file are stored as flattened arrays, this needs to be set to correct size in order to reshape it to desired size. Next argument (\texttt{shuffle\_buffer\_size}) is passed to the method \texttt{shuffle()} of \texttt{tf.data.Dataset} and as such represents the number of samples used for shuffling. Following two arguments (\texttt{normer, denormer}) are functions operating on tensors for normalizing and denormalizing elements of the dataset (i.e. casting to correct type, squeezing or expanding range, etc.) By default these are identity functions. These functions should be able to accept a keyword \texttt{name} (they are used for exporting). Next argument (\texttt{batch\_size}) is a size of one batch produced by this reader and the last argument (\texttt{num\_threads}) specifies how many threads should be used in operations concerning creating the dataset where applicable.
+\descitem{\texttt{feed()}} This method returns new batch of elements from the dataset when run in TensorFlow session. It is used by \texttt{CycleGAN} methods \texttt{get\_model()} and \texttt{train()}. It does not accept any parameters.
 \end{description}
-\item \texttt{utils.TFWriter} -- Class for creating tfrecords file from NumPy files.
+\item \texttt{utils.TFWriter} -- Class for creating TFRecords file from NumPy files.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}}
-\descitem{\texttt{run()}}
+\descitem{\texttt{\_\_init\_\_()}} The constructor accepts three arguments -- first argument (\texttt{name}) is a name of a dataset. Next argument (\texttt{infiles}) is either a single NumPy file or a list of such files comprising the full dataset. It is expected, that all dimensions except the first one will match within the files. The first dimension represents number of {\em single} elements (with possibly more complex shape, such as $64\times2084\times3$ as is the case in LiDAR-like data used in our experiments) of datasets. Last argument (\texttt{process\_data}) is a function operating on these single elements and tweaking them somehow if needed before storing the data to TFRecords file. The reason, why this argument might be useful (instead of using argument \texttt{normer} of class \texttt{utils.TFReader}) is that this function does not operate on tensors which makes most functions more limiting.
+\descitem{\texttt{run()}} This method takes one argument (\texttt{outfile}) specifying path to the output TFRecords file. It will report progress to the default logger (with level \texttt{INFO}) every 10 examples processed.
 \end{description}
-\item \texttt{utils.DataBuffer} -- Class implementing history pool according to~\cite{historypool}.
+\item \texttt{utils.DataBuffer} -- Class implementing history pool according to~\cite{historypool}. This class is used by method \texttt{train()} of class \texttt{CycleGAN} and should not be instantiated on its own.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}}
-\descitem{\texttt{query()}}
+\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes three arguments. First argument (\texttt{pool\_size}) manages the size of the pool to be used. It has to be either $-1$ (where essentially there is no pool and this particular instance of the class has no effect) or at least as large as the second argument, \texttt{batch\_size}. Third argument (\texttt{old\_prob}) controls the probability with which the older image is returned by method \texttt{query()} instead of the one that was given. This probability comes to play only when the buffer is filled to its maximum (\texttt{pool\_size}).
+\descitem{\texttt{query()}} This method will return the data of the same shape it was fed (by first argument -- \texttt{data}). If the internal buffer was already filled, then it will replace randomly elements of the data forming a batch with a probability given in the constructor by argument \texttt{old\_prob} and swaps the elements it replaced into its buffer in the places of the elements that are used in replacement. If the buffer is not filled yet, it will only store the elements from \texttt{data} argument and not replace them.
+
+Second argument (\texttt{cur\_step}) indicates the global step of the training process in order to be able to return the same data for the same step (for example, if training uses multiple training step for discriminator or generator).
 \end{description}
-\item \texttt{nets.BaseNet} -- Base class for mapping networks (Generator and Discriminator).
+\item \texttt{nets.BaseNet} -- Base class for mapping networks (Generator and Discriminator). This class encapsulates mapping network and if you want to create your own mapping network and feel limited by the capabilities of this, you should subclass it and re-implement method \texttt{transform()}.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}}
-\descitem{\texttt{transform()}}
-\descitem{\texttt{weight\_loss()}}
+\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes five arguments. First argument (\texttt{name}) is a name of the network as it will appear in TensorFlow computational graph and this name will encapsulate all of the operations of the network. Second argument (\texttt{network\_desc}) is a string describing layers of the network and will be dissected in more detail at subsection \ref{networkdesc}. Third argument (\texttt{is\_training}) is a boolean indicating whether the network is in a training or testing mode. This is mostly important for norms.
+
+Next argument (\texttt{weight\_lambda}) is a $\lambda$ of weight term of the loss function for this particular network. This was motivated by having lot of networks with skip connection where we wanted to make only small changes to the image and thus minimizing the weights of generators and therefore generating only small perturbations.
+
+Last argument (\texttt{norm}) is a type of normalization used in network layers. Can be either \texttt{'instance'}~\cite{instancenorm}, \texttt{'batch'}~\cite{batchnorm} or anything else for no normalization between layers. It does not make any sense to use different normalizations within one network so this setting can be made global for the whole network.
+\descitem{\texttt{\_\_call\_\_()}} This is the way how the mapping induced by this object will be called. It essentially just wraps the call to \texttt{transform()} method inside a variable scope of the name specified by the first argument of the constructor (\texttt{name}) and collects all the trainable variables into the list called \texttt{variables}. This book-keeping is done to ease the subclassing since now the only method to be replaced is \texttt{transform()} without the need to worry about collecting all the trainable variables and placing it under same particular variable scope.
+\descitem{\texttt{transform()}} This method accepts one argument (\texttt{data}) -- tensor that will be transformed by the network. It is the core of the class \texttt{nets.BaseNet} and if you decide to write your own mapping network by subclassing, this method {\em must} be implemented. By default, it creates the mapping network according to the argument \texttt{network\_desc} supplied to the constructor. The syntax of this simple string will be more in depth explained at subsection \ref{networkdesc}.
+\descitem{\texttt{weight\_loss()}} This method return weight loss of the mapping network defined by equation \ref{wloss}, where $\theta_F$ is a set of trainable variables of a mapping function $F$ represented by this object, $\lambda_{\text{w}F}$ is a multiplier denoting the contribution of this loss term to the overall loss function and $L_{\text{w}F}$ is a loss term returned by this method.
+
+\begin{equation}
+L_{\text{w}F} = \lambda_{\text{w}F} \frac{1}{|\theta_F|} \sum_{\bm{w} \in \theta_F} \norm{\bm{w}}_2^2
+\label{wloss}
+\end{equation}
+
 \end{description}
-\item \texttt{nets.GAN} -- Implementation of GAN~\cite{origgan}. Uses original loss functions.
+
+\item \texttt{nets.GAN} -- Implementation of Generative Adversarial Network (GAN)~\cite{origgan}. Uses original loss functions.
+
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}}
-\descitem{\texttt{gen\_loss()}}
-\descitem{\texttt{dis\_loss()}}
+\descitem{\texttt{\_\_init\_\_()}} First two arguments (\texttt{gen, dis}) of the constructor are the mapping networks -- generator and discriminator (in the original paper $G(\cdot)$ and $D(\cdot)$), where discriminator should produce real number in a range [0; 1] due to the way how is loss function defined. If the discriminator function's output is of higher dimension than one, then the appropriate loss function is computed in each dimension independently and the final loss is arithmetical mean of these loss functions. If discriminator network is a convolutional network, one can think of this as the loss computed at different patches extracted by the network.
+
+Next two arguments (\texttt{in\_shape, out\_shape}) specify input and output shapes of generator {\em without} the batch size. Though this information could be easily obtained from the generator function, it is there mostly to check that the shapes are correct and indeed what you intended them to be. Next two arguments (\texttt{gen\_lambda, dis\_lambda}) are $\lambda$s that correspond to the weight of the respective terms in the final loss function.
+\descitem{\texttt{gen\_loss()}} This method expects one argument -- data of \texttt{in\_shape} that will be fed to generator to produce the loss term of the generator according to the equation \ref{gangenloss}, where $\lambda_G$ is a multiplier denoting the contribution of this loss term, $G(\cdot)$ is a generator mapping, $D(\cdot)$ is a discriminator mapping, $\bm{x}$ is input data for generator mapping and $L_{G}$ is a loss term returned by this method.
+
+\begin{equation}
+L_{G} = -\lambda_G\log(D(G(\bm{x})))
+\label{gangenloss}
+\end{equation}
+
+Note, that the original formulation of the generator loss function by \cite{origgan} is slightly different (as seen in the equation \ref{origgangenloss} where all the symbols have the same meaning as in the equation \ref{gangenloss}), however it was suggested in the same paper, that the formulation \ref{gangenloss} is equivalent with an important advantage of stronger gradients early in the training process.
+
+\begin{equation}
+L_{G} = \lambda_G\log(1 - D(G(\bm{x})))
+\label{origgangenloss}
+\end{equation}
+
+\descitem{\texttt{dis\_loss()}} This method takes two arguments (\texttt{real, fake}) which are both of the \texttt{out\_shape} -- \texttt{real} is a real sample from the target distribution and \texttt{fake} is a result of applying $G(\cdot)$ to a sample from the input distribution. This method then computes the discriminator term of the loss function specified by the equation \ref{gandisloss}, where $\lambda_D$ is a multiplier denoting the contribution of this loss term, $D(\cdot)$ is a discriminator mapping, $\bm{\hat{x}}$ corresponds to \texttt{real} argument, $\bm{y}$ corresponds to \texttt{fake} argument and $L_D$ is a loss term returned by this method. Original paper was maximizing the same function without minus sign, and since we are minimizing all terms of the loss functions, we added minus in front of the loss function. The division by 2 is there only to scale both terms equally.
+
+\begin{equation}
+L_D = -\frac{\lambda_D}{2} (\log(D(\bm{\hat{x}})) + \log(1 - D(\bm{y})))
+\label{gandisloss}
+\end{equation}
+
 \end{description}
-\item \texttt{nets.LSGAN} -- Implementation of Least Squares GAN~\cite{lsgan}. Subclass of \texttt{nets.GAN}.
+
+\item \texttt{nets.LSGAN} -- Implementation of Least Squares GAN~\cite{lsgan}. This is a subclass of \texttt{nets.GAN} and as such all of the methods accept the same arguments. The only difference is in the equations governing the computation of respective terms of the loss function in methods \texttt{gen\_loss()} and \texttt{dis\_loss()}.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}}
-\descitem{\texttt{gen\_loss()}}
-\descitem{\texttt{dis\_loss()}}
+\descitem{\texttt{gen\_loss()}} This method implements the generator loss function according to the equation \ref{lsgangenloss}. The meaning of the used symbols is the same as in equation \ref{gangenloss}. The reason for number 0.9 comes from the label smoothing proposed by~\cite{improvedgan,smooth}.
+\begin{equation}
+L_G = \lambda_G \norm{D(G(\bm{x})) - 0.9}_2^2
+\label{lsgangenloss}
+\end{equation}
+\descitem{\texttt{dis\_loss()}} This  method implements the discriminator loss function according to the equation \ref{lsgandisloss}. The meaning of the used symbols is the same as in equation \ref{gandisloss}.
+\begin{equation}
+L_D = \frac{\lambda_D}{2} (\norm{D(\bm{\hat{x}}) - 0.9}_2^2 + \norm{D(\bm{y})}^2)
+\label{lsgandisloss}
+\end{equation}
+
 \end{description}
-\item \texttt{nets.WGAN} -- Implementation of Wasserstein GAN with gradient penalty~\cite{wgan}. Subclass of \texttt{nets.GAN}.
+\item \texttt{nets.WGAN} -- Implementation of Wasserstein GAN with gradient penalty \cite{wgan}. This is a subclass of \texttt{nets.GAN} as well, however it introduces one more term to the loss function, so called gradient penalty. This is implemented in method \texttt{grad\_loss()}.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}}
-\descitem{\texttt{gen\_loss()}}
-\descitem{\texttt{dis\_loss()}}
-\descitem{\texttt{grad\_loss()}}
-\descitem{\texttt{full\_dis\_loss()}}
+\descitem{\texttt{\_\_init\_\_()}} The constructor takes the same arguments as the constructor of \texttt{nets.GAN} with one more argument (\texttt{grad\_lambda}) specifying the weight of the gradient penalty.
+\descitem{\texttt{gen\_loss()}} This method implements the generator loss function according to the equation \ref{wgangenloss}. The meaning of the symbols is the same as in equation \ref{gangenloss}.
+\begin{equation}
+L_G = -\lambda_GD(G(\bm{x}))
+\label{wgangenloss}
+\end{equation}
+\descitem{\texttt{dis\_loss()}} This method implements the discriminator loss function according to the equation \ref{wgandisloss}. The meaning of the used symbols is the same as in equation \ref{gandisloss}. Note that the gradient penalty term of the loss function is computed in the method \texttt{grad\_loss()}
+\begin{equation}
+L_D = \frac{\lambda_D}{2}(D(\bm{y}) - D(\bm{\hat{x}}))
+\label{wgandisloss}
+\end{equation}
+
+\descitem{\texttt{grad\_loss()}} This method computes the gradient penalty term according to the equation \ref{wgangradloss}, where $\lambda_{DGP}$ is a multiplier denoting the contribution of the gradient penalty term to the overall loss, $\bm{\tilde{x}} = \epsilon\bm{\hat{x}} + (1-\epsilon)\bm{y}$, $\epsilon$ is a random number from [0,1] and $L_{DGP}$ is a loss term returned by this method.
+
+\begin{equation}
+L_{DGP} = \lambda_{DGP}(\norm{\nabla_{\bm{\tilde{x}}}D(\bm{\tilde{x}})}_2 - 1)^2
+\label{wgangradloss}
+\end{equation}
+
+\descitem{\texttt{full\_dis\_loss()}} This method computes the full loss of the discriminator, $L_{DGP} + L_D$.
 \end{description}
 \end{itemize}
+
+\subsubsection{Parameterization of the mapping networks by \texttt{network\_desc}} \label{networkdesc}
+The mapping network could be easily parameterized by a special \texttt{network\_desc} string. This string comprises of layers separated by semicolon (\texttt{';'}). All layers comprise of letter from \{\texttt{'c', 'b', 'r'}\} specifying the layer type, followed by hyphen (\texttt{'-'}) and list of integer parameters specific to particular layer each of them separated by hyphen as well. The last part of a layer is again a letter from \{\texttt{'r', 't', 'l', 's', 'i'}\} specifying the used activation function for this particular layer. All of the trainable variables are initialized using Xavier initializer~\cite{xavier} in order to keep the scale of the gradients approximately the same across all layers. Normalization (either instance or batch) is always used before applying activation function. Note that the parameterization using this notation is rather simple and does not allow all possible configurations of specified layers. If you desire finer control over created layers, then using this \texttt{network\_desc} string is not ideal for you.
+
+The tail of the \texttt{network\_desc} string after last semicolon specifies output operation and could be any number of the letters from the set \{\texttt{'s', 'c', 'a'}\}. These output operations are chained in the order in which they appear in the tail of the \texttt{network\_desc} string.
+
+\paragraph{Layers description}
+\begin{description}
+\descitem{\texttt{'c'} -- 2D Convolutional layer~\cite{convnet}} This layer accepts {\em three} integer arguments -- first argument is a kernel size (the kernel will have square shape), second argument is a stride (same in all directions) used in the convolution and third argument specifies the number of filters used (number of channels in the output). For example the string \texttt{'c-7-1-64-r'} specifies the convolutional layer with kernel of size 7, stride 1, 64 output channels and ReLU~\cite{relu} used as activation function.
+\descitem{\texttt{'b'} -- 2D Convolutional ResNet~\cite{resnet} block} This layer creates a ResNet block and accepts {\em two} integer arguments. First argument is a kernel size of each layer comprising this block and second argument specifies the number of repetitions of this convolutional layer. Since ResNet block requires the input and output simension to match, stride is implicitly set to 1 and number of the output channels is the same as the number of the input channels. For example, the string \texttt{'b-3-2-r'} specifies the most classical ResNet block comprising of two convolutional layers with kernel size 3, stride 1 and ReLU activation in between of those two layers.
+\descitem{\texttt{'r'} -- Resize and 2D Convolutional layer~\cite{resizeconv}} This layer was originally deconvolutional~\cite{deconv} layer, however to mitigate checkerboard artifacts stemming from using deconvolutional layer~\cite{resizeconv}, we decided to use instead resize and convolutional layer. It accepts {\em three} integer arguments and one float argument. First three arguments correspond to the same arguments as regular convolutional layer and last argument corresponds to coefficient of resizing. The resizing is done using method \texttt{tf.image.resize\_images} with resize method \texttt{tf.image.ResizeMethod.NEAREST\_NEIGHBOR}. The number of channels after resizing stays the same as number of channels in the input image. For example, the string \texttt{'r-3-1-32-2-r'} will first resize the input image making it twice as large as input and then perform convolutional operation with kernel of size 3, stride 1, 32 output channels and ReLU as activation function.
+\end{description}
+
+\paragraph{Available activation functions}
+\begin{itemize}
+\item \texttt{'r'} -- Rectified Linear Unit (ReLU)~\cite{relu}
+\item \texttt{'l'} -- Leaky Rectified Linear Unit (Leaky ReLU)~\cite{leakyrelu}
+\item \texttt{'t'} -- Hyperbolic tangent function defined by $\tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}$
+\item \texttt{'s'} -- Sigmoid function defined by $S(x) = \frac{e^x}{e^x + 1}$
+\item \texttt{'i'} -- Identity, no nonlinear activation function is used.
+\end{itemize}
+
+\paragraph{Output operation}
+These operations are chained in order in which they appear in the tail of the \texttt{network\_desc}. Note, that this part of the \texttt{network\_desc} can be empty if you don't want to use any special output operation.
+\begin{itemize}
+\item \texttt{'s'} -- Sums the current output with input to the whole mapping network.
+\item \texttt{'c'} -- Clip the output of the whole network to the range [-1; 1].
+\item \texttt{'a'} -- Use activation function on the output. Since the operating range for most of the networks is [-1; 1], the only activation function that {\em makes sense} to use is $\tanh$, so this function will be used.
+\end{itemize}
+
+\paragraph{Example of the full network}
+The full network could be for example parameterized by string \texttt{'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc'}. This network consists of two regular convolutional layers with kernel sizes 7 and 5, strides 1 and 2 and having 64 and 128 output channels. Both of these layers use ReLU as activation function. Convolutional layers are then followed by one ResNet block with three convolutional layers and kernel size 3 and again, ReLU is used. Next resize operation follows which creates the image double the size and is followed by another two convolutional layers with kernel sizes 5 and 7, both strides equal to 1 and having 64 and 3 output channels. First of these convolutional layers is followed by ReLU activation function, the second one uses $\tanh$ as activation. Output of the last convolutional layer is then added to the original input and this sum is then clipped to the range [-1; 1]. The described mapping network (with input size (1, 64, 2084, 3) since this is one of the generators we tested) is shown at the figure \ref{netdescfig}.
+
+\begin{figure}
+\caption[Example of the network created by \texttt{network\_desc} string]{Example of the network created by \texttt{network\_desc} string \texttt{'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc'}}
+\label{netdescfig}
+\end{figure}
 
 \section[\texttt{dat-unpacker}]{\texttt{dat-unpacker} -- C++ utility}
 

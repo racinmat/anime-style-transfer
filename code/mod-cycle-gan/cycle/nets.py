@@ -6,7 +6,8 @@ from . import _ops as ops
 _act_map = {'r' : tf.nn.relu,
             't' : tf.nn.tanh,
             'l' : tf.nn.leaky_relu,
-            's' : tf.nn.sigmoid}
+            's' : tf.nn.sigmoid,
+            'i' : tf.identity}
 
 _layer_map = {'c' : ops.conv_block,
               'b' : ops.res_block,
@@ -18,13 +19,13 @@ REAL_LABEL = 0.9
 # 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;' - discriminator
 
 class BaseNet:
-    def __init__(self, name, is_training, weight_lambda, transform_string, norm='instance'):
+    def __init__(self, name, network_desc, is_training, weight_lambda, norm='instance'):
         self.name = name
         self.is_training = is_training
         self.variables = None
         self.weight_lambda = weight_lambda
         self.norm = norm
-        self.transform_string = transform_string.split(';')
+        self.network_desc = network_desc.split(';')
 
 
     def __call__(self, data):
@@ -36,16 +37,18 @@ class BaseNet:
 
     def transform(self, data):
         out = data
-        for t in self.transform_string[:-1]:
-            tins = t.split('-')
-            out = _layer_map[tins[0]](out, *tuple(map(int, tins[1:-1])), activation=_act_map[tins[-1]], normtype=self.norm, is_training=self.is_training, name=t)
-        if self.transform_string[-1] != '':
-            for t in self.transform_string[-1]:
-                if t == 's':
+        for layer in self.network_desc[:-1]:
+            l_params = layer.split('-')
+            out = _layer_map[l_params[0]](out, *tuple(map(ops.to_num, l_params[1:-1])),
+                                          activation=_act_map[l_params[-1]], normtype=self.norm,
+                                          is_training=self.is_training, name=layer)
+        if self.network_desc[-1] != '':
+            for op in self.network_desc[-1]:
+                if op == 's':
                     out = out + data
-                if t == 'c':
+                if op == 'c':
                     out = tf.clip_by_value(out, -1, 1)
-                if t == 'a':
+                if op == 'a':
                     out = tf.nn.tanh(out)
         return out
 
@@ -56,11 +59,12 @@ class BaseNet:
         if self.weight_lambda == 0:
             return 0
         vmean = [tf.reduce_mean(tf.square(v)) for v in self.variables]
-        return tf.reduce_mean(vmean)
+        return tf.reduce_mean(vmean) * self.weight_lambda
 
 
 class GAN:
     def __init__(self, gen, dis, in_shape, out_shape, gen_lambda, dis_lambda):
+        assert isinstance(gen, BaseNet) and isinstance(dis, BaseNet)
         self.gen = gen
         self.dis = dis
         self.in_shape = in_shape
@@ -77,14 +81,14 @@ class GAN:
         return self._gen_loss(self.dis(self.gen(orig_data))) * self.gen_lambda
 
 
-    def _dis_loss(self, orig_real, orig_fake):
-        real_l = -tf.reduce_mean(ops.safe_log(self.dis(orig_real)))
-        fake_l = -tf.reduce_mean(ops.safe_log(1-self.dis(orig_fake)))
+    def _dis_loss(self, real, fake):
+        real_l = -tf.reduce_mean(ops.safe_log(self.dis(real)))
+        fake_l = -tf.reduce_mean(ops.safe_log(1 - self.dis(fake)))
         return (real_l + fake_l)/2
 
 
-    def dis_loss(self, orig_real, orig_fake):
-        return self._dis_loss(orig_real, orig_fake) * self.dis_lambda
+    def dis_loss(self, real, fake):
+        return self._dis_loss(real, fake) * self.dis_lambda
 
 
 class LSGAN(GAN):
@@ -92,9 +96,9 @@ class LSGAN(GAN):
         return tf.reduce_mean(tf.squared_difference(data, REAL_LABEL))
 
 
-    def _dis_loss(self, orig_real, orig_fake):
-        real_l = tf.reduce_mean(tf.squared_difference(self.dis(orig_real), REAL_LABEL))
-        fake_l = tf.reduce_mean(tf.square(self.dis(orig_fake)))
+    def _dis_loss(self, real, fake):
+        real_l = tf.reduce_mean(tf.squared_difference(self.dis(real), REAL_LABEL))
+        fake_l = tf.reduce_mean(tf.square(self.dis(fake)))
         return (real_l + fake_l)/2
 
 
@@ -108,23 +112,23 @@ class WGAN(GAN):
         return -tf.reduce_mean(data)
 
 
-    def grad_loss(self, orig_real, orig_fake):
-        shape = [orig_real.shape[0].value] + [1 for _ in range(len(orig_real.shape)-1)]
+    def grad_loss(self, real, fake):
+        shape = [real.shape[0].value] + [1 for _ in range(len(real.shape)-1)]
         rand_eps = tf.random_uniform(shape=shape, minval=0., maxval=1.)
-        orig_hat = orig_real * rand_eps + orig_fake * (1-rand_eps)
+        orig_hat = real * rand_eps + fake * (1-rand_eps)
         grads = tf.gradients(self.dis(orig_hat), [orig_hat])
         return self.grad_lambda * tf.square(tf.norm(grads[0], ord=2) - 1.0)
 
 
-    def dis_loss(self, orig_real, orig_fake):
-        real_l = -tf.reduce_mean(self.dis(orig_real))
-        fake_l = tf.reduce_mean(self.dis(orig_fake))
+    def dis_loss(self, real, fake):
+        real_l = -tf.reduce_mean(self.dis(real))
+        fake_l = tf.reduce_mean(self.dis(fake))
         return self.dis_lambda * (real_l + fake_l)/2
 
 
-    def full_dis_loss(self, orig_real, orig_fake):
-        return self.dis_loss(orig_real, orig_fake) + self.grad_loss(orig_real, orig_fake)
+    def full_dis_loss(self, real, fake):
+        return self.dis_loss(real, fake) + self.grad_loss(real, fake)
 
 
     def _dis_loss(self, *args):
-        raise(NotImplementedError('WGAN is called differently, mate!'))
+        raise NotImplementedError('WGAN is called differently, mate!')

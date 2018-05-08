@@ -2,7 +2,6 @@
 
 import importlib
 import logging
-import json
 import tensorflow as tf
 import cycle
 
@@ -51,13 +50,15 @@ tf.flags.DEFINE_integer('poolsize', 50, 'How large a history buffer will be. Val
 
 def main(_):
     logging.getLogger().setLevel(logging.INFO)
-    flagstr = '\n'.join(('--' + k + ' ' + str(getattr(FLAGS,k)) for k in dir(FLAGS)))
+    flagstr = '\n'.join(('--' + k + ' ' + str(getattr(FLAGS, k)) for k in dir(FLAGS)))
     try:
         modellib = importlib.import_module('cycle.models.' + FLAGS.model)
         modelnames = _valid_names(modellib)
         found = [imp in modelnames for imp in NEEDED_IMPORTS]
         if not all(found):
-            raise ImportError('Failed to find some necessary component in your model! The components not found are %s' % (str([imp for imp, f in zip(NEEDED_IMPORTS, found) if not f]),))
+            raise ImportError('Failed to find some necessary component in your model!'
+                              'The components not found are %s'
+                              % (str([imp for imp, f in zip(NEEDED_IMPORTS, found) if not f]),))
     except ImportError:
         logging.warning('Could not import your model %s! Will not continue!', FLAGS.model)
         raise
@@ -68,14 +69,14 @@ def main(_):
         yfeed = cycle.utils.TFReader(FLAGS.Ytfr, FLAGS.Yname,
                                      modellib.Y_DATA_SHAPE, normer=modellib.Y_normer,
                                      denormer=modellib.Y_denormer, batch_size=FLAGS.batchsize)
-        xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen',
-                                   True, FLAGS.XYgwl, FLAGS.XYgenstr, FLAGS.norm)
-        yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen',
-                                   True, FLAGS.YXgwl, FLAGS.YXgenstr, FLAGS.norm)
-        xdis = modellib.X_Discriminator(FLAGS.Xname + '-dis',
-                                       True, FLAGS.Xdwl, FLAGS.Xdisstr, FLAGS.norm)
-        ydis = modellib.Y_Discriminator(FLAGS.Yname + '-dis',
-                                       True, FLAGS.Ydwl, FLAGS.Ydisstr, FLAGS.norm)
+        xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen', FLAGS.XYgenstr,
+                                   True, FLAGS.XYgwl, FLAGS.norm)
+        yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen', FLAGS.YXgenstr,
+                                   True, FLAGS.YXgwl, FLAGS.norm)
+        xdis = modellib.X_Discriminator(FLAGS.Xname + '-dis', FLAGS.Xdisstr,
+                                       True, FLAGS.Xdwl, FLAGS.norm)
+        ydis = modellib.Y_Discriminator(FLAGS.Yname + '-dis', FLAGS.Ydisstr,
+                                       True, FLAGS.Ydwl, FLAGS.norm)
 
         if FLAGS.gantype.casefold() == 'GAN'.casefold():
             xy = cycle.nets.GAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,

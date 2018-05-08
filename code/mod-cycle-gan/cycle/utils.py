@@ -5,8 +5,8 @@ import os.path as osp
 import tensorflow as tf
 import numpy as np
 
-def _identity(x, *args, **kwargs):
-    return x
+def _identity(x, name=None):
+    return tf.identity(x, name=name)
 
 class DataBuffer:
     def __init__(self, pool_size, batch_size, old_prob=0.5):

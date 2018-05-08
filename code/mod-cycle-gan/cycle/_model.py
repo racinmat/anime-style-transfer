@@ -121,19 +121,23 @@ class CycleGAN:
                 tf.summary.histogram('D_{}/real'.format(self.Y_name), Y_dis_real)
                 tf.summary.histogram('D_{}/fake'.format(self.Y_name), Y_dis_fake)
 
-                tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.X_name, self.Y_name), xy_gen_weight_loss)
+                if self.XtoY.gen.weight_lambda > 0:
+                    tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.X_name, self.Y_name), xy_gen_weight_loss)
                 tf.summary.scalar('{}-{}_gen/gen_loss'.format(self.X_name, self.Y_name), xy_gen_loss)
                 tf.summary.scalar('{}-{}_gen/full_loss'.format(self.X_name, self.Y_name), xy_gen_full_loss)
 
-                tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.Y_name, self.X_name), yx_gen_weight_loss)
+                if self.YtoX.gen.weight_lambda > 0:
+                    tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.Y_name, self.X_name), yx_gen_weight_loss)
                 tf.summary.scalar('{}-{}_gen/gen_loss'.format(self.Y_name, self.X_name), yx_gen_loss)
                 tf.summary.scalar('{}-{}_gen/full_loss'.format(self.Y_name, self.X_name), yx_gen_full_loss)
 
-                tf.summary.scalar('{}_dis/weight_loss'.format(self.X_name), x_dis_weight_loss)
+                if self.YtoX.dis.weight_lambda > 0:
+                    tf.summary.scalar('{}_dis/weight_loss'.format(self.X_name), x_dis_weight_loss)
                 tf.summary.scalar('{}_dis/dis_loss'.format(self.X_name), x_dis_loss)
                 tf.summary.scalar('{}_dis/full_loss'.format(self.X_name), x_dis_full_loss)
 
-                tf.summary.scalar('{}_dis/weight_loss'.format(self.Y_name), y_dis_weight_loss)
+                if self.XtoY.dis.weight_lambda > 0:
+                    tf.summary.scalar('{}_dis/weight_loss'.format(self.Y_name), y_dis_weight_loss)
                 tf.summary.scalar('{}_dis/dis_loss'.format(self.Y_name), y_dis_loss)
                 tf.summary.scalar('{}_dis/full_loss'.format(self.Y_name), y_dis_full_loss)
 
@@ -304,8 +308,14 @@ class CycleGAN:
                 coord.join(threads)
 
     def export(self, sess, export_dir):
+        is_training = self.XtoY.gen.is_training
+        self.XtoY.gen.is_training = self.XtoY.dis.is_training = False
+        self.YtoX.gen.is_training = self.YtoX.dis.is_training = False
         self._export_one_part(sess, export_dir, True, '{}2{}.pb'.format(self.X_name, self.Y_name))
         self._export_one_part(sess, export_dir, False, '{}2{}.pb'.format(self.Y_name, self.X_name))
+        self.XtoY.gen.is_training = self.XtoY.dis.is_training = is_training
+        self.YtoX.gen.is_training = self.YtoX.dis.is_training = is_training
+
 
     def _export_one_part(self, sess, export_dir, XtoY, model_name):
         with self.graph.as_default():

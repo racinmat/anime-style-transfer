@@ -33,6 +33,8 @@
 \usepackage[colorinlistoftodos]{todonotes}
 \usepackage{gensymb}
 \usepackage{subfig}
+\usepackage{bm}
+\usepackage[numbers]{natbib}
 
 \begin{abstract-english}
 \end{abstract-english}
@@ -53,6 +55,7 @@
 \end{declaration}
 
 \newcommand{\descitem}[1]{\item[\color{ctublue}\texttt{#1}] \hfill \\}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
 
 \begin{document}
 \maketitle
@@ -65,8 +68,8 @@
 \input{text/conclusion.tex}
 
 \newpage
+\bibliographystyle{unsrtnat}
 \bibliography{jasek}
-\bibliographystyle{unsrt}
 
 
 \end{document}
