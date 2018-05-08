@@ -10,7 +10,7 @@ def _valid_names(module):
 
 NEEDED_IMPORTS = ['X_Discriminator', 'XY_Generator', 'Y_Discriminator', 'YX_Generator',
                   'X_denormer', 'X_normer', 'Y_denormer', 'Y_normer',
-                  'X_DATA_SHAPE', 'Y_DATA_SHAPE']
+                  'X_DATA_SHAPE', 'Y_DATA_SHAPE', 'X_name', 'Y_name']
 FLAGS = tf.flags.FLAGS
 
 # Flags for train
@@ -50,7 +50,9 @@ tf.flags.DEFINE_integer('poolsize', 50, 'How large a history buffer will be. Val
 
 def main(_):
     logging.getLogger().setLevel(logging.INFO)
-    flagstr = '\n'.join(('--' + k + ' ' + str(getattr(FLAGS, k)) for k in dir(FLAGS)))
+    flagstr = '\n'.join(tf.flags.flag_dict_to_args(dict((k, getattr(FLAGS, k))
+                        for k in dir(FLAGS)
+                        if k != 'h' and 'help' not in k and getattr(FLAGS, k) is not None)))
     try:
         modellib = importlib.import_module('cycle.models.' + FLAGS.model)
         modelnames = _valid_names(modellib)
@@ -59,6 +61,10 @@ def main(_):
             raise ImportError('Failed to find some necessary component in your model!'
                               'The components not found are %s'
                               % (str([imp for imp, f in zip(NEEDED_IMPORTS, found) if not f]),))
+        if FLAGS.Xname is None:
+            FLAGS.Xname = modellib.X_name
+        if FLAGS.Yname is None:
+            FLAGS.Yname = modellib.Y_name
     except ImportError:
         logging.warning('Could not import your model %s! Will not continue!', FLAGS.model)
         raise
