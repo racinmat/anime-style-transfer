@@ -8,7 +8,7 @@ DEPENDS = $(wildcard text/*.tex) $(wildcard img/*.tex) $(FILENAME).tex
 all: $(FILENAME).$(TARGET)
 
 $(FILENAME).$(TARGET): $(DEPENDS)
-	latexmk -$(TARGET) $(FILENAME)
+	latexmk -$(TARGET) -latexoption=--shell-escape $(FILENAME)
 
 clean:
 	rm -rf $(foreach ext,$(TO_REMOVE),$(wildcard *.$(ext)))

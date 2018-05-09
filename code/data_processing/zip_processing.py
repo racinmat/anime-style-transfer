@@ -12,7 +12,11 @@ from PIL import Image
 
 BBOX = (140, 140, 140)
 
-def depth_to_pcl(depth, proji, viewi, bbox):
+def rgb2gs(rgb):
+    gs = 0.2126 * rgb[:, :, 0] + 0.7152 * rgb[:, :, 1] + 0.0722 * rgb[:, :, 2]
+    return gs
+
+def depth_to_pcl(depth, rgb, proji, viewi, bbox):
     height, width = depth.shape
     y, x = np.where(depth > 0.0)
     y_data = (-2 / height) * y + 1
@@ -21,21 +25,24 @@ def depth_to_pcl(depth, proji, viewi, bbox):
     points[0, :] = x_data
     points[1, :] = y_data
     points[2, :] = depth[y, x]
+    gs = rgb2gs(rgb)
+    gstmp = gs[y, x]
 
     ego_points = proji @ points
     ego_points /= ego_points[3, :]
 
-    ego_points = ego_points[:, (np.abs(ego_points[0, :]) < bbox[0]) &
-                               (np.abs(ego_points[1, :]) < bbox[1]) &
-                               (np.abs(ego_points[2, :]) < bbox[2])]
+    ind = (np.abs(ego_points[0, :]) < bbox[0]) & (np.abs(ego_points[1, :]) < bbox[1]) & (np.abs(ego_points[2, :]) < bbox[2])
+
+    ego_points = ego_points[:, ind]
 
     world_points = viewi @ ego_points
     world_points /= world_points[3, :]
+    world_points = np.concatenate((world_points[:3], gstmp[None, ind]), axis=0)
 
-    return world_points[:3, :].astype(np.float32)
+    return world_points.astype(np.float32)
 
 
-def make_gta_zip(i, json_file, depth_im, bbox, outdir=None, return_data=False):
+def make_gta_zip(i, json_file, depth_im, rgb, bbox, outdir=None, return_data=False):
     with open(json_file, mode='r') as f:
         json_data = json.load(f)
     assert json_data['imagepath'] + '-depth.png' == osp.basename(depth_im)
@@ -47,10 +54,11 @@ def make_gta_zip(i, json_file, depth_im, bbox, outdir=None, return_data=False):
     del json_data['snapshot_id']
     depth_int = np.array(Image.open(depth_im), dtype=np.uint16)
     depth_real = np.array(depth_int/np.iinfo(np.uint16).max, dtype=np.float32)
+    rgb_im = np.array(Image.open(rgb)).astype('<f4')/255.0
     proj_matrix = np.array(json_data['proj_matrix'])
     view_matrix = np.array(json_data['view_matrix'])
     vinv = np.linalg.inv(view_matrix)
-    world = depth_to_pcl(depth_real, np.linalg.inv(proj_matrix), vinv, bbox)
+    world = depth_to_pcl(depth_real, rgb_im, np.linalg.inv(proj_matrix), vinv, bbox)
     lidar_center = np.array(json_data['camera_pos']).tolist()
     tmp_meta = {'timestamp': datetime.strptime(json_data['imagepath'],
                                                '%Y-%m-%d--%H-%M-%S--%f').timestamp(),
@@ -59,7 +67,7 @@ def make_gta_zip(i, json_file, depth_im, bbox, outdir=None, return_data=False):
                     'lidar_center' : lidar_center,
                     'orig_json' : json_data}
     if outdir is not None:
-        with zf.ZipFile(osp.join(outdir, '%04d.zip' % (i,)), 'w', zf.ZIP_LZMA) as cf:
+        with zf.ZipFile(osp.join(outdir, '%04d.zip' % (i,)), 'w') as cf:
             cf.writestr('metadata.json', json.dumps(tmp_meta))
             tmpf = io.BytesIO()
             np.save(tmpf, world)
@@ -93,7 +101,7 @@ def make_valeo_zips(datfile, binary, outputdir, remove=True):
                 'pcl_id' : i,
                 'lidar_center': matr_np[:3, 3].tolist(),
                 'matrix': matr_np.tolist()}
-        with zf.ZipFile(osp.join(outdir, '%04d.zip' % (i,)), 'w', zf.ZIP_LZMA) as cf:
+        with zf.ZipFile(osp.join(outdir, '%04d.zip' % (i,)), 'w') as cf:
             cf.writestr('metadata.json', json.dumps(meta))
             tmpf = io.BytesIO()
             np.save(tmpf, pts_np)

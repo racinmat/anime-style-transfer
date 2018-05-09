@@ -17,10 +17,9 @@ cdef:
     int NUM_LASERS = 64
     DOUBLE_t HORIZONTAL_SHIFT = np.radians(0.1728)
     DOUBLE_t Y_WEDGE_ANG = 2 * HORIZONTAL_SHIFT/3
-    DOUBLE_t MAX_SQ_LASERDIST = 0.1
 
-    DOUBLE_t MAX_ZANGLE = np.radians(5)
-    DOUBLE_t MIN_ZANGLE = np.radians(-30)
+    DOUBLE_t MAX_ZANGLE = np.radians(3)
+    DOUBLE_t MIN_ZANGLE = np.radians(-25.5)
 
     DOUBLE_t MIN_RAY_FAR = 0.9
     DOUBLE_t MAX_RAY_FAR = 131.0
@@ -164,12 +163,11 @@ cpdef np.ndarray[FLOAT_t, ndim=3] get_lidar_data(pool, DOUBLE_t timestamp, np.nd
     if gta:
         pcl, lidar_center, straight = pool.load_full_rot(timestamp, return_straight=True)
         cam_rot = gta_cam_rot(straight, np.array([0, 0, 0], dtype=DOUBLE), rads=True)
-        intensity = np.ones((pcl.shape[1],), dtype=DOUBLE)
     else:
         pcl, lidar_center = pool.load_data(timestamp)
         cam_rot = pool.get_rotmat(timestamp).astype(DOUBLE)
-        intensity = pcl[3, :].copy()
-        pcl = pcl[:3, :]
+    intensity = pcl[3, :].copy()
+    pcl = pcl[:3, :]
     if lidar_correction is not None:
         lidar_center = lidar_center + lidar_correction
     return _compute_lidar_data(pcl, intensity, lidar_center, cam_rot, percent_allowance)
