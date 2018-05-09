@@ -19,7 +19,7 @@ def _conv_visual(batch):
     zeros = tf.zeros_like(img)
     return tf.where(data[:, :, 2] > 0, x=img, y=zeros)
 
-def visualise(data_orig, data_conv, data_conv_conv):
+def visualize(data_orig, data_conv, data_conv_conv):
     img = tf.concat((_conv_visual(data_orig),
                     _conv_visual(data_conv),
                     _conv_visual(data_conv_conv)), axis=0)

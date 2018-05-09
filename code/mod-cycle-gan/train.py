@@ -33,7 +33,7 @@ tf.flags.DEFINE_float('Ydwl', 2, 'Lambda for Y Discriminator weight loss')
 tf.flags.DEFINE_float('cll', 2, 'Cycle loss lambda')
 tf.flags.DEFINE_float('Ygrl', 2, 'Lambda for gradient loss for Y discriminator (applicable only if gantype is WGAN)')
 tf.flags.DEFINE_float('Xgrl', 2, 'Lambda for gradient loss for X discriminator (applicable only if gantype is WGAN)')
-tf.flags.DEFINE_bool('visualise', True, 'Whether to visualize during training. in tensorboard. model than must have function visualise. Only valid if tbverbose.')
+tf.flags.DEFINE_bool('visualize', True, 'Whether to visualize during training in tensorboard. model then must have function visualize. Only valid if tbverbose.')
 tf.flags.DEFINE_bool('tbverbose', True, 'Whether to export tensorboard data for visualization using Tensorboard.')
 tf.flags.DEFINE_bool('verbose', True, 'Verbose mode.')
 tf.flags.DEFINE_integer('dtsteps', 1, 'How many times will be trained discriminator during one step.')
@@ -41,7 +41,7 @@ tf.flags.DEFINE_integer('gtsteps', 1, 'How many times will be trained generator 
 tf.flags.DEFINE_integer('batchsize', 1, 'Batch size')
 tf.flags.DEFINE_string('norm', 'instance', 'One of two strings instance/batch.')
 tf.flags.DEFINE_integer('steps', 200000, 'For how many steps will the model be trained.')
-tf.flags.DEFINE_float('decayfrom', 0.5, 'Since when (as percentage of number of steps) will the learning rate start decaying.')
+tf.flags.DEFINE_float('decayfrom', 0.5, 'Since when (as a percentage of a number of steps) will the learning rate start decaying.')
 tf.flags.DEFINE_float('lr', 2e-4, 'Initial learning rate for adam optimizer.')
 tf.flags.DEFINE_float('beta1', 0.5, 'Beta for optimizers.')
 tf.flags.DEFINE_bool('history', True, 'Whether to keep history of generated images and sometimes swap them.')
@@ -103,7 +103,7 @@ def main(_):
             raise ValueError('You did not specify any gantype that would be recognizible!')
         cygan = cycle.CycleGAN(xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname,
                                FLAGS.cll, FLAGS.tbverbose,
-                               modellib.visualise if FLAGS.visualise else None,
+                               modellib.visualize if FLAGS.visualize else None,
                                FLAGS.lr, FLAGS.beta1, FLAGS.steps,
                                (FLAGS.decayfrom * FLAGS.steps), FLAGS.history)
 
