@@ -12,7 +12,7 @@ Python package \texttt{cycle} is the implementation of CycleGAN~\cite{cyclegan} 
 \begin{itemize}
 \item \texttt{CycleGAN} -- Main class implementing CycleGAN.
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes numerous arguments. First two arguments (\texttt{XtoY, YtoX}) correspond to GANs to be set in cycle fashion (instances of \texttt{nets.GAN} or its subclasses), another two (\texttt{X\_feed, Y\_feed}) are for TFRecords file readers (\texttt{utils.TFReader}) and another two (\texttt{X\_name, Y\_name}) correspond to names of the dataset for pretty printing of logs and Tensorboard messages. Following argument (\texttt{cycle\_lambda}) is a $\lambda$ for cyclic loss function (for more detail see section \ref{cyclegan}). Next argument (\texttt{tb\_verbose}) is a boolean for deciding whether to create summaries for Tensorboard and following argument (\texttt {visualizer}) is a function to use for visualizing the data in Tensorboard -- if this argument is set to \texttt{False} or \texttt{None} then no function will be used for visualisation.
+\descitem{\texttt{\_\_init\_\_()}} Constructor of this class takes numerous arguments. First two arguments (\texttt{XtoY, YtoX}) correspond to GANs to be set in cycle fashion (instances of \texttt{nets.GAN} or its subclasses), another two (\texttt{X\_feed, Y\_feed}) are for TFRecords file readers (\texttt{utils.TFReader}) and another two (\texttt{X\_name, Y\_name}) correspond to names of the dataset for pretty printing of logs and Tensorboard messages. Following argument (\texttt{cycle\_lambda}) is a $\lambda$ for cyclic loss function (for more detail see section \ref{cyclegan}). Next argument (\texttt{tb\_verbose}) is a boolean for deciding whether to create summaries for Tensorboard and following argument (\texttt {visualizer}) is a function to use for visualizing the data in Tensorboard -- if this argument is set to \texttt{False} or \texttt{None} then no function will be used for visualization.
 
 Next four arguments (\texttt{learning\_rate, beta1, steps, decay\_from}) control optimization process -- namely initial learning rate for Adam optimizer~\cite{adam}, parameter beta1 of said optimizer, number of steps (where one step corresponds to one batch) and number of steps after which the learning rate starts to decay to eventually stop at zero. Following argument (\texttt{history}) indicates, whether to use history pool according to~\cite{historypool} and finally, last argument (\texttt{graph}) specifies the computational TensorFlow graph in which the model should be created. If it is left as \texttt{None}, then new graph will be created.
 \descitem{\texttt{get\_model()}} This method actually creates the full model in TensorFlow graph. As such, it should be only called once. It sets up all the losses and their respective optimizers. This method has no arguments.
@@ -160,7 +160,27 @@ These operations are chained in order in which they appear in the tail of the \t
 \paragraph{Example of the full network}
 The full network could be for example parameterized by string \texttt{'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc'}. This network consists of two regular convolutional layers with kernel sizes 7 and 5, strides 1 and 2 and having 64 and 128 output channels. Both of these layers use ReLU as activation function. Convolutional layers are then followed by one ResNet block with three convolutional layers and kernel size 3 and again, ReLU is used. Next resize operation follows which creates the image double the size and is followed by another two convolutional layers with kernel sizes 5 and 7, both strides equal to 1 and having 64 and 3 output channels. First of these convolutional layers is followed by ReLU activation function, the second one uses $\tanh$ as activation. Output of the last convolutional layer is then added to the original input and this sum is then clipped to the range [-1; 1].
 
-\subsubsection{Models}
+\subsection{Models}
+
+The module \texttt{cycle} contains a folder called \texttt{models} in which the settings for different experiments and mapping networks reside. Each submodule in this folder should correspond to one different parameterization specific to different dataset. Each submodule should export these variables and classes in order to be able to use it as a valid model for CycleGAN:
+
+\begin{description}
+\descitem{\texttt{X\_name, Y\_name}} Names of the X and Y dataset.
+\descitem{\texttt{X\_DATA\_SHAPE, Y\_DATA\_SHAPE}} Tuples specifying shape of one element of X and Y dataset.
+\descitem{\texttt{XY\_Generator, YX\_Generator}} Classes specifying generators from X to Y and from Y to X dataset respectively. Note that these classes should be either \texttt{nets.BaseNet} or its subclasses accepting the same arguments in its constructor.
+\descitem{\texttt{X\_Discriminator, Y\_Discriminator}} Classes specifying discriminators of X and Y datasets. Note that these classes should be either \texttt{nets.BaseNet} or its subclasses accepting the same arguments in its constructor.
+\descitem{\texttt{X\_normer, Y\_normer}} Functions operating on tensors and accepting keyword argument \texttt{name}. These functions will be used to normalize data from X and Y datasets before feeding them into the network.
+\descitem{\texttt{X\_denormer, Y\_denormer}} Functions operating on tensors and accepting keyword argument \texttt{name}. These functions will be used to denormalize outputs from the network. They should be inverse functions to functions \texttt{X\_normer} and \texttt{Y\_normer}.
+\descitem{\texttt{visualize} -- optional} Function to visualize data during training. This function should accept three batches of images, original data, output of first generator and output of second generator applied to the output of the first generator. The function should return {\em one} batch of images (with same batch size as it received) to show at appropriate place in TensorBoard, therefore using concatenate operation is preferred. This function is necessary to implement if you specify visualizing in \hyperref[trainpy]{\texttt{train.py}} script.
+\end{description}
+
+For reference implementation of a particular model for LiDAR-like datasets, see folder \texttt{mod-cycle-gan/cycle/models/lidar}.
+
+\subsection{Scripts \texttt{train.py} and \texttt{test.py}} \label{trainpy}
+
+The folder \texttt{mod-cycle-gan} also contains two executable scripts -- \texttt{train.py} and \texttt{test.py}. The script \texttt{train.py} is used for training a CycleGAN and has 36 different flags. However, the script is mostly only a wrapper around instantiating various classes and running the method \texttt{train} of the class \texttt{CycleGAN}. Running the script with the help flag \texttt{-{}-helpfull} lists all the available flags and their short description. You can set up almost all of the parameters mentioned in the description of the public methods of exported classes.
+
+The script \texttt{test.py} is used for testing the resulting network and has 9 flags. It is a wrapper around the static method \texttt{test\_one\_part} of the class \texttt{CycleGAN}. Running the script with the help flag \texttt{-{}-helpfull} lists all the available flags and their short description.
 
 \section[\texttt{dat-unpacker}]{\texttt{dat-unpacker} -- C++ utility}
 
