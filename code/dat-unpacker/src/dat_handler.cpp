@@ -142,10 +142,6 @@ int32_t conv_datfile::process_matrix(adtf::cADTFDataBlock *block) {
 	int bytes_now = 0;
 	uint8_t *view = (uint8_t *)data;
 
-	if (read > 790) {
-		read = read;
-	}
-
 	sscanf((char *)data, "<matrix>[%n", &bytes_done);
 	bytes_now += bytes_done;
 	int ret = 0;

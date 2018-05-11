@@ -10,13 +10,13 @@ int param_parser::parseInput(int argc, char *argv[]) {
 
 	desc.add_options()
 	("help,h", "Print help message")
-	("input-file-name,i", po::value<std::string>(&input)->required(), "Input DAT file")
+	("input-file,i", po::value<std::string>(&input)->required(), "Input DAT file")
 	("output-dir,o", po::value<std::string>(&output_dir)->required(), "Output direcotry")
 	("all,a", "Process full data?")
 	;
 
 	po::positional_options_description p;
-	p.add("input-file-name", 1);
+	p.add("input-file", 1);
 	p.add("output-dir", 2);
 
 	po::variables_map vm;

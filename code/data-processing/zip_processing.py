@@ -42,19 +42,19 @@ def depth_to_pcl(depth, rgb, proji, viewi, bbox):
     return world_points.astype(np.float32)
 
 
-def make_gta_zip(i, json_file, depth_im, rgb, bbox, outdir=None, return_data=False):
+def make_gta_zip(i, json_file, depth_file, rgb_file, bbox, outputdir=None, return_data=False):
     with open(json_file, mode='r') as f:
         json_data = json.load(f)
-    assert json_data['imagepath'] + '-depth.png' == osp.basename(depth_im)
+    assert json_data['imagepath'] + '-depth.png' == osp.basename(depth_file)
     del json_data['entities']
     del json_data['height']
     del json_data['width']
     del json_data['timestamp']
     del json_data['camera_fov']
     del json_data['snapshot_id']
-    depth_int = np.array(Image.open(depth_im), dtype=np.uint16)
+    depth_int = np.array(Image.open(depth_file), dtype=np.uint16)
     depth_real = np.array(depth_int/np.iinfo(np.uint16).max, dtype=np.float32)
-    rgb_im = np.array(Image.open(rgb)).astype('<f4')/255.0
+    rgb_im = np.array(Image.open(rgb_file)).astype('<f4')/255.0
     proj_matrix = np.array(json_data['proj_matrix'])
     view_matrix = np.array(json_data['view_matrix'])
     vinv = np.linalg.inv(view_matrix)
@@ -66,8 +66,9 @@ def make_gta_zip(i, json_file, depth_im, rgb, bbox, outdir=None, return_data=Fal
                     'bbox' : bbox,
                     'lidar_center' : lidar_center,
                     'orig_json' : json_data}
-    if outdir is not None:
-        with zf.ZipFile(osp.join(outdir, '%04d.zip' % (i,)), 'w') as cf:
+    if outputdir is not None:
+        os.makedirs(osp.abspath(outputdir), exist_ok=True)
+        with zf.ZipFile(osp.join(outputdir, '%04d.zip' % (i,)), 'w') as cf:
             cf.writestr('metadata.json', json.dumps(tmp_meta))
             tmpf = io.BytesIO()
             np.save(tmpf, world)
@@ -79,6 +80,7 @@ def make_gta_zip(i, json_file, depth_im, rgb, bbox, outdir=None, return_data=Fal
 def make_valeo_zips(datfile, binary, outputdir, remove=True):
     datfile = osp.abspath(datfile)
     outputdir = osp.abspath(outputdir)
+    os.makedirs(osp.abspath(outputdir), exist_ok=True)
     fname = osp.basename(datfile)
     outdir = osp.join(outputdir, osp.splitext(fname)[0])
     if not osp.exists(outdir):
