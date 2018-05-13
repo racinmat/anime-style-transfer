@@ -72,7 +72,7 @@ cdef np.ndarray[FLOAT_t, ndim=3] _compute_lidar_data(np.ndarray[DOUBLE_t, ndim=2
                                                       np.ndarray[DOUBLE_t, ndim=1] intensity,
                                                       np.ndarray[DOUBLE_t, ndim=1] lidar_center,
                                                       np.ndarray[DOUBLE_t, ndim=2] cam_rot,
-                                                      DOUBLE_t percent_allowance):
+                                                      DOUBLE_t allow):
     cdef:
         np.ndarray[BOOL_t, ndim=1, cast=True] wedge_mask, alive_mask, corr_dist_lasers, full_valid
         np.ndarray[DOUBLE_t, ndim=3] result = np.zeros(DATA_SHAPE), cross_res
@@ -86,7 +86,7 @@ cdef np.ndarray[FLOAT_t, ndim=3] _compute_lidar_data(np.ndarray[DOUBLE_t, ndim=2
     full_valid = (zangles <= MAX_ZANGLE) & (zangles >= MIN_ZANGLE)
     pcl_copy = pcl_copy[:,full_valid]
     precomp_dists = (pcl_copy ** 2).sum(axis=0) ** 0.5
-    allowance = (precomp_dists * percent_allowance) ** 2
+    allowance = (precomp_dists * allow) ** 2
     inten_copy = intensity[full_valid].copy()
     wedge_mask = np.empty((pcl_copy[0,:].size,), dtype=np.bool)
     alive_mask = np.ones((pcl_copy[0,:].size,), dtype=np.bool)
@@ -135,7 +135,7 @@ cpdef np.ndarray[FLOAT_t, ndim=3] interpolate_lidar(np.ndarray[FLOAT_t, ndim=3] 
 
         all_valid = (xx >= mask_size) & (xx < NUM_LASERS + mask_size) & (yy >= mask_size) & (yy < DATA_RAYS + mask_size)
         valid_weights = np.multiply(lidar_copy[xx, yy, 2], lidar_copy[xx, yy, 2] >= VALID_PT)
-        valid = valid_weights.sum(axis=(1,2)) > (all_valid.sum(axis=(1,2)) * to_fill)
+        valid = valid_weights.sum(axis=(1,2)) >= (all_valid.sum(axis=(1,2)) * to_fill)
         if valid.sum() == 0:
             break
         x = x[valid]
@@ -152,7 +152,7 @@ cpdef np.ndarray[FLOAT_t, ndim=3] interpolate_lidar(np.ndarray[FLOAT_t, ndim=3] 
     return lidar_copy[mask_size:(NUM_LASERS + mask_size), mask_size:(DATA_RAYS + mask_size), :]
 
 
-cpdef np.ndarray[FLOAT_t, ndim=3] get_lidar_data(pool, DOUBLE_t timestamp, np.ndarray[DOUBLE_t, ndim=1] lidar_correction, DOUBLE_t percent_allowance):
+cpdef np.ndarray[FLOAT_t, ndim=3] get_lidar_data(pool, DOUBLE_t timestamp, np.ndarray[DOUBLE_t, ndim=1] lidar_correction, DOUBLE_t allowance):
     if timestamp < pool.tss[0] or timestamp > pool.tss[-1]:
         return None
     cdef:
@@ -170,7 +170,7 @@ cpdef np.ndarray[FLOAT_t, ndim=3] get_lidar_data(pool, DOUBLE_t timestamp, np.nd
     pcl = pcl[:3, :]
     if lidar_correction is not None:
         lidar_center = lidar_center + lidar_correction
-    return _compute_lidar_data(pcl, intensity, lidar_center, cam_rot, percent_allowance)
+    return _compute_lidar_data(pcl, intensity, lidar_center, cam_rot, allowance)
 
 
 @cython.boundscheck(False)

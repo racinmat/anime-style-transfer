@@ -224,7 +224,9 @@ class CycleGAN:
             train_writer = tf.summary.FileWriter(full_checkpoints_dir, self.graph)
             saver = tf.train.Saver()
 
-        with tf.Session(graph=self.graph) as sess:
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.Session(graph=self.graph, config=config) as sess:
             if load_model is not None:
                 checkpoint = tf.train.get_checkpoint_state(full_checkpoints_dir)
                 meta_graph_path = checkpoint.model_checkpoint_path + '.meta'
@@ -370,7 +372,9 @@ class CycleGAN:
             tf.reduce_mean(d_out, name='d_output')
             restore = tf.train.Saver()
 
-        with tf.Session(graph=graph) as sess:
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.Session(graph=graph, config=config) as sess:
             sess.run(tf.global_variables_initializer())
             cp = tf.train.latest_checkpoint(cp_dir)
             restore.restore(sess, cp)
@@ -400,7 +404,9 @@ class CycleGAN:
         outputs = []
         d_inputs = []
         d_outputs = []
-        with tf.Session(graph=graph) as sess:
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.Session(graph=graph, config=config) as sess:
             sess.run(tf.global_variables_initializer())
             for data in all_data:
                 out, din, dout = sess.run([output, d_input, d_output], feed_dict={input_var: data})

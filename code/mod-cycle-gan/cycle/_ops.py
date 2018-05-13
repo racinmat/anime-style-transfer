@@ -18,6 +18,8 @@ def biases(name, shape, constant=0.0):
 
 
 def norm(data, is_training, normtype):
+    if normtype is None:
+        return data
     if normtype.casefold() == 'instance'.casefold():
         return tf.contrib.layers.instance_norm(data)
     if normtype.casefold() == 'batch'.casefold():
@@ -31,7 +33,19 @@ def conv_block(inputs, kernel_size, stride, out_channels, activation, normtype='
         strides = [1, stride, stride, 1]
         c_out = tf.nn.conv2d(inputs, weights('weights', kernel_shape), strides, padding='SAME')
         if bias:
-            c_out = c_out + biases('bias', c_out.get_shape())
+            c_out = c_out + biases('bias', c_out.shape[1:])
+        nc_out = norm(c_out, is_training, normtype)
+        anc_out = activation(nc_out)
+        return anc_out
+
+
+def fc(inputs, num_outputs, activation, normtype='instance', is_training=True, name=None, bias=False):
+    with tf.variable_scope(name):
+        fin = tf.reshape(inputs, [inputs.shape[0], -1])
+        w = weights('weights', [fin.shape[1], num_outputs])
+        c_out = tf.matmul(fin, w)
+        if bias:
+            c_out = c_out + biases('bias', c_out.shape[1:])
         nc_out = norm(c_out, is_training, normtype)
         anc_out = activation(nc_out)
         return anc_out
@@ -40,8 +54,6 @@ def conv_block(inputs, kernel_size, stride, out_channels, activation, normtype='
 def res_block(inputs, kernel_size, num_res, activation, normtype='instance', is_training=True, name=None, bias=False):
     with tf.variable_scope(name):
         out = inputs
-        if name is None:
-            name = ''
         for i in range(num_res):
             out = conv_block(out, kernel_size, 1, out.get_shape()[3], activation,
                              normtype, is_training, name+str(i), bias)
@@ -57,7 +69,7 @@ def reconv_block(inputs, kernel_size, stride, out_channels, out_coeff, activatio
         resized = tf.image.resize_images(inputs, out_size, tf.image.ResizeMethod.NEAREST_NEIGHBOR)
         c_out = tf.nn.conv2d(resized, weights('weights', kernel_shape), strides, padding='SAME')
         if bias:
-            c_out = c_out + biases('bias', c_out.get_shape())
+            c_out = c_out + biases('bias', c_out.shape[1:])
         nc_out = norm(c_out, is_training, normtype)
         anc_out = activation(nc_out)
         return anc_out

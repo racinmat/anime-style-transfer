@@ -11,7 +11,8 @@ _act_map = {'r' : tf.nn.relu,
 
 _layer_map = {'c' : ops.conv_block,
               'b' : ops.res_block,
-              'r' : ops.reconv_block}
+              'r' : ops.reconv_block,
+              'f' : ops.fc}
 
 REAL_LABEL = 0.9
 
@@ -26,6 +27,18 @@ class BaseNet:
         self.weight_lambda = weight_lambda
         self.norm = norm
         self.network_desc = network_desc.split(';')
+        self.names = []
+        for i, n in enumerate(self.network_desc[:-1]):
+            newname = n
+            while True:
+                for old_name in self.network_desc[:i]:
+                    if newname == old_name:
+                        newname += '-'
+                        break
+                else:
+                    break
+            self.names.append(newname)
+
 
 
     def __call__(self, data):
@@ -37,11 +50,12 @@ class BaseNet:
 
     def transform(self, data):
         out = data
-        for layer in self.network_desc[:-1]:
+        for i, layer in enumerate(self.network_desc[:-1]):
             l_params = layer.split('-')
             out = _layer_map[l_params[0]](out, *tuple(map(ops.to_num, l_params[1:-1])),
-                                          activation=_act_map[l_params[-1]], normtype=self.norm,
-                                          is_training=self.is_training, name=layer)
+                                          activation=_act_map[l_params[-1]],
+                                          normtype=(self.norm if i < len(self.network_desc[:-1]) - 1 else None),
+                                          is_training=self.is_training, name=self.names[i])
         if self.network_desc[-1] != '':
             for op in self.network_desc[-1]:
                 if op == 's':

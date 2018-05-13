@@ -19,12 +19,14 @@ def load_data(filename, limit=100):
 
 
 def process_one_example(i, orig, conv, path):
-    Image.fromarray(((orig[:,:,0] * (orig[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.orig.png' % (i,)), 'PNG')
-    Image.fromarray(((conv[:,:,0] * (conv[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.conv.png' % (i,)), 'PNG')
+    Image.fromarray(((orig[:,:,0] * (orig[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.depth.orig.png' % (i,)), 'PNG')
+    Image.fromarray(((conv[:,:,0] * (conv[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.depth.conv.png' % (i,)), 'PNG')
+    Image.fromarray(((orig[:,:,1] * (orig[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.inten.orig.png' % (i,)), 'PNG')
+    Image.fromarray(((conv[:,:,1] * (conv[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.inten.conv.png' % (i,)), 'PNG')
     recoo = rays.reconstruct_pcl(orig)
     recoi = rays.reconstruct_pcl(conv)
-    np.savetxt(osp.join(path, '%03d.orig.txt' % (i,)), recoo.T)
-    np.savetxt(osp.join(path, '%03d.conv.txt' % (i,)), recoi.T)
+    np.savetxt(osp.join(path, '%03d.pcl.orig.txt' % (i,)), recoo.T)
+    np.savetxt(osp.join(path, '%03d.pcl.conv.txt' % (i,)), recoi.T)
 
 
 def process_one_part(path, items):
