@@ -103,6 +103,34 @@ The reformulation of WGAN called WGAN-GP~\cite{wgan-gp} emerged soon after and i
 
 Authors of WGAN-GP showed, that the gradient penalty is superior to the weight clipping since the original WGAN exhibited either vanishing or exploding gradients quite often. To demonstrate higher stability, WGAN-GP authors trained many architectures with this criterion on ImageNet~\cite{imagenet} dataset and measured the Inception score~\cite{improvedgan} (score based on ability to produce samples from different ImageNet class with high classification rate by Inception network~\cite{inception}) achieved by the network. It was shown~\cite{wgan-gp}, that many more architectures were able to obtain high Inception score when trained by WGAN-GP loss functions instead of original GAN loss functions.
 
+Quite an important thing to note is the fact, that WGAN-GP {\em cannot} use popular Batch normalization~\cite{batchnorm} layers as it alters the gradients of the layers and makes the gradient penalty useless. The recommendation by the article authors is to use Layer normalization~\cite{layernorm} layers instead. It is also beneficial to widen the range of the discriminator function to [-1; 1] (as opposed to [0; 1] in the original GAN) and to achieve this, it suffices to only change the activation function of the last layer of the discriminator to hyperbolic tangent.
+
+\subsection{SimGAN}
+
+SimGAN~\cite{historypool} is GAN variant aiming at learning a {\em refinement} of simulated data to make them look realistic enough. The paper called the generator network with the name {\em refiner} to emphasize the fact, that it received simulated data (instead of noise) on the input. The paper introduced three important concepts in the field of GANs. The first one is {\em local} adversarial loss -- this idea means, that the discriminator should not produce only scalar output, but a response map, where each part of this map corresponds to the particular patch of the evaluated image. The reasoning behind this is to allow patches with not so dominant features to contribute to the loss of the discriminator and by extension of the refiner as well.
+
+Second key idea is adding a so-called {\em self-regularization} term to the refiner's loss function. This term can be seen in equation \ref{simganself}, where $\bm{x}$ is a sample from simulated data (refiner's input), $\bm{\tilde{x}}$ is a refined sample (refiner's output), $\lambda_{reg}$ is a relative weight given to the importance of this loss term and $\psi$ is a feature mapping from image space to the feature space. This feature mapping could be any function with important properties (such as classification of the data), or it could be simple identity and the $\loss_{reg}$ becomes pixel-wise distance.
+
+\begin{equation}
+\loss_{reg} = \lambda_{reg}\norm{\psi({\bm{x}}) - \psi({\bm{\tilde{x}}})}_1
+\label{simganself}
+\end{equation}
+
+This self-regularization term allows to learn the refiner to keep the most important information of the image during the refinement process.
+
+Third key idea is to introduce memory for the discriminator's learning process. The discriminator should not be able to forget about the images it has seen an epoch ago. In order to facilitate this memory, a history buffer is introduced which keeps the refined samples. When performing single optimization step on discriminator weights, approximately half of the batch used in this optimization step is replaced with the samples from this history buffer. To be able to limit the buffer size, after performing the training step, half of the samples from the batch is randomly selected and replaces random samples in the history buffer.
+
 \subsection{CycleGAN} \label{cyclegan}
+
+CycleGAN~\cite{cyclegan} is a concept aiming at matching two different distributions by the means of GANs. The core idea is to have {\em two} GANs trained simultaneously with one generator learning the mapping from the first distribution to the second and the other generator learning the reverse mapping. To enforce this reverse mapping, new term called {\em cycle consistency loss} is added to the loss function of the generators and it can be seen on the equation \ref{cycleloss}, where $p_X, p_Y$ are the distributions between which we try to find a mapping $\bm{x}\sim p_X$, $\bm{y}\sim p_Y$, $G_{X\rightarrow Y}$ is a generator mapping from $p_X$ to $p_Y$, $G_{X\rightarrow Y}$ is a generator mapping from $p_Y$ to $p_X$ and $\lambda_{cyc}$ is a relative weight given to the importance of this loss term.
+
+\begin{equation}
+\loss_{cyc} = \lambda_{cyc}(\norm{G_{Y\rightarrow X}(G_{X\rightarrow Y}(\bm{x})) - \bm{x}}_1 + \norm{G_{X\rightarrow Y}(G_{Y\rightarrow X}(\bm{y})) - \bm{y}}_1)
+\label{cycleloss}
+\end{equation}
+
+This approach of training two GANs simultaneously can give us mapping between these two distributions {\em without} having a pair-to-pair correspondences. It is important to note that even though this closely relates to the style transfer problem, the resulting mappings should work in both directions which is usually not the case with more common approaches~\cite{artstyle} to the style transfer. Since this seems like an approach that could help us model the mapping between real-life and in-game data of the cars' sensors, we decided we will use CyclGAN as a basis for our experiments using various underlying architectures of GANs.
+
+The CycleGAN does not concern itself with the particular type of GAN used as a generator mapping, however original results were published using LSGAN with instance normalization~\cite{instancenorm} and $\lambda_{cyc} = 10$
 
 \section{Description of LiDAR}

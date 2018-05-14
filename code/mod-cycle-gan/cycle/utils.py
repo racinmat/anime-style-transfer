@@ -32,12 +32,15 @@ class DataBuffer:
                     self.data.append(d.copy())
                     self.last_data[i] = d
                 else:
-                    p = random.random()
-                    if p > self.prob:
+                    to_return = random.random()
+                    to_replace = random.random()
+                    if to_return > self.prob:
                         self.last_data[i] = d
                     else:
                         idx = random.randrange(0, self.pool_size)
                         self.last_data[i] = self.data[idx]
+                    if to_replace > self.prob:
+                        idx = random.randrange(0, self.pool_size)
                         self.data[idx] = d
         return self.last_data
 
