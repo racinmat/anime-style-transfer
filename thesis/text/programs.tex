@@ -48,7 +48,7 @@ Second argument (\texttt{cur\_step}) indicates the global step of the training p
 
 Next argument (\texttt{weight\_lambda}) is a $\lambda$ of weight term of the loss function for this particular network. This was motivated by having lot of networks with skip connection where we wanted to make only small changes to the image and thus minimizing the weights of generators and therefore generating only small perturbations.
 
-Last argument (\texttt{norm}) is a type of normalization used in network layers. Can be either \texttt{'instance'}~\cite{instancenorm}, \texttt{'batch'}~\cite{batchnorm} or anything else for no normalization between layers. It does not make any sense to use different normalizations within one network so this setting can be made global for the whole network.
+Last argument (\texttt{norm}) is a type of normalization used in network layers. Can be either \texttt{'instance'}~\cite{instancenorm}, \texttt{'batch'}~\cite{batchnorm}, \texttt{'layer'}~\cite{layernorm} or anything else for no normalization between layers. It does not make any sense to use different normalizations within one network so this setting can be made global for the whole network.
 \descitem{\texttt{\_\_call\_\_()}} This is the way how the mapping induced by this object will be called. It essentially just wraps the call to \texttt{transform()} method inside a variable scope of the name specified by the first argument of the constructor (\texttt{name}) and collects all the trainable variables into the list called \texttt{variables}. This book-keeping is done to ease the subclassing since now the only method to be replaced is \texttt{transform()} without the need to worry about collecting all the trainable variables and placing it under same particular variable scope.
 \descitem{\texttt{transform()}} This method accepts one argument (\texttt{data}) -- tensor that will be transformed by the network. It is the core of the class \texttt{nets.BaseNet} and if you decide to write your own mapping network by subclassing, this method {\em must} be implemented. By default, it creates the mapping network according to the argument \texttt{network\_desc} supplied to the constructor. The syntax of this simple string will be more in depth explained at subsection \ref{networkdesc}.
 \descitem{\texttt{weight\_loss()}} This method return weight loss of the mapping network defined by equation \ref{wloss}, where $\theta_F$ is a set of trainable variables of a mapping function $F$ represented by this object, $\lambda_{\text{w}F}$ is a multiplier denoting the contribution of this loss term to the overall loss function and $\loss_{\text{w}F}$ is a loss term returned by this method.
@@ -103,7 +103,7 @@ Note, that the original formulation of the generator loss function by \cite{orig
 \end{equation}
 
 \end{description}
-\item \texttt{nets.WGAN} -- Implementation of Wasserstein GAN with gradient penalty \cite{wgan}. This is a subclass of \texttt{nets.GAN} as well, however it introduces one more term to the loss function, so called gradient penalty. This is implemented in method \texttt{grad\_loss()}.
+\item \texttt{nets.WGAN} -- Implementation of Wasserstein GAN with gradient penalty \cite{wgan-gp}. This is a subclass of \texttt{nets.GAN} as well, however it introduces one more term to the loss function, so called gradient penalty. This is implemented in method \texttt{grad\_loss()}.
 \begin{description}
 \descitem{\texttt{\_\_init\_\_()}} The constructor takes the same arguments as the constructor of \texttt{nets.GAN} with one more argument (\texttt{grad\_lambda}) specifying the weight of the gradient penalty.
 \descitem{\texttt{gen\_loss()}} This method implements the generator loss function according to the equation \ref{wgangenloss}. The meaning of the symbols is the same as in equation \ref{gangenloss}.
@@ -117,10 +117,10 @@ Note, that the original formulation of the generator loss function by \cite{orig
 \label{wgandisloss}
 \end{equation}
 
-\descitem{\texttt{grad\_loss()}} This method computes the gradient penalty term according to the equation \ref{wgangradloss}, where $\lambda_{DGP}$ is a multiplier denoting the contribution of the gradient penalty term to the overall loss, $\bm{\tilde{x}} = \epsilon\bm{\hat{x}} + (1-\epsilon)\bm{y}$, $\epsilon$ is a random number from [0,1] and $\loss_{DGP}$ is a loss term returned by this method.
+\descitem{\texttt{grad\_loss()}} This method computes the gradient penalty term according to the equation \ref{wgangradloss}, where $\lambda_{GP}$ is a multiplier denoting the contribution of the gradient penalty term to the overall loss, $\bm{\tilde{x}} = \epsilon\bm{\hat{x}} + (1-\epsilon)\bm{y}$, $\epsilon$ is a uniform random number from [0,1] and $\loss_{GP}$ is a loss term returned by this method.
 
 \begin{equation}
-\loss_{DGP} = \lambda_{DGP}(\norm{\nabla_{\bm{\tilde{x}}}D(\bm{\tilde{x}})}_2 - 1)^2
+\loss_{GP} = \lambda_{GP}(\norm{\nabla_{\bm{\tilde{x}}}D(\bm{\tilde{x}})}_2 - 1)^2
 \label{wgangradloss}
 \end{equation}
 
@@ -129,7 +129,7 @@ Note, that the original formulation of the generator loss function by \cite{orig
 \end{itemize}
 
 \subsection[Parameterization of the mapping networks]{Parameterization of the mapping networks by \texttt{network\_desc}} \label{networkdesc}
-The mapping network could be easily parameterized by a special \texttt{network\_desc} string. This string comprises of layers separated by semicolon (\texttt{';'}). All layers comprise of letter from \{\texttt{'c', 'b', 'r', 'f'}\} specifying the layer type, followed by hyphen (\texttt{'-'}) and a list of numerical parameters specific to particular layer each of them separated by hyphen as well. The last part of a layer is again a letter from \{\texttt{'r', 't', 'l', 's', 'i'}\} specifying the used activation function for this particular layer. All of the trainable variables are initialized using Xavier initializer~\cite{xavier} in order to keep the scale of the gradients approximately the same across all layers. Normalization (either instance or batch) is always used before applying activation function.
+The mapping network could be easily parameterized by a special \texttt{network\_desc} string. This string comprises of layers separated by semicolon (\texttt{';'}). All layers comprise of letter from \{\texttt{'c', 'b', 'r', 'f'}\} specifying the layer type, followed by hyphen (\texttt{'-'}) and a list of numerical parameters specific to particular layer each of them separated by hyphen as well. The last part of a layer is again a letter from \{\texttt{'r', 't', 'l', 's', 'i'}\} specifying the used activation function for this particular layer. All of the trainable variables are initialized using Xavier initializer~\cite{xavier} in order to keep the scale of the gradients approximately the same across all layers. Normalization (either instance, batch, layer or none) is always used before applying activation function.
 
 Note that the parameterization using this notation is rather simple and does not allow all possible configurations of specified layers. If you desire finer control over created layers, then using this \texttt{network\_desc} string is not ideal for you.
 

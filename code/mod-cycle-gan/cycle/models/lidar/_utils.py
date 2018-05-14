@@ -31,7 +31,7 @@ def visualize(data_orig, data_conv, data_conv_conv):
 
 
 class LidarGen(cycle.nets.BaseNet):
-    def __init__(self, name, network_desc, is_training, weight_lambda, norm='instance', extra_lambda=10.0):
+    def __init__(self, name, network_desc, is_training, weight_lambda, norm='instance', extra_lambda=5.0):
         super().__init__(name, network_desc, is_training, weight_lambda, norm)
         self.extra_lambda = extra_lambda
 

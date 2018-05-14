@@ -21,9 +21,11 @@ def norm(data, is_training, normtype):
     if normtype is None:
         return data
     if normtype.casefold() == 'instance'.casefold():
-        return tf.contrib.layers.instance_norm(data)
+        return tf.contrib.layers.instance_norm(data, trainable=is_training)
     if normtype.casefold() == 'batch'.casefold():
         return tf.contrib.layers.batch_normalization(data, training=is_training, decay=0.9)
+    if normtype.casefold() == 'layer'.casefold():
+        return tf.contrib.layers.layer_norm(data, trainable=is_training)
     return data
 
 

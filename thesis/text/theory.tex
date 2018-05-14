@@ -62,6 +62,46 @@ DCGAN~\cite{dcgan} is not a variant of GAN per se, as it mostly involves guideli
 \end{itemize}
 
 \subsubsection{LSGAN -- Least Squares GAN}
+The main idea behind LSGAN~\cite{lsgan} is to not use maximum log-likelihood framework, but to use least squares instead. The formulation of the generator and discriminator loss functions can be then seen in equations \ref{lsganlossg} and \ref{lsganlossd}, where $a$, $b$ and $c$ are target values of the discriminator that we are aiming for. In most applications, $c = a = 1$ (or 0.9 to introduce label smoothing, as proposed by~\cite{improvedgan,smooth}) and $b = 0$.
+
+\begin{equation}
+\loss_G = \frac{1}{2}(D(G(\bm{z})) - c)^2
+\label{lsganlossg}
+\end{equation}
+
+\begin{equation}
+\loss_D = \frac{1}{2}(D(\bm{x}) - a)^2 + \frac{1}{2}(D(G(\bm{z})) - b)^2
+\label{lsganlossd}
+\end{equation}
+
+The reasoning for this reformulation of the loss functions is mostly to provide better gradients and to move the generated samples closer to the decision boundary. In traditional GAN, samples that pass the decision boundary do not provide strong enough gradients and do not contribute to learning, however with the LSGAN, there is only one flat point of the loss functions without strong gradients.
+
+\subsubsection{WGAN and WGAN-GP -- Wasserstein GAN (with gradient penalty)}
+
+One of the ideas of the original GANs we have not talked about before is minimizing some metric between the generated and the target distributions. This metric is usually well defined by the respective loss function and for original formulation of GAN it is Kullback-Leibler divergence~\cite{kullback} and for LSGAN it is Pearson $\chi^2$ divergence~\cite{pearson}.
+
+WGAN~\cite{wgan} was introduced to minimize Wasserstein-1 distance~\cite{wasser}, also known as Earth-Mover. This definition yields following loss functions as seen on equation \ref{wganlossg} and \ref{wganlossd}.
+
+\begin{equation}
+\loss_G = -D(G(\bm{z}))
+\label{wganlossg}
+\end{equation}
+
+\begin{equation}
+\loss_D = D(G(\bm{x})) - D(\bm{z})
+\label{wganlossd}
+\end{equation}
+
+However, to enforce a Wasserstein-1 distance, it is necessary to satisfy the condition that function $D$ is K-Lipshitz continuous for any given K. This is not easy to achieve and the method used in the original paper was weight clipping to a tight bounding box after each update. It is worth noting the authors admit that this solution is impractical and obviously wrong, however they could not think of a better solution at the time.
+
+The reformulation of WGAN called WGAN-GP~\cite{wgan-gp} emerged soon after and introduced less drastic way to enforce K-Lipshitz continuity. The discriminator's loss function would receive an additional term called gradient penalty forcing the gradients of the function to be "approximately 1 almost everywhere". This gradient penalty removes the need for the weight clipping in the original paper and it is shown in equation \ref{wgangplossgdp}, where $\bm{\tilde{x}} = \epsilon\bm{x} + (1 - \epsilon)\bm{z}$ and $\epsilon$ is a uniform random number from the range [0; 1].
+
+\begin{equation}
+\loss_{GP} = (\norm{\nabla_{\bm{\tilde{x}}}D(\bm{\tilde{x}})}_2 - 1)^2
+\label{wgangplossgdp}
+\end{equation}
+
+Authors of WGAN-GP showed, that the gradient penalty is superior to the weight clipping since the original WGAN exhibited either vanishing or exploding gradients quite often. To demonstrate higher stability, WGAN-GP authors trained many architectures with this criterion on ImageNet~\cite{imagenet} dataset and measured the Inception score~\cite{improvedgan} (score based on ability to produce samples from different ImageNet class with high classification rate by Inception network~\cite{inception}) achieved by the network. It was shown~\cite{wgan-gp}, that many more architectures were able to obtain high Inception score when trained by WGAN-GP loss functions instead of original GAN loss functions.
 
 \subsection{CycleGAN} \label{cyclegan}
 
