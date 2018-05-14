@@ -107,8 +107,17 @@ class CycleGAN:
                     y_dis_grad_loss = self.XtoY.grad_loss(self.cur_y, fake_y)
                 y_dis_full_loss = y_dis_loss + y_dis_weight_loss + y_dis_grad_loss
 
-            xy_gen_full_loss = xy_gen_loss + xy_gen_weight_loss + cycle_loss
-            yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss
+            if hasattr(self.XtoY.gen, 'extra_loss'):
+                xy_gen_extra_loss = self.XtoY.gen.extra_loss(self.cur_x, fake_y)
+                xy_gen_full_loss = xy_gen_loss + xy_gen_weight_loss + cycle_loss + xy_gen_extra_loss
+            else:
+                xy_gen_full_loss = xy_gen_loss + xy_gen_weight_loss + cycle_loss
+
+            if hasattr(self.YtoX.gen, 'extra_loss'):
+                yx_gen_extra_loss = self.YtoX.gen.extra_loss(self.cur_y, fake_x)
+                yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss + yx_gen_extra_loss
+            else:
+                yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss
 
             if self.tb_verbose:
                 X_dis_fake = self.YtoX.dis(fake_x)
@@ -123,11 +132,15 @@ class CycleGAN:
 
                 if self.XtoY.gen.weight_lambda > 0:
                     tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.X_name, self.Y_name), xy_gen_weight_loss)
+                if hasattr(self.XtoY.gen, 'extra_loss'):
+                    tf.summary.scalar('{}-{}_gen/extra_loss'.format(self.X_name, self.Y_name), xy_gen_extra_loss)
                 tf.summary.scalar('{}-{}_gen/gen_loss'.format(self.X_name, self.Y_name), xy_gen_loss)
                 tf.summary.scalar('{}-{}_gen/full_loss'.format(self.X_name, self.Y_name), xy_gen_full_loss)
 
                 if self.YtoX.gen.weight_lambda > 0:
                     tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.Y_name, self.X_name), yx_gen_weight_loss)
+                if hasattr(self.YtoX.gen, 'extra_loss'):
+                    tf.summary.scalar('{}-{}_gen/extra_loss'.format(self.Y_name, self.X_name), yx_gen_extra_loss)
                 tf.summary.scalar('{}-{}_gen/gen_loss'.format(self.Y_name, self.X_name), yx_gen_loss)
                 tf.summary.scalar('{}-{}_gen/full_loss'.format(self.Y_name, self.X_name), yx_gen_full_loss)
 

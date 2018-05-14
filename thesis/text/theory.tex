@@ -46,7 +46,22 @@ Another problem that could very easily occur is a {\em mode collapse} of the gen
 
 \subsection{GAN variants}
 
-Since the inception of GANs, many variants emerged trying to overcome some of the issues outlined in the previous subsection. According to DeepHunt~\cite{deephunt}, there were 354 papers proposing a variation of GAN as of 10\textsuperscript{th} May 2018. The most of these improvements revolve around redefining the loss functions and introducing various tricks to achieve better training stability.
+Since the inception of GANs, many variants emerged trying to overcome some of the issues outlined in the previous subsection. According to DeepHunt~\cite{deephunt}, there were 354 papers proposing a variation of GAN as of 10\textsuperscript{th} May 2018. Most of these improvements revolve around redefining the loss functions and introducing various tricks to achieve better training stability.
+
+In the following subsections will be shortly described some of these variants with their particular improvements and differences of original GAN.
+
+\subsubsection{DCGAN -- Deep Convolutional GAN}
+DCGAN~\cite{dcgan} is not a variant of GAN per se, as it mostly involves guidelines for stable training of GAN, when discriminator and generator consist of multiple convolutional layers. The said guidelines can be briefly summarized as:
+\begin{itemize}
+\item Use strided convolution and deconvolution instead of pooling layers. The reasoning behind this is to allow the networks to find their own representations of up sampling and down sampling.
+\item Use batch normalization~\cite{batchnorm} everywhere applicable (i.e. in every layer except last). This allows to get more stable gradients for backpropagation.
+\item Do not use fully connected layers that are not the direct output of the discriminator. If there are hidden fully connected layers, then the model stability might improve, however it reduces convergence speed of the training process.
+\item Use ReLU~\cite{relu} activation for generator's layers except the last layer using hyperbolic tangent. It was observed, that ReLU helps convergence speed of the training process the most.
+\item Use LeakyReLU~\cite{leakyrelu} activation for discriminator's layers. This seems to be especially helpful in higher resolution settings.
+\item Use Adam~\cite{adam} optimizer with {\em different} hyperparameters than the usual default. Especially necessary is to lower the learning rate and momentum terms.
+\end{itemize}
+
+\subsubsection{LSGAN -- Least Squares GAN}
 
 \subsection{CycleGAN} \label{cyclegan}
 

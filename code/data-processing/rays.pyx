@@ -181,7 +181,7 @@ cpdef np.ndarray[FLOAT_t, ndim=2] reconstruct_pcl(np.ndarray[FLOAT_t, ndim=3] li
         np.ndarray[INT_t, ndim=1] x, y
         np.ndarray[DOUBLE_t, ndim=1] ray = np.array([1., 0, 0], dtype=DOUBLE)
         np.ndarray[FLOAT_t, ndim=2] result
-    x, y = np.where(lidar_data[:,:,2] >= VALID_PT)
+    x, y = np.where((lidar_data[:,:,2] >= VALID_PT) & (lidar_data[:,:,0] >= MIN_RAY_FAR) & (lidar_data[:,:,0] <= MAX_RAY_FAR))
     result = np.empty((4, x.size), dtype=FLOAT)
     result[3, :] = lidar_data[x, y, 1].astype(FLOAT)
     result[:3, :] = ((lidar_data[x, y, 0, None] * (HOR_ROTMAT[y] @ VERT_ROTMAT[x] @ ray)).T).astype(FLOAT)

@@ -8,7 +8,8 @@ import sys
 sys.path.append(osp.join('..'))
 import rays
 
-scale = 255.0/131.0
+scale_depth = 255.0/131.0
+scale_inten = 255.0
 
 def load_data(filename, limit=100):
     arr = np.load(filename)
@@ -19,10 +20,10 @@ def load_data(filename, limit=100):
 
 
 def process_one_example(i, orig, conv, path):
-    Image.fromarray(((orig[:,:,0] * (orig[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.depth.orig.png' % (i,)), 'PNG')
-    Image.fromarray(((conv[:,:,0] * (conv[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.depth.conv.png' % (i,)), 'PNG')
-    Image.fromarray(((orig[:,:,1] * (orig[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.inten.orig.png' % (i,)), 'PNG')
-    Image.fromarray(((conv[:,:,1] * (conv[:,:,2] > 0.5)) * scale).astype('u1')).save(osp.join(path, '%03d.inten.conv.png' % (i,)), 'PNG')
+    Image.fromarray(((orig[:,:,0] * (orig[:,:,2] > 0.5)) * scale_depth).astype('u1')).save(osp.join(path, '%03d.depth.orig.png' % (i,)), 'PNG')
+    Image.fromarray(((conv[:,:,0] * (conv[:,:,2] > 0.5)) * scale_depth).astype('u1')).save(osp.join(path, '%03d.depth.conv.png' % (i,)), 'PNG')
+    Image.fromarray(((orig[:,:,1] * (orig[:,:,2] > 0.5)) * scale_inten).astype('u1')).save(osp.join(path, '%03d.inten.orig.png' % (i,)), 'PNG')
+    Image.fromarray(((conv[:,:,1] * (conv[:,:,2] > 0.5)) * scale_inten).astype('u1')).save(osp.join(path, '%03d.inten.conv.png' % (i,)), 'PNG')
     recoo = rays.reconstruct_pcl(orig)
     recoi = rays.reconstruct_pcl(conv)
     np.savetxt(osp.join(path, '%03d.pcl.orig.txt' % (i,)), recoo.T)

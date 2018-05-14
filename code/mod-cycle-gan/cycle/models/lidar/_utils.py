@@ -1,4 +1,5 @@
 import tensorflow as tf
+import cycle
 
 MAX_RAYDIST = 131.0
 
@@ -27,3 +28,17 @@ def visualize(data_orig, data_conv, data_conv_conv):
     stripe = tf.ones_like(d1) * 255
     img = tf.concat((d1, d2, d3, stripe[:, :20], i1, i2, i3), axis=1)
     return img[:, :, :, None]
+
+
+class LidarGen(cycle.nets.BaseNet):
+    def __init__(self, name, network_desc, is_training, weight_lambda, norm='instance', extra_lambda=10.0):
+        super().__init__(name, network_desc, is_training, weight_lambda, norm)
+        self.extra_lambda = extra_lambda
+
+    def extra_loss(self, orig, conv):
+        diffd = tf.abs(orig[:, :, :, 0] - conv[:, :, :, 0])
+        diffi = tf.abs(orig[:, :, :, 1] - conv[:, :, :, 1])
+        zeros = tf.zeros_like(diffd)
+        validd = tf.where(orig[:, :, :, 2] > 0, x=diffd, y=zeros)
+        validi = tf.where(orig[:, :, :, 2] > 0, x=diffi, y=zeros)
+        return tf.reduce_mean((validd ** 2) + (validi ** 2)) * self.extra_lambda
