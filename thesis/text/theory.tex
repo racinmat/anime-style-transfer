@@ -14,7 +14,7 @@ The neural layers we introduced above are usually called {\em fully connected} b
 
 \subsection{Generative adversarial network (GAN)}
 
-A generative adversarial network is a concept by Ian Goodfellow~\cite{origgan} aimed at learning to generate a sample from a particular distribution. The main goal is to train a {\em generator} network to produce samples from the target distribution given a sample from some noise distribution. In order to achieve this, a second network called {\em discriminator} is introduced, and its main goal is to distinguish between the samples from the real target distribution and "fake" samples produced by the generator network given a noise sample. If the whole setup is modeled in such a way that the trained discriminator outputs a scalar assigning a probability of the sample coming from the target distribution, the generator is then trying to produce the samples that are convincing enough to the discriminator so that discriminator's output for the generated samples is as close to 1 as possible. This setup was originally formulated within the maximum log-likelihood estimation setup. It could be seen as a two-player minimax game with the value function $V(G, D)$ shown in equation~\ref{gangame}, where $G$ and $D$ are generator and discriminator functions respectively, $p_{target}$ is a target distribution and $p_{noise}$ is a noise distribution that is usually chosen as a uniform, however it could be any other source of noise data.
+A generative adversarial network is a concept by Ian Goodfellow~\cite{origgan} aimed at learning to generate a sample from a particular distribution. The main goal is to train a {\em generator} network to produce samples from the target distribution given a sample from some noise distribution. In order to achieve this, a second network called {\em discriminator} is introduced, and its main goal is to distinguish between the samples from the real target distribution and the "fake" samples produced by the generator network given a noise sample. If the whole setup is modeled in such a way that the trained discriminator outputs a scalar assigning a probability of the sample coming from the target distribution, the generator is then trying to produce the samples that are convincing enough to the discriminator so that discriminator's output for the generated samples is as close to 1 as possible. This setup was originally formulated within the maximum log-likelihood estimation setup. It could be seen as a two-player minimax game with the value function $V(G, D)$ shown in equation~\ref{gangame}, where $G$ and $D$ are generator and discriminator functions respectively, $p_{target}$ is a target distribution and $p_{noise}$ is a noise distribution that is usually chosen as a uniform, however it could be any other source of noise data.
 
 \begin{equation}
 \min_G \max_D V(G, D) = \EX_{\bm{x}\sim p_{target}}[\log D(\bm{x})] + \EX_{\bm{z}\sim p_{noise}} [\log(1 - D(G(\bm{z})))]
@@ -33,28 +33,28 @@ This formulation immediately yields loss functions for the generator (equation \
 \label{ganlossd}
 \end{equation}
 
-It was theoretically shown~\cite{origgan} that in the case of generator and discriminator having enough capacity this setup allows to train the generator to be able to generate samples indistinguishable from the samples from $p_{target}$. However this is not easily achievable in practice. One of the main problems is that generator usually does not have this infinite capacity. More problems stem from the fact that the original loss function (equation \ref{ganlossg}) for the generator does not provide strong enough gradients early on in the process of training, therefore a new loss function with the same theoretical properties, but stronger gradients was introduced as shown in the equation \ref{ganlossgg}.
+It was theoretically shown~\cite{origgan} that in the case of generator and discriminator having enough capacity this setup allows to train the generator to be able to generate samples indistinguishable from the samples from $p_{target}$. However this is not easily achievable in practice. One of the main problems is that generator usually does not have an infinite capacity. More problems stem from the fact that the original loss function (equation \ref{ganlossg}) for the generator does not provide strong enough gradients early in the process of training, therefore a new loss function with the same theoretical properties, but stronger gradients was introduced as shown in the equation \ref{ganlossgg}.
 
 \begin{equation}
 \loss_G = -\log(D(G(\bm{z})))
 \label{ganlossgg}
 \end{equation}
 
-In practice, we are trying to find the Nash equilibrium~\cite{nash} of a highly dimensional, non-convex function and while we can obtain gradients for this function using training samples, there is no known algorithm to solve this game exactly~\cite{improvedgan}. Therefore we must resort to heuristics such as optimizing discriminator near its optimum for every given sample {\em before} we optimize generator using multiple optimization steps of the discriminator if needed.
+In practice, we are trying to find the Nash equilibrium~\cite{nash} of a highly dimensional, non-convex function and while we can obtain gradients for this function using training samples, there is no known algorithm to solve this game exactly~\cite{improvedgan}. To overcome this obstacle, it is recommended~\cite{origgan} to alternate between training step of the generator and the discriminator on the same data with discriminator being trained first. It is helpful for the training process to train discriminator near its optimum before updating generator and to achieve this, it might be necessary to train discriminator more than once for one batch of samples.
 
-Another problem that could very easily occur is a {\em mode collapse} of the generator -- point, where generator does not use its full potential and generates a fixed point for multiple inputs keeping discriminator in the dark. Since the generator receives its gradients from the discriminator and discriminator cannot give any useful information anymore, the generator will not be updated in any sensible direction past the point where the mode collapse occurred.
+Another problem that could very easily occur is a {\em mode collapse} of the generator -- a point, where generator does not use its full potential and generates a fixed point for multiple inputs keeping discriminator in the dark. Since the generator receives its gradients from the discriminator and discriminator cannot give any useful information anymore, the generator will not be updated in any sensible direction past the point where the mode collapse occurred. After the mode collapse, it does not make any sense to train the affected networks anymore.
 
 \subsection{GAN variants}
 
 Since the inception of GANs, many variants emerged trying to overcome some of the issues outlined in the previous subsection. According to DeepHunt~\cite{deephunt}, there were 354 papers proposing a variation of GAN as of 10\textsuperscript{th} May 2018. Most of these improvements revolve around redefining the loss functions and introducing various tricks to achieve better training stability.
 
-In the following subsections will be shortly described some of these variants with their particular improvements and differences of original GAN.
+In the following subsections will be shortly described some of these variants with their particular improvements and differences from the original GAN.
 
 \subsubsection{DCGAN -- Deep Convolutional GAN}
-DCGAN~\cite{dcgan} is not a variant of GAN per se, as it mostly involves guidelines for stable training of GAN, when discriminator and generator consist of multiple convolutional layers. The said guidelines can be briefly summarized as:
+DCGAN~\cite{dcgan} is not a variant of GAN per se, as it mostly involves guidelines for stable training of GAN where discriminator and generator consist of multiple convolutional layers. The said guidelines can be briefly summarized as:
 \begin{itemize}
-\item Use strided convolution and deconvolution instead of pooling layers. The reasoning behind this is to allow the networks to find their own representations of up sampling and down sampling.
-\item Use batch normalization~\cite{batchnorm} everywhere applicable (i.e. in every layer except last). This allows to get more stable gradients for backpropagation.
+\item Use strided convolution and deconvolution instead of pooling layers. The reasoning behind this is to allow the networks to find their own representations of up-sampling and down-sampling operations.
+\item Use batch normalization~\cite{batchnorm} everywhere applicable (i.e. in every layer except the last one). This allows to get more stable gradients for backpropagation.
 \item Do not use fully connected layers that are not the direct output of the discriminator. If there are hidden fully connected layers, then the model stability might improve, however it reduces convergence speed of the training process.
 \item Use ReLU~\cite{relu} activation for generator's layers except the last layer using hyperbolic tangent. It was observed, that ReLU helps convergence speed of the training process the most.
 \item Use LeakyReLU~\cite{leakyrelu} activation for discriminator's layers. This seems to be especially helpful in higher resolution settings.
@@ -62,7 +62,7 @@ DCGAN~\cite{dcgan} is not a variant of GAN per se, as it mostly involves guideli
 \end{itemize}
 
 \subsubsection{LSGAN -- Least Squares GAN}
-The main idea behind LSGAN~\cite{lsgan} is to not use maximum log-likelihood framework, but to use least squares instead. The formulation of the generator and discriminator loss functions can be then seen in equations \ref{lsganlossg} and \ref{lsganlossd}, where $a$, $b$ and $c$ are target values of the discriminator that we are aiming for. In most applications, $c = a = 1$ (or 0.9 to introduce label smoothing, as proposed by~\cite{improvedgan,smooth}) and $b = 0$.
+The main idea behind LSGAN~\cite{lsgan} is not to use maximum log-likelihood framework, but to use least squares instead. The formulation of the generator and discriminator loss functions can be then seen in equations \ref{lsganlossg} and \ref{lsganlossd}, where $a$, $b$ and $c$ are target values of the discriminator that we are aiming for. In most applications, $c = a = 1$ (or 0.9 to introduce label smoothing, as proposed by~\cite{improvedgan,smooth}) and $b = 0$.
 
 \begin{equation}
 \loss_G = \frac{1}{2}(D(G(\bm{z})) - c)^2
@@ -74,13 +74,13 @@ The main idea behind LSGAN~\cite{lsgan} is to not use maximum log-likelihood fra
 \label{lsganlossd}
 \end{equation}
 
-The reasoning for this reformulation of the loss functions is mostly to provide better gradients and to move the generated samples closer to the decision boundary. In traditional GAN, samples that pass the decision boundary do not provide strong enough gradients and do not contribute to learning, however with the LSGAN, there is only one flat point of the loss functions without strong gradients.
+The reasoning for this reformulation of the loss functions is mostly to provide better gradients and to move the generated samples closer to the decision boundary. In traditional GAN, samples that pass the decision boundary do not provide strong enough gradients and do not contribute to the learning process. However with the LSGAN, there is only one flat point of the loss functions without strong gradients.
 
 \subsubsection{WGAN and WGAN-GP -- Wasserstein GAN (with gradient penalty)}
 
 One of the ideas of the original GANs we have not talked about before is minimizing some metric between the generated and the target distributions. This metric is usually well defined by the respective loss function and for original formulation of GAN it is Kullback-Leibler divergence~\cite{kullback} and for LSGAN it is Pearson $\chi^2$ divergence~\cite{pearson}.
 
-WGAN~\cite{wgan} was introduced to minimize Wasserstein-1 distance~\cite{wasser}, also known as Earth-Mover. This definition yields following loss functions as seen on equation \ref{wganlossg} and \ref{wganlossd}.
+WGAN~\cite{wgan} was introduced to minimize Wasserstein-1 distance~\cite{wasser}, also known as Earth-Mover. This definition yields following loss functions as seen on equations \ref{wganlossg} and \ref{wganlossd}.
 
 \begin{equation}
 \loss_G = -D(G(\bm{z}))
@@ -101,36 +101,38 @@ The reformulation of WGAN called WGAN-GP~\cite{wgan-gp} emerged soon after and i
 \label{wgangplossgdp}
 \end{equation}
 
-Authors of WGAN-GP showed, that the gradient penalty is superior to the weight clipping since the original WGAN exhibited either vanishing or exploding gradients quite often. To demonstrate higher stability, WGAN-GP authors trained many architectures with this criterion on ImageNet~\cite{imagenet} dataset and measured the Inception score~\cite{improvedgan} (score based on ability to produce samples from different ImageNet class with high classification rate by Inception network~\cite{inception}) achieved by the network. It was shown~\cite{wgan-gp}, that many more architectures were able to obtain high Inception score when trained by WGAN-GP loss functions instead of original GAN loss functions.
+It is now even more critical than in the original formulation of GAN to train the discriminator to almost optimum. This stems for the fact that better discriminator yields much stronger gradients than poorly trained one.
+
+Authors of WGAN-GP showed, that the gradient penalty is superior to the weight clipping since the original WGAN exhibited either vanishing or exploding gradients quite often. To demonstrate higher stability, WGAN-GP authors trained many architectures with this criterion on ImageNet~\cite{imagenet} dataset and measured the Inception score~\cite{improvedgan} (score based on ability to produce samples from different ImageNet classes with high classification rate by Inception network~\cite{inception}) achieved by the network. It was shown~\cite{wgan-gp}, that many more architectures were able to obtain high Inception score when trained by WGAN-GP loss functions instead of original GAN loss functions.
 
 Quite an important thing to note is the fact, that WGAN-GP {\em cannot} use popular Batch normalization~\cite{batchnorm} layers as it alters the gradients of the layers and makes the gradient penalty useless. The recommendation by the article authors is to use Layer normalization~\cite{layernorm} layers instead. It is also beneficial to widen the range of the discriminator function to [-1; 1] (as opposed to [0; 1] in the original GAN) and to achieve this, it suffices to only change the activation function of the last layer of the discriminator to hyperbolic tangent.
 
 \subsection{SimGAN}
 
-SimGAN~\cite{historypool} is GAN variant aiming at learning a {\em refinement} of simulated data to make them look realistic enough. The paper called the generator network with the name {\em refiner} to emphasize the fact, that it received simulated data (instead of noise) on the input. The paper introduced three important concepts in the field of GANs. The first one is {\em local} adversarial loss -- this idea means, that the discriminator should not produce only scalar output, but a response map, where each part of this map corresponds to the particular patch of the evaluated image. The reasoning behind this is to allow patches with not so dominant features to contribute to the loss of the discriminator and by extension of the refiner as well.
+SimGAN~\cite{historypool} is GAN variant aiming to learn a {\em refinement} of simulated data to make them look realistic enough. The paper called the generator network with the name {\em refiner} to emphasize the fact, that it received simulated data (instead of noise) on the input. The paper introduced three important concepts in the field of GANs. The first one is {\em local} adversarial loss -- this idea means, that the discriminator should not produce only scalar output, but a response map, where each part of this map corresponds to the particular patch of the evaluated image. The reasoning behind this is to allow patches with not so dominant features to contribute to the loss of the discriminator and by extension of the refiner as well.
 
-Second key idea is adding a so-called {\em self-regularization} term to the refiner's loss function. This term can be seen in equation \ref{simganself}, where $\bm{x}$ is a sample from simulated data (refiner's input), $\bm{\tilde{x}}$ is a refined sample (refiner's output), $\lambda_{reg}$ is a relative weight given to the importance of this loss term and $\psi$ is a feature mapping from image space to the feature space. This feature mapping could be any function with important properties (such as classification of the data), or it could be simple identity and the $\loss_{reg}$ becomes pixel-wise distance.
+Second key idea is adding a so-called {\em self-regularization} term to the refiner's loss function. This term can be seen in equation \ref{simganself}, where $\bm{x}$ is a sample from simulated data (refiner's input), $\bm{\tilde{x}}$ is a refined sample (refiner's output), $\lambda_{reg}$ is a relative weight given to the importance of this loss term and $\psi$ is a feature mapping from image space to the feature space. This feature mapping could be any function with important properties (such as classification of the data), or it could be simple identity and then the $\loss_{reg}$ would become pixel-wise distance.
 
 \begin{equation}
 \loss_{reg} = \lambda_{reg}\norm{\psi({\bm{x}}) - \psi({\bm{\tilde{x}}})}_1
 \label{simganself}
 \end{equation}
 
-This self-regularization term allows to learn the refiner to keep the most important information of the image during the refinement process.
+This self-regularization term allows to teach the refiner to keep the most important information of the image during the refinement process.
 
-Third key idea is to introduce memory for the discriminator's learning process. The discriminator should not be able to forget about the images it has seen an epoch ago. In order to facilitate this memory, a history buffer is introduced which keeps the refined samples. When performing single optimization step on discriminator weights, approximately half of the batch used in this optimization step is replaced with the samples from this history buffer. To be able to limit the buffer size, after performing the training step, half of the samples from the batch is randomly selected and replaces random samples in the history buffer.
+Third key idea is to introduce memory for the discriminator's learning process. The discriminator should be unable to forget about the images it has seen an epoch ago. In order to facilitate this memory, a history buffer which keeps the refined samples is introduced. When performing single optimization step on discriminator weights, approximately half of the used batch is replaced with the samples from this history buffer. To be able to limit the buffer size, after performing the training step, half of the samples from the batch is randomly selected and random samples in the history buffer are replaced by this selection.
 
 \subsection{CycleGAN} \label{cyclegan}
 
-CycleGAN~\cite{cyclegan} is a concept aiming at matching two different distributions by the means of GANs. The core idea is to have {\em two} GANs trained simultaneously with one generator learning the mapping from the first distribution to the second and the other generator learning the reverse mapping. To enforce this reverse mapping, new term called {\em cycle consistency loss} is added to the loss function of the generators and it can be seen on the equation \ref{cycleloss}, where $p_X, p_Y$ are the distributions between which we try to find a mapping $\bm{x}\sim p_X$, $\bm{y}\sim p_Y$, $G_{X\rightarrow Y}$ is a generator mapping from $p_X$ to $p_Y$, $G_{X\rightarrow Y}$ is a generator mapping from $p_Y$ to $p_X$ and $\lambda_{cyc}$ is a relative weight given to the importance of this loss term.
+CycleGAN~\cite{cyclegan} is a concept aiming to match two different distributions by the means of GANs. The core idea is to have {\em two} GANs trained simultaneously with one generator learning the mapping from the first distribution to the second and the other generator learning the reverse mapping. To enforce this reverse mapping, new term called {\em cycle consistency loss} is added to the loss function of the generators. This loss term can be seen in the equation \ref{cycleloss}, where $p_X, p_Y$ are the distributions between which we try to find a mapping $\bm{x}\sim p_X$, $\bm{y}\sim p_Y$, $G_{X\rightarrow Y}$ is a generator mapping from $p_X$ to $p_Y$, $G_{X\rightarrow Y}$ is a generator mapping from $p_Y$ to $p_X$ and $\lambda_{cyc}$ is a relative weight given to the importance of this loss term.
 
 \begin{equation}
 \loss_{cyc} = \lambda_{cyc}(\norm{G_{Y\rightarrow X}(G_{X\rightarrow Y}(\bm{x})) - \bm{x}}_1 + \norm{G_{X\rightarrow Y}(G_{Y\rightarrow X}(\bm{y})) - \bm{y}}_1)
 \label{cycleloss}
 \end{equation}
 
-This approach of training two GANs simultaneously can give us mapping between these two distributions {\em without} having a pair-to-pair correspondences. It is important to note that even though this closely relates to the style transfer problem, the resulting mappings should work in both directions which is usually not the case with more common approaches~\cite{artstyle} to the style transfer. Since this seems like an approach that could help us model the mapping between real-life and in-game data of the cars' sensors, we decided we will use CyclGAN as a basis for our experiments using various underlying architectures of GANs.
+This approach of training two GANs simultaneously can give us mapping between these two distributions {\em without} having a pair-to-pair correspondences. It is important to note that even though this closely relates to the style transfer problem, the resulting mappings should work in both directions which is usually not the case with more common approaches~\cite{artstyle} to the style transfer. Since this seems like an approach that could help us model the mapping between real-life and in-game data of the cars' sensors, we decided to use CycleGAN as a basis for our experiments using various underlying architectures of GANs.
 
-The CycleGAN does not concern itself with the particular type of GAN used as a generator mapping, however original results were published using LSGAN with instance normalization~\cite{instancenorm} and $\lambda_{cyc} = 10$
+The CycleGAN does not concern itself with the particular type of GAN used as a generator mapping, however original results were published using LSGAN with instance normalization~\cite{instancenorm}, $\lambda_{cyc} = 10$ and local adversarial loss used for discriminator.
 
 \section{Description of LiDAR}
