@@ -94,7 +94,7 @@ WGAN~\cite{wgan} was introduced to minimize Wasserstein-1 distance~\cite{wasser}
 
 However, to enforce a Wasserstein-1 distance, it is necessary to satisfy the condition that function $D$ is K-Lipshitz continuous for any given K. This is not easy to achieve and the method used in the original paper was weight clipping to a tight bounding box after each update. It is worth noting the authors admit that this solution is impractical and obviously wrong, however they could not think of a better solution at the time.
 
-The reformulation of WGAN called WGAN-GP~\cite{wgan-gp} emerged soon after and introduced less drastic way to enforce K-Lipshitz continuity. The discriminator's loss function would receive an additional term called gradient penalty forcing the gradients of the function to be "approximately 1 almost everywhere". This gradient penalty removes the need for the weight clipping in the original paper and it is shown in equation \ref{wgangplossgdp}, where $\bm{\tilde{x}} = \epsilon\bm{x} + (1 - \epsilon)\bm{z}$ and $\epsilon$ is a uniform random number from the range [0; 1].
+The reformulation of WGAN called WGAN-GP~\cite{wgan-gp} emerged soon after and introduced less drastic way to enforce K-Lipshitz continuity. The discriminator's loss function would receive an additional term called gradient penalty forcing the gradients of the function to be "approximately 1 almost everywhere". This gradient penalty removes the need for the weight clipping in the original paper and it is shown in equation \ref{wgangplossgdp}, where $\bm{\tilde{x}} = \epsilon\bm{x} + (1 - \epsilon)G(\bm{z})$ and $\epsilon$ is a uniform random number from the range [0; 1].
 
 \begin{equation}
 \loss_{GP} = (\norm{\nabla_{\bm{\tilde{x}}}D(\bm{\tilde{x}})}_2 - 1)^2

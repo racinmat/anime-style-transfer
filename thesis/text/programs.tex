@@ -63,9 +63,10 @@ Last argument (\texttt{norm}) is a type of normalization used in network layers.
 \item \texttt{nets.GAN} -- Implementation of Generative Adversarial Network (GAN)~\cite{origgan}. Uses original loss functions.
 
 \begin{description}
-\descitem{\texttt{\_\_init\_\_()}} First two arguments (\texttt{gen, dis}) of the constructor are the mapping networks -- generator and discriminator (in the original paper $G(\cdot)$ and $D(\cdot)$), where discriminator should produce real number in a range [0; 1] due to the way how is loss function defined. If the discriminator function's output is of higher dimension than one, then the appropriate loss function is computed in each dimension independently and the final loss is arithmetical mean of these loss functions. If discriminator network is a convolutional network, one can think of this as the loss computed at different patches extracted by the network.
+\descitem{\texttt{\_\_init\_\_()}} First two arguments (\texttt{gen, dis}) of the constructor are the mapping networks -- generator and discriminator (in the original paper $G(\cdot)$ and $D(\cdot)$), where discriminator should produce real number in a range [0; 1] due to the way how is loss function defined. If the discriminator function's output is of higher dimension than one, then the appropriate loss function is computed in each dimension independently and the final loss is the arithmetical mean of these loss functions. If discriminator network is a convolutional network, one can think of this as the loss computed at different patches extracted by the network~\cite{historypool}.
 
-Next two arguments (\texttt{in\_shape, out\_shape}) specify input and output shapes of generator {\em without} the batch size. Though this information could be easily obtained from the generator function, it is there mostly to check that the shapes are correct and indeed what you intended them to be. Next two arguments (\texttt{gen\_lambda, dis\_lambda}) are $\lambda$s that correspond to the weight of the respective terms in the final loss function.
+Next two arguments (\texttt{in\_shape, out\_shape}) specify input and output shapes of generator {\em without} the batch size. Though this information could be easily obtained from the generator function, it is there mostly to check that the shapes are correct and indeed what you intended them to be. Next two arguments (\texttt{gen\_lambda, dis\_lambda}) are $\lambda$s that correspond to the weight of the respective terms in the final loss function. Next argument (\texttt{selfreg\_lambda}) corresponds to the weight of the self-regularization term~\cite{historypool} of the generator's loss. Last argument (\texttt{selfreg\_transform}) is a mapping used in the self-regularization term. If set to \texttt{None}, then identity mapping will be used.
+
 \descitem{\texttt{gen\_loss()}} This method expects one argument -- data of \texttt{in\_shape} that will be fed to generator to produce the loss term of the generator according to the equation \ref{gangenloss}, where $\lambda_G$ is a multiplier denoting the contribution of this loss term, $G(\cdot)$ is a generator mapping, $D(\cdot)$ is a discriminator mapping, $\bm{x}$ is input data for generator mapping and $\loss_{G}$ is a loss term returned by this method.
 
 \begin{equation}
@@ -87,6 +88,13 @@ Note, that the original formulation of the generator loss function by \cite{orig
 \label{gandisloss}
 \end{equation}
 
+\descitem{\texttt{selfreg\_loss()}} This method takes two arguments (\texttt{orig, conv}) and computes self-regularization~\cite{historypool} term of the generator's loss function according to the equation \ref{selfregloss}, where $\bm{x}$ corresponds to the \texttt{orig} argument, $\bm{\tilde{x}}$ corresponds to the \texttt{conv} argument, $\psi(\cdot)$ is a feature mapping (specified at the constructor), $\lambda_{reg}$ is a multiplier denoting the contribution of this loss term to the overall loss and $\loss_{reg}$ is a loss term returned by this method.
+
+\begin{equation}
+\loss_{reg} = \lambda_{reg}\norm{\psi(\bm{x}) - \psi(\bm{\tilde{x}})}_1
+\label{selfregloss}
+\end{equation}
+
 \end{description}
 
 \item \texttt{nets.LSGAN} -- Implementation of Least Squares GAN~\cite{lsgan}. This is a subclass of \texttt{nets.GAN} and as such all of the methods accept the same arguments. The only difference is in the equations governing the computation of respective terms of the loss function in methods \texttt{gen\_loss()} and \texttt{dis\_loss()}.
@@ -98,7 +106,7 @@ Note, that the original formulation of the generator loss function by \cite{orig
 \end{equation}
 \descitem{\texttt{dis\_loss()}} This  method implements the discriminator loss function according to the equation \ref{lsgandisloss}. The meaning of the used symbols is the same as in equation \ref{gandisloss}.
 \begin{equation}
-\loss_D = \frac{\lambda_D}{2} (\norm{D(\bm{\hat{x}}) - 0.9}_2^2 + \norm{D(\bm{y})}^2)
+\loss_D = \frac{\lambda_D}{2} (\norm{D(\bm{\hat{x}}) - 0.9}_2^2 + \norm{D(\bm{y})}_2^2)
 \label{lsgandisloss}
 \end{equation}
 

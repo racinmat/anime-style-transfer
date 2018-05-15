@@ -20,7 +20,7 @@ REAL_LABEL = 0.9
 # 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;' - discriminator
 
 class BaseNet:
-    def __init__(self, name, network_desc, is_training, weight_lambda, norm='instance'):
+    def __init__(self, name, network_desc, is_training, weight_lambda=0.0, norm='instance'):
         self.name = name
         self.is_training = is_training
         self.variables = None
@@ -38,7 +38,6 @@ class BaseNet:
                 else:
                     break
             self.names.append(newname)
-
 
 
     def __call__(self, data):
@@ -77,7 +76,8 @@ class BaseNet:
 
 
 class GAN:
-    def __init__(self, gen, dis, in_shape, out_shape, gen_lambda, dis_lambda):
+    def __init__(self, gen, dis, in_shape, out_shape,
+                 gen_lambda, dis_lambda, selfreg_lambda, selfreg_transform=None):
         assert isinstance(gen, BaseNet) and isinstance(dis, BaseNet)
         self.gen = gen
         self.dis = dis
@@ -85,10 +85,22 @@ class GAN:
         self.out_shape = out_shape
         self.gen_lambda = gen_lambda
         self.dis_lambda = dis_lambda
+        self.selfreg_lambda = selfreg_lambda
+        self.selfreg_transform = selfreg_transform
 
 
     def _gen_loss(self, data):
         return -tf.reduce_mean(ops.safe_log(data))
+
+
+    def selfreg_loss(self, orig, conv):
+        if self.selfreg_lambda > 0:
+            if self.selfreg_transform is not None:
+                torig, tconv = self.selfreg_transform(orig, conv)
+            else:
+                torig, tconv = orig, conv
+            return tf.reduce_mean(tf.abs(torig - tconv)) * self.selfreg_lambda
+        return 0
 
 
     def gen_loss(self, orig_data):
@@ -117,8 +129,10 @@ class LSGAN(GAN):
 
 
 class WGAN(GAN):
-    def __init__(self, gen, dis, in_shape, out_shape, gen_lambda, dis_lambda, grad_lambda):
-        super().__init__(gen, dis, in_shape, out_shape, gen_lambda, dis_lambda)
+    def __init__(self, gen, dis, in_shape, out_shape,
+                 gen_lambda, dis_lambda, grad_lambda, selfreg_lambda, selfreg_transform=None):
+        super().__init__(gen, dis, in_shape, out_shape,
+                         gen_lambda, dis_lambda, selfreg_lambda, selfreg_transform)
         self.grad_lambda = grad_lambda
 
 
