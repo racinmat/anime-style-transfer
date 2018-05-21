@@ -1,7 +1,17 @@
 \chapter{Conclusion}
 
-\section{Discussion}
+\section{Discussion of the achieved results}
+
+It is important to note, that there seems to be no universally accepted evaluation metric of realism. Most of today's generative networks are compared using Inception score~\cite{inception}, however, this is only suitable if one is generating actual images and not the depth image with completely different semantics. Another option researches often use is Amazon's Mechanical Turk, however this suffers from the limitation that it might not be clearly obvious how a ``real'' LiDAR-like image (or reconstructed point cloud) from a GTA or Valeo dataset should look like. However, if we look at the data shown in the figures \ref{evalcmpg2v} and \ref{evalcmpv2g}, we can safely say, that the original GAN does not work in this settings regardless of the self regularization of the generators.
+
+This seems to hold for LSGAN without self-regularization as well, however when self-regularization was added, LSGAN started to perform a lot better, preserving the important intensity information. However, it is safe to say that even without rigorous evaluation metric, WGAN-GP with self-regularization term was the winner. It seems to be able to maintain the important information and to introduce noise when transforming from the GTA dataset to Valeo dataset, as seen in the point cloud portion of the results. \todo{probably not finished yet}
 
 \section{Future work}
 
+In the future we would like to develop a sensible metric for generating depth data. This can be seen as the biggest shortcoming of this thesis. It will be also beneficial to leverage more information from the data in order to be able to create more accurate models of the depth sensors. The most beneficial would be to use RGB data with the LiDAR data simultaneously, however this was not possible due to the missing calibrated RGB images in the Valeo dataset.
+
+It might be interesting to explore the idea of asymmetric CycleGAN in which the generators' structures as well as the input and output shapes differ. This use-case can be potentially very interesting as it can lead to using more information from one dataset if available.
+
 \section{Conclusion}
+
+\todo{todo}

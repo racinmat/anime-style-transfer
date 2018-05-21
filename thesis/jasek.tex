@@ -11,8 +11,8 @@
 	department-english = {Department of Cybernetics},
 	author = {Otakar Jašek},
 	supervisor = {doc. Ing. Karel Zimmermann, PhD.},
-%	keywords-czech = {Faster \rcnn{}, Konvoluční neuronové sítě, přetrénování neuronových sítí, detekce a rozpoznání objektu},
-%	keywords-english = {Faster \rcnn{}, Convolutional neural networks, fine-tuning of neural networks, detection and recognition of objects},
+	keywords-czech = {Generativní adversarialní sítě, CycleGAN, LiDAR, hloubková data, přenos stylu},
+	keywords-english = {Generative adversarial networks, CycleGAN, LiDAR, depth measurements, style transfer},
 	fieldofstudy-english = {Open Informatics},
 	subfieldofstudy-english = {Computer Vision and Digital Image},
 	fieldofstudy-czech = {Otevřená Informatika},
@@ -37,29 +37,36 @@
 \usepackage{bm}
 \usepackage{amsmath,amssymb}
 \usepackage[numbers]{natbib}
+\usepackage{array}
+
+\newcolumntype{I}{>{\centering\arraybackslash} m{0.27\linewidth}}
+\newcolumntype{L}{>{\centering\arraybackslash} m{0.17\linewidth}}
 
 \begin{abstract-english}
+\todo{write abstract}
 \end{abstract-english}
 
 \begin{abstract-czech}
+\todo{write abstract}
 \end{abstract-czech}
 
 \begin{thanks}
+\todo{write thanks -- should I thank Valeo?}
 %I would like to thank my supervisor, Tomáš Svoboda, for countless advices and steering me in the right direction while working on my thesis. Also I would like to thank my family for never ending support while working on this thesis.
 \end{thanks}
 
 \begin{declaration}
-%I declare that the presented work was developed independently and that I have listed all sources of information used within it in accordance with the methodical instructions for observing the ethical principles in the preparation of university theses.
-%\\\\
-%Signature:
-%\\\\
-%Prague, May 27, 2016
+I declare that the presented work was developed independently and that I have listed all sources of information used within it in accordance with the methodical instructions for observing the ethical principles in the preparation of university theses.
+\\\\
+Signature:
+\\\\
+Prague, May 25, 2018
 \end{declaration}
 
 \newcommand{\descitem}[1]{\item[\sffamily\normalsize\color{ctubluetext}#1] \hfill \\}
 \newcommand{\norm}[1]{\left\lVert#1\right\rVert}
 \newcommand{\loss}{\mathcal{L}}
-\DeclareMathOperator{\EX}{\mathbb{E}}% expected value
+\DeclareMathOperator{\EX}{\mathbb{E}}
 
 \begin{document}
 \maketitle
@@ -75,5 +82,7 @@
 \bibliographystyle{unsrtnat}
 \bibliography{jasek}
 
+\appendix
+\input{text/cd.tex}
 
 \end{document}

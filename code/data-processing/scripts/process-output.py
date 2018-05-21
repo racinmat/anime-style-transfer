@@ -11,6 +11,16 @@ import rays
 scale_depth = 255.0/131.0
 scale_inten = 255.0
 
+def process_img(img):
+    _, img_size = img.shape
+    stripe = np.ones((2,int(img_size/4)), 'u1') * 255
+    img_concat = [img[:, :int(img_size/4)], stripe,
+                  img[:, int(img_size/4):int(img_size/2)], stripe,
+                  img[:, int(img_size/2):int(3*img_size/4)], stripe,
+                  img[:, int(3*img_size/4):]]
+    return np.concatenate(img_concat, axis=0)
+
+
 def load_data(filename, limit=100):
     arr = np.load(filename)
     indata = arr['input'][:limit].copy()
@@ -20,10 +30,10 @@ def load_data(filename, limit=100):
 
 
 def process_one_example(i, orig, conv, path):
-    Image.fromarray(((orig[:,:,0] * (orig[:,:,2] > 0.5)) * scale_depth).astype('u1')).save(osp.join(path, '%03d.depth.orig.png' % (i,)), 'PNG')
-    Image.fromarray(((conv[:,:,0] * (conv[:,:,2] > 0.5)) * scale_depth).astype('u1')).save(osp.join(path, '%03d.depth.conv.png' % (i,)), 'PNG')
-    Image.fromarray(((orig[:,:,1] * (orig[:,:,2] > 0.5)) * scale_inten).astype('u1')).save(osp.join(path, '%03d.inten.orig.png' % (i,)), 'PNG')
-    Image.fromarray(((conv[:,:,1] * (conv[:,:,2] > 0.5)) * scale_inten).astype('u1')).save(osp.join(path, '%03d.inten.conv.png' % (i,)), 'PNG')
+    Image.fromarray(process_img(((orig[:,:,0] * (orig[:,:,2] > 0.5)) * scale_depth).astype('u1'))).save(osp.join(path, '%03d.depth.orig.png' % (i,)), 'PNG')
+    Image.fromarray(process_img(((conv[:,:,0] * (conv[:,:,2] > 0.5)) * scale_depth).astype('u1'))).save(osp.join(path, '%03d.depth.conv.png' % (i,)), 'PNG')
+    Image.fromarray(process_img(((orig[:,:,1] * (orig[:,:,2] > 0.5)) * scale_inten).astype('u1'))).save(osp.join(path, '%03d.inten.orig.png' % (i,)), 'PNG')
+    Image.fromarray(process_img(((conv[:,:,1] * (conv[:,:,2] > 0.5)) * scale_inten).astype('u1'))).save(osp.join(path, '%03d.inten.conv.png' % (i,)), 'PNG')
     recoo = rays.reconstruct_pcl(orig)
     recoi = rays.reconstruct_pcl(conv)
     np.savetxt(osp.join(path, '%03d.pcl.orig.txt' % (i,)), recoo.T)
