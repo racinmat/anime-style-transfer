@@ -1,8 +1,12 @@
 \chapter{Theory}
 
-\section{Related work}
+\section{Previous work}
 
-\todo{write some related work}
+The first major work in the area of generating images was done by Goodfellow~{\em et al.}~\cite{origgan} by introduction of Generative Adversarial Networks. Since then many variants improving on the original paper emerged focusing on different tasks.
+
+In the area of image translation, Isola~{\em et al.}~\cite{pix2pix} introduced pixel-wise loss in order to generate visually appealing yet constrained images. Similar approach was taken by Shrivastava~{\em et al.}~\cite{historypool}, with their SimGAN which introduced self-regularization loss to constrain generation process within the desired direction and were able to solve the generative task within semi-supervised settings.
+
+Later on Isola~{\em et al.} introduced CycleGAN~\cite{cyclegan} with the cycle consistency loss in order to solve the image translation task without paired correspondences. However, all of the recent work was done only on regular images. As far as we know we have not find any published work in the area of generating or translating depth data from LiDAR sensors.
 
 \section{Used neural networks} \label{nets}
 
