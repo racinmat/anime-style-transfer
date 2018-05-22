@@ -1,8 +1,14 @@
 \chapter{Theory}
 
-\section{Previous work}
+\section{Related work}
+
+Johnson-Roberson~{\em et al.}~\cite{matrix} showed that using data from the computer games as a training set for the machine learning tasks is a promising approach showing potential. However, often times these data are not realistic enough, especially when interested in different data than RGB images.
+
+Interesting approach for recreating the data could be style transfer~\cite{artstyle} by Gatis~{\em et al.}, however these method are usually interested only in artistic image translation which is not useful for creating realistically looking images.
 
 The first major work in the area of generating images was done by Goodfellow~{\em et al.}~\cite{origgan} by introduction of Generative Adversarial Networks. Since then many variants improving on the original paper emerged focusing on different tasks.
+
+An interesting approach taken by Koltun~\cite{koltun} tries to generate realistically looking images from pixel-wise annotation. This approach seems to work really well, however is only suitable if you know pixel-wise annotation of the images, therefore we could not use it in our work.
 
 In the area of image translation, Isola~{\em et al.}~\cite{pix2pix} introduced pixel-wise loss in order to generate visually appealing yet constrained images. Similar approach was taken by Shrivastava~{\em et al.}~\cite{historypool}, with their SimGAN which introduced self-regularization loss to constrain generation process within the desired direction and were able to solve the generative task within semi-supervised settings.
 
