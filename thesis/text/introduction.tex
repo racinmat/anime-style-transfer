@@ -2,7 +2,7 @@
 
 \section{Motivation}
 
-A large number of machine learning applications rely on a vast amount of data from the real world to infer useful relations. However, obtaining these data is not always a viable option. The problems with obtaining data are multiple -- i.e. human labor costs for labeling, hardware wear and situations impossible to create in real world (such as crashing). Luckily, computer graphics started to become more and more realistic in recent years~\cite{matrix}, and it is now possible to capture image and depth data from computer games. These data have one significant advantage -- it can simulate almost any scenario such as crashing, unusual environment, etc., as long as it is possible within the game.
+A large number of machine learning applications rely on a vast amount of data from the real world to infer useful relations. However, obtaining this amount data is not always a viable option. The problems with obtaining data are multiple -- i.e. human labor costs for labeling, hardware wear and situations impossible to create in real world (such as crashing). Luckily, computer graphics started to become more and more realistic in recent years~\cite{matrix}, and it is now possible to capture image and depth data from computer games. The in-game data have one significant advantage -- it can simulate almost any scenario such as crashing, unusual environment, etc., as long as it is possible within the game.
 
 Although the data captured from the modern computer games look almost realistic, it suffers from many problems to be readily usable by machine learning applications. The most significant drawback is the fact, that they look {\em too} perfect -- real-world sensors often measure data with noise or fail altogether.
 
@@ -13,7 +13,7 @@ The full pipeline will therefore accept RGBD images from GTA V as an input and w
 \begin{figure}
 \centering
 \includegraphics[keepaspectratio, width=0.98\textwidth]{img/algorithm.pdf}
-\caption[Schema of the resulting pipeline]{Schema of the resulting pipeline. On the left side there is an input to the pipeline, RGBD images from GTA V. We are trying to convert the data into realistically looking LiDAR data with depth and intensity information. In order to model the data realistically, we use Valeo data from Velodyne LiDAR as an additional input to the pipeline, however these data don't have one-to-one correspondences to the GTA data.}
+\caption[Schema of the resulting pipeline]{Schema of the resulting pipeline. On the left side there is an input to the pipeline, RGBD images from GTA V. We are trying to convert the data into realistically looking LiDAR data with depth and intensity information. In order to model the data realistically, we use Valeo data from Velodyne LiDAR as an additional input to the pipeline, however, these data don't have one-to-one correspondences to the GTA data.}
 \label{schema}
 \end{figure}
 
