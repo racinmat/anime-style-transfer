@@ -12,7 +12,7 @@ An interesting approach taken by Koltun~\cite{koltun} tries to generate realisti
 
 In the area of image-to-image translation, Isola~{\em et al.}~\cite{pix2pix} introduced pixel-wise loss in order to generate visually appealing yet constrained images. Similar approach was taken by Shrivastava~{\em et al.}~\cite{historypool}, with their SimGAN which introduced self-regularization loss to constrain generation process within the desired direction and were able to solve the generative task within semi-supervised settings.
 
-Later on Zhu~{\em et al.} introduced CycleGAN~\cite{cyclegan} with the cycle consistency loss in order to solve the image translation task without paired correspondences. However, all of the recent work was done only on regular images. As far as we know we have not find any published work in the area of generating or translating depth data from LiDAR sensors.
+Later on Zhu~{\em et al.} introduced CycleGAN~\cite{cyclegan} with the cycle consistency loss in order to solve the image-to-image translation task without paired correspondences. However, all of the recent work was done only on regular images. As far as we know we have not found any published work in the area of generating or translating depth data from LiDAR sensors.
 
 \section{Used neural networks} \label{nets}
 
@@ -24,7 +24,7 @@ If the loss function is well defined over the problem set, then the network will
 
 The neural layers we introduced above are usually called {\em fully connected} because all the outputs from one layer are connected to all the neurons from the next layer. This was one of the first formulations of artificial neural networks~\cite{orignet}. However, these fully connected layers are not well suited for computer vision applications, since we would like to have the same response to the particular object in the image regardless of its position or orientation. To overcome this issue, the {\em convolutional} layers~\cite{convnet}, which perform a mathematical operation of convolution over the input, were introduced. Quite often these convolutional layers are followed by the fully connected layers at the end of the network.
 
-A recently proposed residual block~\cite{resnet} also plays an important role in current state of the art architectures. The paper proposes it should be easier for the network to learn the mapping $h(\cdot)$ from equation $\bm{y} = h(\bm{x}) + \bm{x}$ instead of learning the mapping $\bm{y} = f(\bm{x})$. The reasoning for this reformulation is that if it is needed to learn mapping close to identity it is much easier to learn it in this settings. It was shown by the original paper that they were able to reduce the sizes of the well-performing architectures while still maintaining or improving their accuracy. The only drawback of this residual block is that it cannot change the size of the input.
+A recently proposed residual block~\cite{resnet} also plays an important role in current state of the art architectures. The paper proposes it should be easier for the network to learn the mapping $h(\cdot)$ from equation $\bm{y} = h(\bm{x}) + \bm{x}$ instead of learning the mapping $\bm{y} = f(\bm{x})$. The reasoning for this reformulation is that if it is needed to learn mapping close to identity it is much easier to learn it in this settings. It was shown by the original paper that it was possible to reduce the sizes of the well-performing architectures while still maintaining or improving their accuracy. The only drawback of this residual block is that it cannot change the size of the input.
 
 \subsection{Generative adversarial network (GAN)}
 
@@ -62,7 +62,7 @@ Another problem that could very easily occur is a {\em mode collapse} of the gen
 
 Since the inception of GANs, many variants emerged trying to overcome some of the issues outlined in the previous subsection. According to DeepHunt~\cite{deephunt}, there were 354 papers proposing a variation of GAN as of 10\textsuperscript{th} May 2018. Most of these improvements revolve around redefining the loss functions and introducing various tricks to achieve better training stability.
 
-In the following subsections will be shortly described some of these variants with their particular improvements and differences from the original GAN.
+In the following subsections we will shortly describe some of these variants with their particular improvements and differences from the original GAN.
 
 \subsubsection{DCGAN -- Deep Convolutional GAN}
 DCGAN~\cite{dcgan} is not a variant of GAN per se, as it mostly involves guidelines for stable training of GAN where discriminator and generator consist of multiple convolutional layers. The said guidelines can be briefly summarized as:
@@ -125,7 +125,7 @@ Quite an important thing to note is the fact, that WGAN-GP {\em cannot} use popu
 
 SimGAN~\cite{historypool} is GAN variant aiming to learn a {\em refinement} of simulated data to make them look realistic enough. The paper called the generator network with the name {\em refiner} to emphasize the fact, that it received simulated data (instead of noise) on the input. The paper introduced three important concepts in the field of GANs. The first one is {\em local} adversarial loss -- this idea means, that the discriminator should not produce only scalar output, but a response map, where each part of this map corresponds to the particular patch of the evaluated image. The reasoning behind this is to allow patches with not so dominant features to contribute to the loss of the discriminator and by extension of the refiner as well.
 
-Second key idea is adding a so-called {\em self-regularization} term to the refiner's loss function. This term can be seen in equation \ref{simganself}, where $\bm{x}$ is a sample from simulated data (refiner's input), $\bm{\tilde{x}}$ is a refined sample (refiner's output), $\lambda_{reg}$ is a relative weight given to the importance of this loss term and $\psi$ is a feature mapping from image space to the feature space. This feature mapping could be any function with important properties (such as classification of the data), or it could be simple identity and then the $\loss_{reg}$ would become pixel-wise distance.
+Second key idea is adding a so-called {\em self-regularization} term to the refiner's loss function. This term can be seen in equation \ref{simganself}, where $\bm{x}$ is a sample from simulated data (refiner's input), $\bm{\tilde{x}}$ is a refined sample (refiner's output), $\lambda_{reg}$ is a relative weight given to the importance of this loss term and $\psi$ is a feature mapping from image space to the feature space. This feature mapping could be any function with important properties (such as classification of the data), or it could be a simple identity and then the $\loss_{reg}$ would become pixel-wise distance.
 
 \begin{equation}
 \loss_{reg} = \lambda_{reg}\norm{\psi({\bm{x}}) - \psi({\bm{\tilde{x}}})}_1

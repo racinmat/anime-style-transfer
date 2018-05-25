@@ -11,8 +11,8 @@
 	department-english = {Department of Cybernetics},
 	author = {Otakar Jašek},
 	supervisor = {doc. Ing. Karel Zimmermann, PhD.},
-	keywords-czech = {Generativní adversarialní sítě, CycleGAN, LiDAR, hloubková data, přenos stylu},
-	keywords-english = {Generative adversarial networks, CycleGAN, LiDAR, depth measurements, style transfer},
+	keywords-czech = {Generativní adversarialní sítě, CycleGAN, LiDAR, hloubková data, GTA V},
+	keywords-english = {Generative adversarial networks, CycleGAN, LiDAR, depth measurements, GTA V},
 	fieldofstudy-english = {Open Informatics},
 	subfieldofstudy-english = {Computer Vision and Digital Image},
 	fieldofstudy-czech = {Otevřená Informatika},
@@ -22,9 +22,7 @@
 	day = 25,
 	month = 5,
 	year = 2018,
-	pkg-listings = true,
 	ctulstbg = none,
-%	layout-short = true,
 	pkg-hyperref = true
 }
 \ctuprocess
@@ -43,17 +41,21 @@
 \newcolumntype{L}{>{\centering\arraybackslash} m{0.17\textwidth}}
 
 \begin{abstract-english}
-Napíšu v letadle
+Realistic LiDAR data that can be used for machine learning and algorithm validation and verification are hard to come by, especially in the quantities required by today's machine learning applications. Recent studies showed that it is feasible to use artificially generated images for the training of the machine learning systems focused on images. Rendering realistic RGB images has a long history driven by gaming and movie industry. Generating artificial LiDAR data are much less mature. The generated LiDAR data are often unrealistically precise and accurate.
+
+The goal of this thesis is to introduce a pipeline which can generate LiDAR data which look as realistically as possible. We use RGB and depth data from GTA V computer game to create initial precise LiDAR representation and employed CycleGANs to introduce realism. The CycleGAN is trained with the help of real-world dataset kindly provided by the Valeo company.
 \end{abstract-english}
 
 \begin{abstract-czech}
-Napíšu v letadle
+Reálná LiDARová data využitelná pro strojové učení a verifikaci a validaci algoritmů jsou těžké získat, zejména v množství požadovaném aktuálními aplikacemi strojového učení. Nedávné studie ukazují, že je možné využít uměle vytvořené obrázky pro trénování systémů založených na strojovém učení. Uměle vygenerovaná obrazová data mají dlouhou historii zejména kvůli potřebám herního a filmového průmyslu, nicméně generování LiDARových dat je prozkoumáno mnohem méně. Uměle generovaná LiDARová data jsou také nerealisticky přesná a je třeba nejprve přidat realismus, aby bylo možné je využít pro systémy strojového učení.
+
+Cílem této práce je vytvořit funkční algoritmus, který je schopen generovat co nejrealističtější LiDARová data. Použili jsme hloubková a RGB data z počítačové hry GTA V, abychom vytvořili přesnou LiDARovou reprezentaci a využili jsme CycleGAN k tomu, abychom tuto reprezentaci co nejvíce přiblížili reálnému světu. CycleGAN byl natrénovaný s pomocí datasetu z reálných měření, který laskavě poskytla společnost Valeo.
 \end{abstract-czech}
 
 \begin{thanks}
 I would like to thank my supervisor, Karel Zimmermann, for countless advice and steering me in the right direction while working on my thesis. Also I would like to thank my girlfriend and my family for never ending support while working on this thesis.
 
-The research leading to this thesis was partly supported by the Valeo company and by European Union under grant agreement No. 692455, Enable-S3.
+The author of this thesis was supported by CTU Valeo Scholarship and by European Union under grant agreement No. 692455, Enable-S3.
 \end{thanks}
 
 \begin{declaration}
