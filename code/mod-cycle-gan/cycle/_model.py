@@ -251,6 +251,16 @@ class CycleGAN:
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
+            if log_verbose:
+                varsize_dict = sess.run({
+                    '{}->{} gen - num params'.format(self.X_name, self.Y_name): self.XtoY.gen.num_params(),
+                    '{}->{} gen - num params'.format(self.Y_name, self.X_name): self.YtoX.gen.num_params(),
+                    '{} dis - num params'.format(self.X_name): self.YtoX.dis.num_params(),
+                    '{} dis - num params'.format(self.Y_name): self.XtoY.dis.num_params(),
+                })
+                for k, v in varsize_dict.items():
+                    logging.info('\t{}:\t{}'.format(k, v))
+
             if self.history:
                 x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
                 y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)

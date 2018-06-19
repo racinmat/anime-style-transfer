@@ -75,6 +75,12 @@ class BaseNet:
         return tf.reduce_mean(vmean) * self.weight_lambda
 
 
+    def num_params(self):
+        if self.variables is None:
+            raise RuntimeError()
+        return tf.reduce_sum([tf.size(v) for v in self.variables])
+
+
 class GAN:
     def __init__(self, gen, dis, in_shape, out_shape,
                  gen_lambda, dis_lambda, selfreg_lambda, selfreg_transform=None):
