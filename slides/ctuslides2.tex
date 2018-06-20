@@ -1,0 +1,302 @@
+% ctuslides2.tex -- the template for generating slides in CTUstyle design
+% -----------------------------------------------------------------------
+% Petr Olsak  Jun. 2015
+
+% See slidy.tex and slidy.pdf for more information about usage
+
+\input opmac
+
+%%% Testing versions of csplain / opmac
+
+\def\ctustyleERR#1{\message{ERROR -- #1.}\expandafter\end}
+
+\ifx\chyph\undefined
+   \expandafter\ifx \csname @@end\endcsname \relax \else % LaTeX's \end 
+      \expandafter \let\expandafter \end \csname @@end\endcsname \fi
+   \ctustyleERR {csplain isn't detected, use ``pdfcsplain \jobname'' command}%
+\fi
+
+\ifx\pdfoutput\undefined
+   \ctustyleERR {pdfTeX isn't detected, use ``pdfcsplain \jobname'' command}%
+\fi
+\pdfoutput=1
+
+\def\tmp#1#2\end{\if$#2$\else 
+   \ctustyleERR {csplain doesn't read UTF-8 encoding, may be it is an old version}\fi}%
+\tmp č\end
+
+\ifx\prepghook\undefined   
+   \ctustyleERR {the OPmac version <May 2015> or newer isn't detected}%
+\fi
+
+%%% Basic design:
+
+\margins/1 a5l (.8,1.2,1,.3)cm  % landscape format
+
+\pdfmapline{=technika Technika-Regular "XL2techencoding ReEncodeFont" <xl2tech.enc <Technika-Regular.pfb}
+\pdfmapline{=technika-it Technika-Italic "XL2techencoding ReEncodeFont" <xl2tech.enc <Technika-Italic.pfb}
+\pdfmapline{=technika-bk Technika-Book "XL2techencoding ReEncodeFont" <xl2tech.enc <Technika-Book.pfb}
+\pdfmapline{=technika-bkit Technika-BookItalic "XL2techencoding ReEncodeFont" <xl2tech.enc <Technika-BookItalic.pfb}
+\pdfmapline{=technika-bf Technika-Bold "XL2techencoding ReEncodeFont" <xl2tech.enc <Technika-Bold.pfb}
+\pdfmapline{=technika-bi Technika-BoldItalic "XL2techencoding ReEncodeFont" <xl2tech.enc <Technika-BoldItalic.pfb}
+
+\font\tenbf=technika-bf  
+\font\tenbi=technika-bi
+\font\tenrm=technika
+\font\tenit=technika-it
+\let\tenss=\tenrm
+\let\tenssi=\tenit
+
+\input chars-8z
+\def\dots{\kern1pt.\kern2pt.\kern2pt.\kern1pt}
+
+\regfont\tenss \regfont\tenssi
+\def\ssr{\tenss} \def\ssi{\tenssi} \def\sc{\tenrmc}
+\def\textit#1{{\em#1}} \def\textsc#1{{\sc#1}}
+
+\def\LaTeX{\tmpdim=.42ex L\kern-.20em \kern\slantcorr % slant correction
+  \raise\tmpdim\hbox{\thefontscale[710]A}%
+  \kern-.10em \kern-\slantcorr \TeX}
+
+\def\normalsize{\typosize[16/19]}\normalsize
+\nopagenumbers
+\parindent=0pt
+\rightskip=0pt plus1fil
+
+\localcolor
+\def\Blue{\setcmykcolor{1 .43 0 0}}
+
+\hyperlinks\Blue\Blue
+
+\def\rm{\fam\rmfam \tenrm}\mathcodechanges A:0-9
+
+%%% Declaration commands:
+
+\def\worktype[#1/#2]{\csname L:#2\endcsname} % setting language, worktyp is ignored
+\sdef{L:CZ}{\chyph}
+\sdef{L:SK}{\shyph}
+\sdef{L:EN}{\ehyph}
+\newtoks\faculty
+\newtoks\department
+
+%%% Automatically generated multilingual texts:
+
+\def\slet#1#2{\expandafter\let\csname#1\expandafter\endcsname\csname#2\endcsname}
+\def\mtdef#1#2#3#4{\sdef{mt:#1:en}{#2} \sdef{mt:#1:\czs}{#3}
+  \if$#4$\slet{mt:#1:sk}{mt:#1:\czs}
+  \else  \sdef{mt:#1:sk}{#4}
+  \fi
+}
+\edef\czs{\csname lan:5\endcsname} % cz (old) or cs (new)
+
+\mtdef {ctu}   {CZECH TECHNICAL\nl UNIVERSITY\nl IN PRAGUE} 
+               {ČESKÉ VYSOKÉ\nl UČENÍ TECHNICKÉ\nl V PRAZE} {} 
+\mtdef {F1}    {Faculty of Civil Engineering}
+               {Fakulta stavební} {}
+\mtdef {F2}    {Faculty of Mechanical Engineering}
+               {Fakulta strojní} {}
+\mtdef {F3}    {Faculty of Electrical Engineering}
+               {Fakulta elektrotechnická} {}
+\mtdef {F4}    {Faculty of Nuclear Sciences and Physical Engineering}
+               {Fakulta jaderná a fyzikálně inženýrská} {}
+\mtdef {F5}    {Faculty of Architecture}
+               {Fakulta architektury} {}
+\mtdef {F6}    {Faculty of Transportation Sciences}
+               {Fakulta dopravní} {}
+\mtdef {F7}    {Faculty of Biomedical Engineering}
+               {Fakulta biomedicínského inženýrství} {}
+\mtdef {F8}    {Faculty of Information Technology}
+               {Fakulta informačních technologií} {}
+\mtdef {MUVS}  {Masaryk Institute of Advanced Studies}
+               {Masarykův ústav vyšších studií} {}
+
+
+%%% Sections, subsections, titles:
+
+\def\sec#1\par{\bigskip
+   {\leftskip=0pt plus1fill \rightskip=\leftskip \Blue\secfont \noindent#1\nbpar}
+   \nobreak\vskip.5\baselineskip minus.3\baselineskip}
+\def\secc#1\par{\removelastskip\medskip
+   {\leftskip=0pt plus1fill \rightskip=\leftskip \Blue\seccfont \noindent#1\nbpar}
+   \nobreak\smallskip}
+
+\def\tit#1\par{\vglue4em
+  \global\let\titpage=\relax
+  \setbox0=\vbox{\rightskip=0pt plus1fill \leftskip=15pt
+   \typosize[30/39]\bf \noindent #1\unskip\par}%
+   \setbox1=\vbox{\unvcopy0}\ht0=0pt\dp0=0pt\wd0=0pt % shadow effect
+   \kern2pt{\LightGrey \moveright3pt\copy0}\nointerlineskip\kern-1pt
+           {\LightGrey \moveright1.5pt\copy0}\nointerlineskip\kern-1pt
+   {\Blue\box1}
+   \nobreak\vskip1.5cm
+}
+\def\subtit#1\par{\medskip{\leftskip=15pt\typosize[20/22]#1\par}\smallskip}
+
+%%% Page decorations (logo, university mane, page counter)
+
+\def\prepghook{\vbox to0pt{\kern-\voffset\kern-1in
+   \hbox to0pt{\kern-\hoffset\kern-1in\background\hss}\vss}%
+   \ifx\kukdata\empty \immediate\wref\sdef{{lp:\the\pageno}{\the\count1}}%
+        \global\verbbox=100 \fi
+   \nointerlineskip
+}
+\def\background{\hbox to\pdfpagewidth{\logobox\hss\counterslide}}
+
+\ifx\font\corkencoded \def\tmp{ec}\else\def\tmp{cs}\fi
+\font\bigdotfont=\tmp-lmssbx10 at90pt
+
+\def\counterslide{\vbox to0pt{\kern6pt
+   \tmpnum=0 \typosize[10/20] \LightGrey
+   \loop \ifnum\tmpnum<\lastpage \advance\tmpnum by1 
+      \hbox{\ifnum\tmpnum=\pageno 
+            \raise2.5pt\llap{\bf\the\pageno\ifx\kukdata\empty\else+\fi\kern-2pt}\Blue\fi
+            \mypglink{\bigdotfont.}\kern-2pt}\repeat
+   \vss
+}}
+\openref
+\def\mypglink#1{\link[pg:\genprelink.\the\tmpnum]{}{#1}}
+\def\genprelink{\expandafter\ifx\csname lp:\the\tmpnum\endcsname \relax 1%
+   \else \ifnum\tmpnum=\pageno \csname lp:\the\tmpnum\endcsname \else 1\fi
+   \fi
+}
+
+\pdfximage width1.62cm {ctulogo-new.pdf}\mathchardef\logopic=\pdflastximage
+\def\logobox{\vbox to0pt{
+  \hbox{{\Blue\vrule width12pt height46pt}\kern12pt
+        \pdfrefximage\logopic \ifx\titpage\relax \uniname \fi}
+  \ifx\titpage\relax \kern-1pt{\Blue \hrule height13.5cm width12pt}\fi
+  \ifx\kukdata\empty \global\let\titpage=\undefined \fi
+  \vss
+}}
+\def\uniname{\kern7pt\typosize[10/11.3]\bf
+   \vbox{\hsize=90pt\leftskip=0pt \rightskip=0pt minus10pt\def\nl{\hfil\break}
+      \mtext{ctu}\par\kern.5pt}%
+   \if^\the\faculty^\else \kern15pt{\bf\thefontsize[35]\Blue\printfaculty}\kern7pt
+   \vbox{\hbox{\mtext{\the\faculty}}
+         \if^\the\department^\else\hbox{\the\department}\fi}\fi
+}
+\def\printfaculty{\edef\tmpa{\the\faculty}\def\tmpb{MUVS}%
+   \ifx\tmpa\tmpb \thefontsize[28] MÚVS\else \the\faculty \fi}
+
+%%% Items:
+
+\def\normalitem{\Blue\raise.1ex\hbox{\bf\thefontsize[60].\kern-4pt}\Black\enspace}
+\sdef{item:x}{\raise.2ex\hbox{\Blue\bf\thefontsize[45].\Black} }
+\sdef{item:n}{\the\itemnum.\kern.25em }
+\addto\begitems{\vskip.5\parskip \parskip=10pt minus6pt\relax}
+%\addto\enditems{\vskip-.5\parskip}
+\def\iiskip{}
+\def\ttskip{}
+\lineskip=0pt
+
+%%% Captions, footnotes:
+
+\def\thetnum{\the\tnum}
+\def\thefnum{\the\fnum}
+\def\thefnote{\ifcase\locfnum\or
+   *\or**\or***\or$^{\dag}$\or$^{\ddag}$\or$^{\dag\dag}$\fi}
+\def\textindent#1{\hskip20pt\llap{#1\enspace}\ignorespaces}
+
+%%% \slideshow (i.e \pg+ implementation):
+
+\newcount\verbbox  \verbbox=100 % we'll allocate \box 101, 102, 103, ...
+\def\kukdata{}
+\long\def\slideshow#1\pg#2{\let\isslideshow=y%
+   \global\addto\kukdata{#1}%
+   \ifx=#2\global\advance\verbbox by1
+      \edef\testparA{\unskip\egroup\egroup
+          \noexpand\slideshow \endgraf \copy\the\verbbox\space\noexpand\ttskip}%
+      \def\tmp{\setbox\verbbox=\vbox\bgroup\bgroup
+          \leftskip=0pt\rightskip=0pt minus\hsize \advance\hsize by-20pt}%
+      \expandafter\tmp
+   \else
+      \tmpnum=0 \def\endkukdata{}\expandafter\sumkuk \kukdata\sumkuk
+      \kukdata\endkukdata 
+      \ifx;#2\gdef\kukdata{}\fi 
+      \ifx.#2\gdef\kukdata{}\enditems\expandafter\expandafter\expandafter\end
+      \else\vfil\break\expandafter\expandafter\expandafter\slideshow\fi
+   \fi
+}
+\long\def\sumkuk#1{\ifx\sumkuk#1% jsem na konci seznamu
+   \loop \ifnum\tmpnum>0 \addto\endkukdata{\enditems}\advance\tmpnum by-1 \repeat
+   \else 
+     \ifx\begitems#1\global\advance\tmpnum by1 \fi 
+     \ifx\enditems#1\global\advance\tmpnum by-1 \fi
+     \expandafter\sumkuk \fi
+}
+\global\count1=1
+\gdef\advancepageno{\ifx\kukdata\empty \global\advance\pageno by1 \global\count1=1
+                    \else \global\advance\count1 by1 \fi}
+\gdef\pgilabel{\the\count1 }
+
+\def\testparA{\removelastskip\egroup\ttskip}
+
+%%% \use and \show:
+
+\def\use#1#2{\ifnum\ifx y\isslideshow\count1 \else10000 \fi #1\relax#2\fi}
+\def\pshow#1{\use{=#1}\Red \use{<#1}\White \ignorespaces}
+
+%%% Normal \pg, if \slideshow isn't activated:
+
+\def\pg#1{\ifx=#1\par\bgroup\leftskip=0pt \rightskip=0pt minus\hsize \fi
+   \ifx.#1\enditems\vfil\break\expandafter\end
+   \else \ifx;#1\vfil\break\fi\fi
+}
+
+%%% \code (see OPmac trick 0102):
+
+\def\code#1{\def\tmpb{#1}\edef\tmpb{\expandafter\stripm\meaning\tmpb\relax}%
+   \expandafter\replacestrings\expandafter{\string\\}{\bslash}%
+   \expandafter\replacestrings\bslash{}%
+   \codeP{\leavevmode\hbox{\tt\tmpb}}}
+\def\codeP#1{#1}
+\def\stripm#1->#2\relax{#2}
+\addprotect\code \addprotect\\ \addprotect\{ \addprotect\} 
+\addprotect\^ \addprotect\_ \addprotect\~
+\setcnvcodesA
+\addto\cnvhook{\let\code=\codeP}
+
+%%% \inspic redefinition, we need to load picture only once:
+
+\let\oriinspic=\inspic
+
+\def\picdim{\the\picwidth:\the\picheight}
+\def\inspic#1 {\expandafter\ifx\csname pic:#1:\picdim\endcsname \relax
+      \oriinspic#1
+      \global\expandafter\mathchardef\csname pic:#1:\picdim\endcsname=\pdflastximage
+   \else \expandafter\pdfrefximage \csname pic:#1:\picdim\endcsname 
+   \fi
+}
+
+%%% Others:
+
+\chardef\*=`\*     % if somebody needs to print asterisk
+\let\ctable=\table % maybe, the source is from CTUstyle
+\def\unsupported#1{\def#1{\message{l.\the\inputlineno\space 
+   WARNING Sorry, the \string#1\space isn't supported in ctuslides.}}}
+\unsupported\label
+\unsupported\ref
+\unsupported\pgref
+\unsupported\maketoc
+\unsupported\makeindex
+
+%%% The whole document is in outer \begitems ... \enditems environment:
+
+\begitems                
+\addto\begitems{\style x}
+
+\endinput
+
+Jun 2015 (a): released
+Jun 2015 (b): \verbdecl removed, \pg= introduced.
+Jun 2015 (c): \inspic redefined (load the same pictures only once),
+              multiline \sec and \secc allowed.
+Jun 2015 (d): \use and \show introduced,
+              \parskip redeclared.
+Jun 2015 (e): \show -> \pshow,
+              \use when no\slideshow corrected,
+              \left margin slightly enlarged.
+Jun 2015 (f): A bug with \setbox{} corrected
+
+Feb.2018 (g): ctuslides2 introduced
+

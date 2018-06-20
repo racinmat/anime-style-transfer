@@ -1,0 +1,236 @@
+\input ctuslides2
+
+\worktype[M/EN]
+\faculty{F3}
+\department{Department of Cybernetics}
+
+\def\picdir{img/}
+\edef\restore{\leftskip=\the\leftskip \relax}
+
+
+\slideshow
+
+\tit Simulating depth measuring sensors for autonomous learning and benchmarking
+
+\subtit{\bf Otakar Ja\v sek\nl jasekota@fel.cvut.cz}
+
+\pg; %------------------------------------------------------------------
+
+\sec Motivation
+
+* Usage of the data from the state-of-the-art PC game (GTA V) \fnote{Matthew Johnson-Roberson, Charles Barto, Rounak Mehta, Sharath Nittur Sridhar, and Ram Vasudevan. Driving in the matrix: Can virtual worlds replace human-generated annotations for real world tasks? CoRR, abs/1610.01983, 2016.}
+\medskip
+\centerline{\picw=7cm \inspic gtargbim.png \hfil \picw=7cm \inspic gtadepthim.png }
+\pg+
+* Only done for the visual tasks so far
+* Try to model LiDAR sensors.
+\pg;
+
+\sec Goal
+
+\medskip
+\medskip
+\use{=1}{\centerline{\picw=19cm \inspic algorithmpart.pdf }}
+\use{=2}{\centerline{\picw=19cm \inspic algorithm.pdf }}
+\use{=3}{\vskip3cm\centerline{\picw=19cm \inspic pipelinefull.pdf }}
+\pg+\pg+
+
+\pg; %------------------------------------------------------------------
+
+\sec RGBD to PCL
+
+\centerline{\picw=10cm \inspic pipelinefirst.pdf }
+* Simple geometric task
+\medskip
+\centerline{\picw=6cm \inspic gtargb.pdf \hfil \picw=6cm \inspic gtadepth.pdf }
+\pg+
+\medskip
+\centerline{\picw=10cm \inspic gtapclfull.png }
+
+\pg;
+
+\sec PCL to pLiDAR
+
+\centerline{\picw=10cm \inspic pipelinesecond.pdf }
+* Raycasting on $64\times2084$ grid
+\medskip
+\use{=1}{\picw=9cm \inspic gtapclfull.png }
+\use{=2}{\centerline{\picw=9cm \inspic gtapclfull.png \hfill \picw=9cm \inspic gtapcllidar.png }}
+\pg+
+
+\pg;
+
+\sec pLiDAR to real LiDAR
+
+\centerline{\picw=10cm \inspic pipelinethird.pdf }
+* Data driven approach using Generative adversarial networks (GANs)
+\medskip
+\use{=1}{\picw=9cm \inspic gtapcllidar.png }
+\use{=2}{\centerline{\picw=9cm \inspic gtapcllidar.png \hfill \picw=9cm \inspic gtapclconv.png }}
+\pg+
+
+\pg;
+
+\sec GANs\fnote{I. J. Goodfellow, J. Pouget-Abadie, M. Mirza, B. Xu, D. Warde-Farley, S. Ozair, A. Courville, and Y. Bengio. Generative Adversarial Networks. ArXiv e-prints, June 2014.}
+
+* Two neural networks -- generator and discriminator.
+\pg+
+* Discriminator $D(\cdot)$ tries to recognize real from fake.
+* Generator $G(\cdot)$ tries to fool discriminator.
+\pg+
+* Therefore, it is two player minimax game.
+$$\min_G \max_D V(G,D) = {\bbchar E}_{{\bf x}\sim p_{target}}[\log D({\bf x})] + {\bbchar E}_{{\bf z}\sim p_{noise}}[\log(1-D(G({\bf z})))]$$
+\pg+
+* Needed to train iteratively.
+* ${\cal L}_G = \log(1 - D(G({\bf z})))$
+* ${\cal L}_D = -(\log D({\bf x}) + \log(1 - D(G({\bf z}))))$
+
+\pg;
+\restore
+
+\sec GAN variants
+
+* 354 different GAN variants as of May  $10^{{\rm th}}$ 2018
+* They usually differ by used loss functions.
+\pg+
+
+\def\l{\hskip-12cm}
+\def\r{\hskip12cm}
+
+\secc \l LSGAN
+
+* ${\cal L}_G = {1\over2}(1 - D(G({\bf z})))^2$
+* ${\cal L}_D = -{1\over2}(D({\bf x})^2 + (1 - D(G({\bf z})))^2)$
+\pg+
+\secc \l WGAN-GP
+
+* ${\cal L}_G = -D(G({\bf z}))$
+* ${\cal L}_D = D(G({\bf z})) - D({\bf x}) + (||\nabla_{{\bf \tilde x}} D({\bf \tilde x})||_2 - 1)^2$
+* ${\bf \tilde x} = \epsilon{\bf x} + (1-\epsilon)G({\bf z})$
+* $\epsilon \in [0, 1]$
+
+\pg+
+
+\vskip-10cm \null
+\leftskip=12cm
+
+\secc \r SimGAN
+
+* Refinement instead of generating.
+* ${\cal L}_{reg} = ||\psi({\bf x}) - \psi(G({\bf x}))||_1$
+* $\psi(\cdot)$ is a mapping preserving important information
+* ${\cal L}_{reg}$ term added to generator.
+
+\pg;
+
+\restore
+
+\sec CycleGAN
+
+* Two GANs (4 networks together)
+* $G_{X \rightarrow Y}$ and $G_{Y \rightarrow X}$
+* The generators should be inverse mappings with respect to each other.
+\pg+
+* ${\cal L}_{cyc} = (G_{X \rightarrow Y}(G_{Y \rightarrow X}({\bf y})) - {\bf y}) + (G_{Y \rightarrow X}(G_{X \rightarrow Y}({\bf x})) - {\bf x})$
+* This loss term is added to both generators.
+\pg+
+\medskip
+\vskip-1cm
+\centerline{\picw=10cm \inspic pipelinethird.pdf \hfil \picw=4cm \inspic horse2zebra.png \fnote{Jun-Yan Zhu, Taesung Park, Phillip Isola, and Alexei A Efros. Unpaired image-to-image translation using cycle-consistent adversarial networks. In Computer Vision (ICCV), 2017 IEEE International Conference on, 2017.}}
+
+\pg;
+
+\sec Experiments' setup
+
+* Using CycleGAN to find mappings between real and GTA LiDAR data.
+* Six different setups varying by the used loss functions of underlying GANs.
+* Generator and discriminator stayed the same.
+\pg+
+* Networks were rather shallow.
+* Discriminator had:
+  \begitems
+  * $\sim$266k trainable parameters
+  * 4 convolutional layers and one fully-connected
+  \enditems
+  * Generator had:
+  \begitems
+  * $\sim$1.1M trainable parameters
+  * 6 convolutional layers and 6 ResNet layers of size 2
+  \enditems
+
+\pg;
+
+\sec Experiments' results
+
+\centerline{\smash{GTA pLiDAR}}
+\medskip
+\centerline{\picw=12cm \inspic gtaorig.png }
+\use{=2}{
+\centerline{\smash{Original GAN}}
+\medskip
+\centerline{\picw=12cm \inspic gta2valeo_gan_nosr.png }
+}
+\use{=3}{
+\centerline{\smash{Original GAN + ${\cal L}_{reg}$}}
+\medskip
+\centerline{\picw=12cm \inspic gta2valeo_gan_sr.png }
+}
+\use{=4}{
+\centerline{\smash{LSGAN}}
+\medskip
+\centerline{\picw=12cm \inspic gta2valeo_lsgan_nosr.png }
+}
+\use{=5}{
+\centerline{\smash{LSGAN + ${\cal L}_{reg}$}}
+\medskip
+\centerline{\picw=12cm \inspic gta2valeo_lsgan_sr.png }
+}
+\use{=6}{
+\centerline{\smash{WGAN-GP}}
+\medskip
+\centerline{\picw=12cm \inspic gta2valeo_wgan_nosr.png }
+}
+\use{=7}{
+\centerline{\smash{WGAN-GP + ${\cal L}_{reg}$}}
+\medskip
+\centerline{\picw=12cm \inspic gta2valeo_wgan_sr.png }
+}
+\pg+\pg+\pg+\pg+\pg+\pg+
+
+\pg;
+
+\sec Evaluation
+
+* No sensible metric of ``success''
+* However, the transformation is probably heading into a direction of the correct solution
+\pg+
+* Changing the intensity and depth according to the perceived object
+
+\bigskip
+\centerline{\hbox to 9cm{\hfil\smash{GTA ``intensity'' (grayscale)}\hfil} \hfil \hbox to 9cm{\hfil\smash{Transformed intensity}\hfil}}
+\medskip
+\centerline{\picw=9cm \inspic carorig.png \hfil \picw=9cm \inspic carconv.png }
+\medskip
+\centerline{\smash{Difference image}}
+\medskip
+\centerline{\picw=10cm \inspic cardiff.png }
+$$ {\rm diff} = 10 \* ({\rm orig} - {\rm conv}) + 0.5 $$
+
+\pg;
+
+\sec Conclusion
+
+* We created a pipeline for transforming GTA V data into LiDAR-like data.
+* These data were then transformed to be more realistic by CycleGAN.
+* The results show that this is a promising and feasible approach even for depth measurements.
+
+\pg; %------------------------------------------------------------------
+
+\null
+\vskip2cm
+\centerline{\typosize[35/40]\bf Thank you for your attention}\pg+
+
+\vskip2cm
+\centerline{\Blue\typosize[60/70]\bf Any questions?}
+
+\pg. %------------------------------KONEC-------------------------------
