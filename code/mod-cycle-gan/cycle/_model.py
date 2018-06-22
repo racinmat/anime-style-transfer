@@ -13,6 +13,7 @@ from . import utils, nets
 class CycleGAN:
     SAVE_NODES = ['input', 'output', 'd_input', 'd_output']
     OUTPUT_NODES = SAVE_NODES[1:]
+
     def __init__(self, XtoY, YtoX, X_feed, Y_feed, X_name='X', Y_name='Y',
                  cycle_lambda=10.0, tb_verbose=True, visualizer=None,
                  learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5,
@@ -56,10 +57,10 @@ class CycleGAN:
             self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape)
 
         logging.info('Cycle GAN instantiated.\n'
-            '%s_shape='+str(XtoY.in_shape)+'\t%s_shape='+str(YtoX.in_shape)+'\n'
-            'cycle_lambda=%f\n'
-            'learning_rate=%f\tbeta1=%f\tsteps=%d\tdecay_from=%d',
-            X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
+                     '%s_shape=' + str(XtoY.in_shape) + '\t%s_shape=' + str(YtoX.in_shape) + '\n'
+                                                                                             'cycle_lambda=%f\n'
+                                                                                             'learning_rate=%f\tbeta1=%f\tsteps=%d\tdecay_from=%d',
+                     X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
 
     def get_model(self):
         with self.graph.as_default():
@@ -167,13 +168,13 @@ class CycleGAN:
                                                   shape=(),
                                                   initializer=tf.zeros_initializer)
                 yx_gen_opt = self._optimizer(yx_gen_full_loss,
-                                            self.YtoX.gen.variables,
-                                            global_step,
-                                            'Adam/{}-{}_gen'.format(self.Y_name, self.X_name))
+                                             self.YtoX.gen.variables,
+                                             global_step,
+                                             'Adam/{}-{}_gen'.format(self.Y_name, self.X_name))
                 xy_gen_opt = self._optimizer(xy_gen_full_loss,
-                                            self.XtoY.gen.variables,
-                                            global_step,
-                                            'Adam/{}-{}_gen'.format(self.X_name, self.Y_name))
+                                             self.XtoY.gen.variables,
+                                             global_step,
+                                             'Adam/{}-{}_gen'.format(self.X_name, self.Y_name))
                 x_dis_opt = self._optimizer(x_dis_loss,
                                             self.YtoX.dis.variables,
                                             global_step,
@@ -192,18 +193,18 @@ class CycleGAN:
             logging.info('Created CycleGAN model')
 
             return {'train': {
-                        'gen': train_gen,
-                        'dis': train_dis,
-                        'global_step': global_step_op
-                    },
-                    'losses': {
-                        'cycle': cycle_loss,
-                        '{}-{}_gen_full'.format(self.X_name, self.Y_name): xy_gen_full_loss,
-                        '{}-{}_gen_full'.format(self.Y_name, self.X_name): yx_gen_full_loss,
-                        '{}_dis_full'.format(self.X_name): x_dis_full_loss,
-                        '{}_dis_full'.format(self.Y_name): y_dis_full_loss,
-                    },
-                    'fakes': [fake_x, fake_y]}
+                'gen': train_gen,
+                'dis': train_dis,
+                'global_step': global_step_op
+            },
+                'losses': {
+                    'cycle': cycle_loss,
+                    '{}-{}_gen_full'.format(self.X_name, self.Y_name): xy_gen_full_loss,
+                    '{}-{}_gen_full'.format(self.Y_name, self.X_name): yx_gen_full_loss,
+                    '{}_dis_full'.format(self.X_name): x_dis_full_loss,
+                    '{}_dis_full'.format(self.Y_name): y_dis_full_loss,
+                },
+                'fakes': [fake_x, fake_y]}
 
     def train(self, checkpoints_dir,
               gen_train=1, dis_train=1, pool_size=50,
@@ -256,7 +257,7 @@ class CycleGAN:
                     '{}->{} gen - num params'.format(self.X_name, self.Y_name): self.XtoY.gen.num_params(),
                     '{}->{} gen - num params'.format(self.Y_name, self.X_name): self.YtoX.gen.num_params(),
                     '{} dis - num params'.format(self.X_name): self.YtoX.dis.num_params(),
-                    '{} dis - num params'.format(self.Y_name): self.XtoY.dis.num_params(),
+                    '{} dis - num params'.format(self.Y_name): self.YtoX.dis.num_params(),
                 })
                 for k, v in varsize_dict.items():
                     logging.info('\t{}:\t{}'.format(k, v))
@@ -271,21 +272,21 @@ class CycleGAN:
                 while not coord.should_stop():
                     if self.history:
                         fx, fy = sess.run(model_ops['fakes'], feed_dict={
-                            self.cur_x : cur_x,
-                            self.cur_y : cur_y
+                            self.cur_x: cur_x,
+                            self.cur_y: cur_y,
                         })
                     cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
                     if self.history:
                         feeder_dict = {
-                            self.cur_x : cur_x,
-                            self.cur_y : cur_y,
-                            self.prev_fake_x : x_pool.query(fx, step),
-                            self.prev_fake_y : y_pool.query(fy, step)
+                            self.cur_x: cur_x,
+                            self.cur_y: cur_y,
+                            self.prev_fake_x: x_pool.query(fx, step),
+                            self.prev_fake_y: y_pool.query(fy, step),
                         }
                     else:
                         feeder_dict = {
-                            self.cur_x : cur_x,
-                            self.cur_y : cur_y
+                            self.cur_x: cur_x,
+                            self.cur_y: cur_y,
                         }
                     for _ in range(dis_train):
                         sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
@@ -339,14 +340,13 @@ class CycleGAN:
         self.XtoY.gen.is_training = self.XtoY.dis.is_training = is_training
         self.YtoX.gen.is_training = self.YtoX.dis.is_training = is_training
 
-
     def _export_one_part(self, sess, export_dir, XtoY, model_name):
         with self.graph.as_default():
             normer = self.X_feed.normalize if XtoY else self.Y_feed.normalize
             denormer = self.Y_feed.denormalize if XtoY else self.X_feed.denormalize
             data_in = tf.expand_dims(normer(tf.placeholder(tf.float32,
-                                    shape=self.XtoY.in_shape if XtoY else self.YtoX.out_shape,
-                                    name='input')), 0)
+                                                           shape=self.XtoY.in_shape if XtoY else self.YtoX.out_shape,
+                                                           name='input')), 0)
             out = self.XtoY.gen(data_in) if XtoY else self.YtoX.gen(data_in)
             d_in = self.XtoY.dis(data_in) if XtoY else self.YtoX.dis(data_in)
             d_out = self.YtoX.dis(out) if XtoY else self.XtoY.dis(out)
@@ -355,11 +355,11 @@ class CycleGAN:
             tf.reduce_mean(d_out, name='d_output')
 
         output_graph_def = gu.extract_sub_graph(
-                                gu.remove_training_nodes(
-                                    gu.convert_variables_to_constants(
-                                        sess, self.graph.as_graph_def(), CycleGAN.SAVE_NODES),
-                                    CycleGAN.SAVE_NODES),
-                                CycleGAN.SAVE_NODES)
+            gu.remove_training_nodes(
+                gu.convert_variables_to_constants(
+                    sess, self.graph.as_graph_def(), CycleGAN.SAVE_NODES),
+                CycleGAN.SAVE_NODES),
+            CycleGAN.SAVE_NODES)
         tf.train.write_graph(output_graph_def, export_dir, model_name, as_text=False)
 
     @staticmethod
@@ -400,11 +400,11 @@ class CycleGAN:
             cp = tf.train.latest_checkpoint(cp_dir)
             restore.restore(sess, cp)
             output_graph_def = gu.extract_sub_graph(
-                                    gu.remove_training_nodes(
-                                        gu.convert_variables_to_constants(
-                                            sess, graph.as_graph_def(), CycleGAN.SAVE_NODES),
-                                        CycleGAN.SAVE_NODES),
-                                    CycleGAN.SAVE_NODES)
+                gu.remove_training_nodes(
+                    gu.convert_variables_to_constants(
+                        sess, graph.as_graph_def(), CycleGAN.SAVE_NODES),
+                    CycleGAN.SAVE_NODES),
+                CycleGAN.SAVE_NODES)
             tf.train.write_graph(output_graph_def, export_dir, model_name, as_text=False)
 
     @staticmethod
@@ -418,10 +418,10 @@ class CycleGAN:
                 graph_def.ParseFromString(model_file.read())
             input_var = tf.placeholder(all_data.dtype, shape=in_shape)
             output, d_input, d_output = list(
-                                             map(lambda x: x.outputs[0],
-                                                 tf.import_graph_def(graph_def,
-                                                                     input_map={'input': input_var},
-                                                                     return_elements=CycleGAN.OUTPUT_NODES)))
+                map(lambda x: x.outputs[0],
+                    tf.import_graph_def(graph_def,
+                                        input_map={'input': input_var},
+                                        return_elements=CycleGAN.OUTPUT_NODES)))
         outputs = []
         d_inputs = []
         d_outputs = []
@@ -434,10 +434,10 @@ class CycleGAN:
                 outputs.append(out)
                 d_inputs.append(din)
                 d_outputs.append(dout)
-        kwarg_map = {'output' : np.array(outputs),
-                     'd_input' : np.array(d_inputs),
-                     'd_output' : np.array(d_outputs)
-                    }
+        kwarg_map = {'output': np.array(outputs),
+                     'd_input': np.array(d_inputs),
+                     'd_output': np.array(d_outputs)
+                     }
         if include_input:
             kwarg_map['input'] = all_data
         if osp.exists(outfile):
@@ -445,13 +445,12 @@ class CycleGAN:
         np.savez_compressed(outfile, **kwarg_map)
         logging.info('Saved file %s', outfile)
 
-
     def _optimizer(self, loss, variables, global_step, name):
         with tf.variable_scope(name):
             learning_rate = tf.where(tf.greater_equal(global_step, self.decay_from),
                                      tf.train.polynomial_decay(self.learning_rate,
-                                                               global_step-self.decay_from,
-                                                               self.steps-self.decay_from,
+                                                               global_step - self.decay_from,
+                                                               self.steps - self.decay_from,
                                                                0, power=1.0),
                                      self.learning_rate)
 
