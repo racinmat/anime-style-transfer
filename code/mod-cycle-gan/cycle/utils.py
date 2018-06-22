@@ -5,8 +5,10 @@ import os.path as osp
 import tensorflow as tf
 import numpy as np
 
+
 def _identity(x, name=None):
     return tf.identity(x, name=name)
+
 
 class DataBuffer:
     def __init__(self, pool_size, batch_size, old_prob=0.5):
@@ -44,8 +46,10 @@ class DataBuffer:
                         self.data[idx] = d
         return self.last_data
 
+
 class TFReader:
-    def __init__(self, tfrecords_file, name, shape, shuffle_buffer_size=100, normer=_identity, denormer=_identity, batch_size=1, num_threads=8):
+    def __init__(self, tfrecords_file, name, shape, shuffle_buffer_size=100, normer=_identity, denormer=_identity,
+                 batch_size=1, num_threads=8):
         self.name = name
         self.batch_size = batch_size
         self.num_threads = num_threads
@@ -61,7 +65,6 @@ class TFReader:
             self.data = self.data.batch(self.batch_size)
             self.iterator = self.data.make_one_shot_iterator()
         self.feeder = self.iterator.get_next()
-
 
     def feed(self):
         return self.feeder
@@ -98,11 +101,11 @@ class TFWriter:
                     if j % 10 == 0:
                         logging.info('%d / %d : \t %s', j, data.shape[0], f)
                     ex = tf.train.Example(features=tf.train.Features(
-                                          feature={
-                                              name : tf.train.Feature(float_list=
-                                                tf.train.FloatList(value=
-                                                    self.process_data(d).ravel()))
-                                          }))
+                        feature={
+                            name: tf.train.Feature(float_list=
+                                                   tf.train.FloatList(value=
+                                                                      self.process_data(d).ravel()))
+                        }))
                     writer.write(ex.SerializeToString())
             except (IOError, ValueError) as e:
                 logging.warning('Opening %s failed', f)
