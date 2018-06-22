@@ -13,10 +13,10 @@ XY_Generator = cycle.nets.BaseNet
 YX_Generator = cycle.nets.BaseNet
 X_Discriminator = cycle.nets.BaseNet
 Y_Discriminator = cycle.nets.BaseNet
-X_name = 'valeo'
-Y_name = 'gta'
+X_name = 'real'
+Y_name = 'anime'
 visualize = utils.visualize
 feature_map = utils.feature_map
 
-X_DATA_SHAPE = (64, 2084, 3)
-Y_DATA_SHAPE = (64, 2084, 3)
+X_DATA_SHAPE = (512, 512, 3)
+Y_DATA_SHAPE = (512, 512, 3)
