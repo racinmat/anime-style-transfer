@@ -3,12 +3,16 @@
 Specifically, this checks whether the provided record sizes are consistent and
 that the file does not end in the middle of a record. It does not verify the
 CRCs.
+
+Run as: python3 verify_tfrecords.py --input_data_pattern=/mnt/datagrid/personal/racinmat/anime-style-transfer/datasets/anime/*.tfrecord
 """
 import struct
 import tensorflow as tf
 
 from tensorflow import gfile
 from tensorflow import logging
+
+from google.protobuf.json_format import MessageToJson
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("input_data_pattern", "",
@@ -21,27 +25,13 @@ def main(_):
     paths = gfile.Glob(FLAGS.input_data_pattern)
     logging.info("Found %s files.", len(paths))
     for path in paths:
-        with gfile.Open(path, "r") as f:
-            first_read = True
-            while True:
-                length_raw = f.read(8)
-                if not length_raw and first_read:
-                    logging.fatal("File %s has no data.", path)
-                    break
-                elif not length_raw:
-                    logging.info("File %s looks good.", path)
-                    break
-                else:
-                    first_read = False
-                if len(length_raw) != 8:
-                    logging.fatal("File ends when reading record length: " + path)
-                    break
-                length, = struct.unpack("L", length_raw)
-                # +8 to include the crc values.
-                record = f.read(length + 8)
-                if len(record) != length + 8:
-                    logging.fatal("File ends in the middle of a record: " + path)
-                    break
+        for example in tf.python_io.tf_record_iterator(path):
+            print('record:')
+            print(example)
+            # result = tf.train.Example.FromString(example)
+            # jsonMessage = MessageToJson(result)
+            # print('tfrecord file contents: ')
+            # print(jsonMessage)
 
 
 if __name__ == "__main__":
