@@ -19,10 +19,10 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('model', 'lidar',
                        'Model dir to use. Can choose from %s.\nNeeds to export {X,Y}_{normer,denormer} and functions, {X,Y}_DATA_SHAPE and classes {XY,YX}_{Generator,Discriminator}.' % str(
                            _valid_names(cycle.models)))
-tf.flags.DEFINE_string('Xtfr',
-                       '/datagrid/personal/racinmat/anime-style-transfer/datasets/anime/no-game-no-life.tfrecord',
+tf.flags.DEFINE_string('Xtfr', '/datagrid/personal/racinmat/anime-style-transfer/datasets/real/cityscapes.tfrecord',
                        'tfrecords file for X dataset')
-tf.flags.DEFINE_string('Ytfr', '/datagrid/personal/racinmat/anime-style-transfer/datasets/real/cityscapes.tfrecord',
+tf.flags.DEFINE_string('Ytfr',
+                       '/datagrid/personal/racinmat/anime-style-transfer/datasets/anime/no-game-no-life.tfrecord',
                        'tfrecords file for Y dataset')
 tf.flags.DEFINE_string('gantype', 'LSGAN',
                        'Type of GAN to use within CycleGAN. Can choose from GAN/LSGAN/WGAN.\nWhile it is theoretically possible to use different GAN type for each part of training, it is generally not advised.')

@@ -58,6 +58,7 @@ class TFReader:
         self.denormalize = denormer
         with tf.name_scope(self.name):
             print('fetching data from tfrecords_file: {}'.format(tfrecords_file))
+            print('with name: {}'.format(self.name))
             self.data = tf.data.TFRecordDataset(tfrecords_file)
             self.data = self.data.map(self._parse_example, num_parallel_calls=num_threads)
             self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
