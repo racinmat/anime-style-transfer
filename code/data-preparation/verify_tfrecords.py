@@ -45,16 +45,37 @@ def main(_):
                 # print('features methods and stuff')
                 # print(dir(features))
                 print('features list dump:')
-                for field_2, features_2 in features.ListFields():
-                    print(type(field_2), type(features_2))
+                for field_2, container in features.ListFields():
+                    print(type(field_2), type(container))
                     print('field_2 type:', field_2.type)
                     print('field_2 name:', field_2.name)
                     print('field_2 label:', field_2.label)
-                    # print('features_2 methods and stuff')
-                    # print(dir(features_2))
-                    print('features_2 keys')
-                    print(list(features_2.keys()))
-
+                    print('container methods and stuff')
+                    print(dir(container))
+                    print('container keys')
+                    print(list(container.keys()))
+                    for feature in container.values():
+                        print(type(feature))
+                        print('feature methods and stuff')
+                        print(dir(feature))
+                        for field_3, floats in feature.ListFields():
+                            print(type(field_3), type(floats))
+                            print('field_3 type:', field_3.type)
+                            print('field_3 name:', field_3.name)
+                            print('field_3 label:', field_3.label)
+                            print('floats methods and stuff')
+                            print(dir(floats))
+                            print('floats values:', [(type(x), type(y)) for x, y in floats.ListFields()])
+                            for field_4, repeated_scalar in floats.ListFields():
+                                print(type(field_4), type(repeated_scalar))
+                                print('field_4 type:', field_4.type)
+                                print('field_4 name:', field_4.name)
+                                print('field_4 label:', field_4.label)
+                                print('repeated_scalar methods and stuff')
+                                print(dir(repeated_scalar))
+                                print('repeated_scalar length:', len(repeated_scalar))
+                                # print('floats values:', [(type(x), type(y)) for x, y in floats.ListFields()])
+            # print(example)
             break
 
 
