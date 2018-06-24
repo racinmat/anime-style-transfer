@@ -66,18 +66,21 @@ def get_real_images_ade20k():
     images_root = '/datagrid/public_datasets/ADE20K_2016_07_26/images/training'
     print('processing ade20k')
     # ade20k dataset has 1 to 2 dir levels and all ground truth images are jpg ending with number
-    infiles = list(glob.glob(osp.join(images_root, '*[0-9].jpg')))
+    infiles = list(glob.glob(osp.join(images_root, '**', '*[0-9].jpg'), recursive=True))
     return infiles
 
 
 def run_real():
     tfrecords_root = '../../../datasets/real'
     # infiles = get_real_images_cityscapes()
+    # tfrecord_name = 'cityscapes.tfrecord'
     infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
-    run(infiles, osp.join(tfrecords_root, 'cityscapes.tfrecord'), 'real')
+    tfrecord_name = 'ade20k.tfrecord'
+    print('{} files to process'.format(len(infiles)))
+    run(infiles, osp.join(tfrecords_root, tfrecord_name), 'real')
 
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
-    run_anime()
+    # run_anime()
     run_real()
