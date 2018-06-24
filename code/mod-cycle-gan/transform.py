@@ -7,6 +7,8 @@ import random
 import numpy as np
 import tensorflow as tf
 from PIL import Image
+from scipy.misc import imsave
+
 import cycle
 from cycle.models.lidar import X_DATA_SHAPE
 from train import initialize_networks
@@ -18,7 +20,9 @@ tf.flags.DEFINE_string('Xin', '/datagrid/personal/racinmat/anime-style-transfer/
                        'Name of the X input npy file.')
 # tf.flags.DEFINE_string('Yin', '/datagrid/personal/jasekota/dip-dataset/gta/gta-tst.npy',
 #                        'Name of the Y input npy file.')
-tf.flags.DEFINE_string('XYout', '/datagrid/personal/racinmat/anime-style-transfer/data/anime_out.npy',
+# tf.flags.DEFINE_string('XYout', '/datagrid/personal/racinmat/anime-style-transfer/data/anime_out.npy',
+#                        'Name of the X converted to Y output npz file.')
+tf.flags.DEFINE_string('XYout', '/datagrid/personal/racinmat/anime-style-transfer/data/images',
                        'Name of the X converted to Y output npz file.')
 # tf.flags.DEFINE_string('YXout', '/datagrid/personal/jasekota/dip-dataset/gta/gta-tst-out.npz',
 #                        'Name of the Y converted to X output npz file.')
@@ -50,6 +54,12 @@ def images_to_numpy(im_paths, out_path):
     np.save(out_path, data)
 
 
+def numpy_to_images(data, out_dir, suffix='-out'):
+    for i in range(data.shape[0]):
+        im = data[i, :, :, :]
+        imsave(osp.join(out_dir, '{}{}.png'.format(i, suffix)), im)
+
+
 def main(_):
     # just as test, but with loading from checkpoint
     num_images = 20
@@ -65,10 +75,14 @@ def main(_):
 
     load_and_export(fulldir, osp.join(FLAGS.cpdir, '..', 'export'))
 
-    cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+    all_data, d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
                                  FLAGS.Xin, FLAGS.XYout, FLAGS.includein)
     # cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Yname, FLAGS.Xname)),
     #                              FLAGS.Yin, FLAGS.YXout, FLAGS.includein)
+
+    numpy_to_images(all_data, FLAGS.XYout, suffix='-in')
+    numpy_to_images(outputs, FLAGS.XYout, suffix='-out')
+    print('all done')
 
 
 if __name__ == '__main__':

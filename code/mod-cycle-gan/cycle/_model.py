@@ -439,6 +439,10 @@ class CycleGAN:
                 outputs.append(out)
                 d_inputs.append(din)
                 d_outputs.append(dout)
+        return all_data, d_inputs, d_outputs, outputs
+
+    @staticmethod
+    def save_output(all_data, d_inputs, d_outputs, include_input, outfile, outputs):
         kwarg_map = {'output': np.array(outputs),
                      'd_input': np.array(d_inputs),
                      'd_output': np.array(d_outputs)
