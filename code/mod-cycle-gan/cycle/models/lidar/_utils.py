@@ -22,6 +22,7 @@ def _conv_visual(batch):
             tf.where(batch[:, :, :, 2] > 0, x=intensity, y=zeros))
 
 def visualize(data_orig, data_conv, data_conv_conv):
+    # data_conv like data_converted
     d1, i1 = _conv_visual(data_orig)
     d2, i2 = _conv_visual(data_conv)
     d3, i3 = _conv_visual(data_conv_conv)

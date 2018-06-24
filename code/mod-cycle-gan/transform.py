@@ -12,7 +12,7 @@ from scipy.misc import imsave
 import cycle
 from cycle.models.lidar import X_DATA_SHAPE
 from train import initialize_networks
-from data_preparation.images_to_tfrecord import get_real_images, process_sample
+from data_preparation.images_to_tfrecord import get_real_images_cityscapes, process_sample
 
 FLAGS = tf.flags.FLAGS
 
@@ -63,7 +63,7 @@ def numpy_to_images(data, out_dir, suffix='-out'):
 def main(_):
     # just as test, but with loading from checkpoint
     num_images = 20
-    im_paths = random.sample(get_real_images(), num_images)
+    im_paths = random.sample(get_real_images_cityscapes(), num_images)
     images_to_numpy(im_paths, FLAGS.Xin)
 
     logging.getLogger().setLevel(logging.INFO)

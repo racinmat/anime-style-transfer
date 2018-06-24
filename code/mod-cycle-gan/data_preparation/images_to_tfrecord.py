@@ -53,8 +53,7 @@ def run_anime():
             'anime')
 
 
-def get_real_images():
-    # cityscapes
+def get_real_images_cityscapes():
     images_root = '/datagrid/public_datasets/CityScapes/leftImg8bit/train'
     infiles = []
     print('processing cityscapes')
@@ -63,9 +62,18 @@ def get_real_images():
     return infiles
 
 
+def get_real_images_ade20k():
+    images_root = '/datagrid/public_datasets/ADE20K_2016_07_26/images/training'
+    print('processing ade20k')
+    # ade20k dataset has 1 to 2 dir levels and all ground truth images are jpg ending with number
+    infiles = list(glob.glob(osp.join(images_root, '*[0-9].jpg')))
+    return infiles
+
+
 def run_real():
     tfrecords_root = '../../../datasets/real'
-    infiles = get_real_images()
+    # infiles = get_real_images_cityscapes()
+    infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
     run(infiles, osp.join(tfrecords_root, 'cityscapes.tfrecord'), 'real')
 
 

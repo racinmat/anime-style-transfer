@@ -157,10 +157,21 @@ class CycleGAN:
                 tf.summary.scalar('cycle_loss', cycle_loss)
 
                 if self.visualizer:
-                    tf.summary.image('{}-{}-{}'.format(self.X_name, self.Y_name, self.X_name),
-                                     self.visualizer(self.cur_x, fake_y, self.YtoX.gen(fake_y)))
-                    tf.summary.image('{}-{}-{}'.format(self.Y_name, self.X_name, self.Y_name),
-                                     self.visualizer(self.cur_y, fake_x, self.YtoX.gen(fake_x)))
+                    # this is original, concatenating all images together and showing it as one
+                    # tf.summary.image('{}-{}-{}'.format(self.X_name, self.Y_name, self.X_name),
+                    #                  self.visualizer(self.cur_x, fake_y, self.YtoX.gen(fake_y)))
+                    # tf.summary.image('{}-{}-{}'.format(self.Y_name, self.X_name, self.Y_name),
+                    #                  self.visualizer(self.cur_y, fake_x, self.YtoX.gen(fake_x)))
+                    #  probably bug, should be self.XtoY?
+
+                    # this is mine, showing one by one
+                    tf.summary.image('{}-orig'.format(self.X_name), self.cur_x)
+                    tf.summary.image('{}2{}'.format(self.X_name, self.Y_name), fake_y)
+                    tf.summary.image('{}2{}2{}'.format(self.X_name, self.Y_name, self.X_name), self.YtoX.gen(fake_y))
+
+                    tf.summary.image('{}-orig'.format(self.Y_name), self.cur_y)
+                    tf.summary.image('{}2{}'.format(self.Y_name, self.X_name), fake_x)
+                    tf.summary.image('{}2{}2{}'.format(self.Y_name, self.X_name, self.Y_name), self.XtoY.gen(fake_x))
 
             with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
                 with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
