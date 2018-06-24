@@ -47,7 +47,7 @@ def load_and_export(checkpoint_dir, export_dir):
 
 def images_to_numpy(im_paths, out_path):
     one_img_size = X_DATA_SHAPE
-    data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]))
+    data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
     for i, f in enumerate(im_paths):
         image = process_sample(np.array(Image.open(f)))
         data[i, :, :, :] = image
@@ -55,8 +55,8 @@ def images_to_numpy(im_paths, out_path):
 
 
 def numpy_to_images(data, out_dir, suffix='-out'):
-    for i in range(data.shape[0]):
-        im = data[i, :, :, :]
+    for i, im in enumerate(data):
+        # im = data[i, :, :, :]
         imsave(osp.join(out_dir, '{}{}.png'.format(i, suffix)), im)
 
 
@@ -73,14 +73,18 @@ def main(_):
                                if osp.isdir(osp.join(FLAGS.cpdir, d))])[-1]
     fulldir = osp.join(FLAGS.cpdir, FLAGS.rundir)
 
-    load_and_export(fulldir, osp.join(FLAGS.cpdir, '..', 'export'))
+    pb_dir = osp.join(FLAGS.cpdir, '..', 'export')
+    load_and_export(fulldir, pb_dir)
 
-    all_data, d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+    all_data, d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(pb_dir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
                                  FLAGS.Xin, FLAGS.XYout, FLAGS.includein)
     # cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Yname, FLAGS.Xname)),
     #                              FLAGS.Yin, FLAGS.YXout, FLAGS.includein)
 
     numpy_to_images(all_data, FLAGS.XYout, suffix='-in')
+    print(type(outputs))
+    print(len(outputs))
+    print(outputs)
     numpy_to_images(outputs, FLAGS.XYout, suffix='-out')
     print('all done')
 
