@@ -1,9 +1,0 @@
-digraph "streaming" {
-  compound=true
-  node [ fontsize="10", fontname="FreeSans"];
-  edge [ labelfontsize="10", labelfontname="FreeSans"];
-  subgraph clusterdir_d8d64b520f35f2f77c6fc01c2a960bcb {
-    graph [ bgcolor="#ddddee", pencolor="black", label="sdk" fontname="FreeSans", fontsize="10", URL="dir_d8d64b520f35f2f77c6fc01c2a960bcb.html"]
-  dir_25f3487f96a1bc2496ed5d2c8b50bc09 [shape=box, label="streaming", style="filled", fillcolor="#eeeeff", pencolor="black", URL="dir_25f3487f96a1bc2496ed5d2c8b50bc09.html"];
-  }
-}

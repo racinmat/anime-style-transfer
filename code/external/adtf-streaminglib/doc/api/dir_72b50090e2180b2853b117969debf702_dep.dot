@@ -1,9 +1,0 @@
-digraph "mediadescription" {
-  compound=true
-  node [ fontsize="10", fontname="FreeSans"];
-  edge [ labelfontsize="10", labelfontname="FreeSans"];
-  subgraph clusterdir_d28a4824dc47e487b107a5db32ef43c4 {
-    graph [ bgcolor="#ddddee", pencolor="black", label="examples" fontname="FreeSans", fontsize="10", URL="dir_d28a4824dc47e487b107a5db32ef43c4.html"]
-  dir_72b50090e2180b2853b117969debf702 [shape=box, label="mediadescription", style="filled", fillcolor="#eeeeff", pencolor="black", URL="dir_72b50090e2180b2853b117969debf702.html"];
-  }
-}

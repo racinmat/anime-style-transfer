@@ -236,15 +236,7 @@ class CycleGAN:
         config.gpu_options.allow_growth = True
         with tf.Session(graph=self.graph, config=config) as sess:
             if load_model is not None:
-                checkpoint = tf.train.get_checkpoint_state(full_checkpoints_dir)
-                if checkpoint is None:
-                    step = 0
-                    sess.run(tf.global_variables_initializer())
-                else:
-                    meta_graph_path = checkpoint.model_checkpoint_path + '.meta'
-                    restore = tf.train.import_meta_graph(meta_graph_path)
-                    restore.restore(sess, tf.train.latest_checkpoint(full_checkpoints_dir))
-                    step = int(osp.basename(meta_graph_path).split('-')[1].split('.')[0])
+                step = self.load_saved_model(full_checkpoints_dir, sess)
             else:
                 step = 0
                 sess.run(tf.global_variables_initializer())
@@ -330,6 +322,19 @@ class CycleGAN:
                     self.export(sess, full_checkpoints_dir)
                 coord.request_stop()
                 coord.join(threads)
+
+    @staticmethod
+    def load_saved_model(full_checkpoints_dir, sess):
+        checkpoint = tf.train.get_checkpoint_state(full_checkpoints_dir)
+        if checkpoint is None:
+            step = 0
+            sess.run(tf.global_variables_initializer())
+        else:
+            meta_graph_path = checkpoint.model_checkpoint_path + '.meta'
+            restore = tf.train.import_meta_graph(meta_graph_path)
+            restore.restore(sess, tf.train.latest_checkpoint(full_checkpoints_dir))
+            step = int(osp.basename(meta_graph_path).split('-')[1].split('.')[0])
+        return step
 
     def export(self, sess, export_dir):
         is_training = self.XtoY.gen.is_training

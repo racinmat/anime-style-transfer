@@ -83,6 +83,23 @@ def main(_):
     gpu = FLAGS.gpu_idx
     os.environ[devices_environ_var] = available_devices[gpu]
 
+    cygan = create_cyclegan()
+
+    cygan.train(FLAGS.cpdir, FLAGS.gtsteps, FLAGS.dtsteps,
+                FLAGS.poolsize, FLAGS.rundir, FLAGS.verbose, flagstr)
+
+
+def create_cyclegan():
+    modellib, xfeed, xy, yfeed, yx = initialize_networks()
+    cygan = cycle.CycleGAN(xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname,
+                           FLAGS.cll, FLAGS.tbverbose,
+                           modellib.visualize if FLAGS.visualize else None,
+                           FLAGS.lr, FLAGS.beta1, FLAGS.steps,
+                           (FLAGS.decayfrom * FLAGS.steps), FLAGS.history)
+    return cygan
+
+
+def initialize_networks():
     try:
         modellib = importlib.import_module('cycle.models.' + FLAGS.model)
         modelnames = _valid_names(modellib)
@@ -102,50 +119,40 @@ def main(_):
     except ImportError:
         logging.warning('Could not import your model %s! Will not continue!', FLAGS.model)
         raise
+    xfeed = cycle.utils.TFReader(FLAGS.Xtfr, FLAGS.Xname,
+                                 modellib.X_DATA_SHAPE, normer=modellib.X_normer,
+                                 denormer=modellib.X_denormer, batch_size=FLAGS.batchsize)
+    yfeed = cycle.utils.TFReader(FLAGS.Ytfr, FLAGS.Yname,
+                                 modellib.Y_DATA_SHAPE, normer=modellib.Y_normer,
+                                 denormer=modellib.Y_denormer, batch_size=FLAGS.batchsize)
+    xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen', FLAGS.XYgenstr,
+                                  True, FLAGS.XYgwl, FLAGS.norm)
+    yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen', FLAGS.YXgenstr,
+                                  True, FLAGS.YXgwl, FLAGS.norm)
+    xdis = modellib.X_Discriminator(FLAGS.Xname + '-dis', FLAGS.Xdisstr,
+                                    True, FLAGS.Xdwl, FLAGS.norm)
+    ydis = modellib.Y_Discriminator(FLAGS.Yname + '-dis', FLAGS.Ydisstr,
+                                    True, FLAGS.Ydwl, FLAGS.norm)
+    xy_fmap = modellib.feature_map if FLAGS.selftransform and FLAGS.XYsrl > 0 else None
+    yx_fmap = modellib.feature_map if FLAGS.selftransform and FLAGS.YXsrl > 0 else None
+    if FLAGS.gantype.casefold() == 'GAN'.casefold():
+        xy = cycle.nets.GAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+                            FLAGS.XYgll, FLAGS.Ydll, FLAGS.XYsrl, xy_fmap)
+        yx = cycle.nets.GAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+                            FLAGS.YXgll, FLAGS.Xdll, FLAGS.YXsrl, yx_fmap)
+    elif FLAGS.gantype.casefold() == 'LSGAN'.casefold():
+        xy = cycle.nets.LSGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+                              FLAGS.XYgll, FLAGS.Ydll, FLAGS.XYsrl, xy_fmap)
+        yx = cycle.nets.LSGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+                              FLAGS.YXgll, FLAGS.Xdll, FLAGS.YXsrl, yx_fmap)
+    elif FLAGS.gantype.casefold() == 'WGAN'.casefold():
+        xy = cycle.nets.WGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+                             FLAGS.XYgll, FLAGS.Ydll, FLAGS.Ygrl, FLAGS.XYsrl, xy_fmap)
+        yx = cycle.nets.WGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+                             FLAGS.YXgll, FLAGS.Xdll, FLAGS.Xgrl, FLAGS.YXsrl, yx_fmap)
     else:
-        xfeed = cycle.utils.TFReader(FLAGS.Xtfr, FLAGS.Xname,
-                                     modellib.X_DATA_SHAPE, normer=modellib.X_normer,
-                                     denormer=modellib.X_denormer, batch_size=FLAGS.batchsize)
-        yfeed = cycle.utils.TFReader(FLAGS.Ytfr, FLAGS.Yname,
-                                     modellib.Y_DATA_SHAPE, normer=modellib.Y_normer,
-                                     denormer=modellib.Y_denormer, batch_size=FLAGS.batchsize)
-        xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen', FLAGS.XYgenstr,
-                                      True, FLAGS.XYgwl, FLAGS.norm)
-        yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen', FLAGS.YXgenstr,
-                                      True, FLAGS.YXgwl, FLAGS.norm)
-        xdis = modellib.X_Discriminator(FLAGS.Xname + '-dis', FLAGS.Xdisstr,
-                                        True, FLAGS.Xdwl, FLAGS.norm)
-        ydis = modellib.Y_Discriminator(FLAGS.Yname + '-dis', FLAGS.Ydisstr,
-                                        True, FLAGS.Ydwl, FLAGS.norm)
-
-        xy_fmap = modellib.feature_map if FLAGS.selftransform and FLAGS.XYsrl > 0 else None
-        yx_fmap = modellib.feature_map if FLAGS.selftransform and FLAGS.YXsrl > 0 else None
-
-        if FLAGS.gantype.casefold() == 'GAN'.casefold():
-            xy = cycle.nets.GAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
-                                FLAGS.XYgll, FLAGS.Ydll, FLAGS.XYsrl, xy_fmap)
-            yx = cycle.nets.GAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
-                                FLAGS.YXgll, FLAGS.Xdll, FLAGS.YXsrl, yx_fmap)
-        elif FLAGS.gantype.casefold() == 'LSGAN'.casefold():
-            xy = cycle.nets.LSGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
-                                  FLAGS.XYgll, FLAGS.Ydll, FLAGS.XYsrl, xy_fmap)
-            yx = cycle.nets.LSGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
-                                  FLAGS.YXgll, FLAGS.Xdll, FLAGS.YXsrl, yx_fmap)
-        elif FLAGS.gantype.casefold() == 'WGAN'.casefold():
-            xy = cycle.nets.WGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
-                                 FLAGS.XYgll, FLAGS.Ydll, FLAGS.Ygrl, FLAGS.XYsrl, xy_fmap)
-            yx = cycle.nets.WGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
-                                 FLAGS.YXgll, FLAGS.Xdll, FLAGS.Xgrl, FLAGS.YXsrl, yx_fmap)
-        else:
-            raise ValueError('You did not specify any gantype that would be recognizible!')
-        cygan = cycle.CycleGAN(xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname,
-                               FLAGS.cll, FLAGS.tbverbose,
-                               modellib.visualize if FLAGS.visualize else None,
-                               FLAGS.lr, FLAGS.beta1, FLAGS.steps,
-                               (FLAGS.decayfrom * FLAGS.steps), FLAGS.history)
-
-        cygan.train(FLAGS.cpdir, FLAGS.gtsteps, FLAGS.dtsteps,
-                    FLAGS.poolsize, FLAGS.rundir, FLAGS.verbose, flagstr)
+        raise ValueError('You did not specify any gantype that would be recognizible!')
+    return modellib, xfeed, xy, yfeed, yx
 
 
 if __name__ == '__main__':
