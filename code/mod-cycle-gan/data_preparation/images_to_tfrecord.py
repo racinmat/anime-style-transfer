@@ -11,6 +11,9 @@ from scipy.misc import imresize
 
 
 def process_sample(data):
+    print('min is: ', imresize(data, (512, 512)).min())
+    print('max is: ', imresize(data, (512, 512)).max())
+    exit()
     return imresize(data, (512, 512))
 
 
@@ -32,9 +35,6 @@ def run(infiles, outfile, tf_name):
         pbar.update(i)
         try:
             data = np.array(Image.open(f))
-            # if i % 10 == 0:
-            #     logging.info('Opening %s', f)
-            #     logging.info('%d / %d : \t %s', i, len(infiles), f)
             ex = tf.train.Example(features=tf.train.Features(
                 feature={name: tf.train.Feature(float_list=tf.train.FloatList(value=process_sample(data).ravel()))}))
             writer.write(ex.SerializeToString())
@@ -75,7 +75,7 @@ def run_real():
     # infiles = get_real_images_cityscapes()
     # tfrecord_name = 'cityscapes.tfrecord'
     infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
-    tfrecord_name = 'ade20k.tfrecord'
+    tfrecord_name = 'ade20ks.tfrecord'
     print('{} files to process'.format(len(infiles)))
     run(infiles, osp.join(tfrecords_root, tfrecord_name), 'real')
 

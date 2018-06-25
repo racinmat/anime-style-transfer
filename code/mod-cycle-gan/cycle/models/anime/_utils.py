@@ -1,20 +1,18 @@
 import tensorflow as tf
-import cycle
-
-MAX_RAYDIST = 131.0
 
 
 def normer(data, name='normer'):
-    tmp_data = data[:, :, 0] / MAX_RAYDIST
-    ndata = tf.concat((tmp_data[:, :, None], data[:, :, 1:]), axis=-1)
-    ndata = (ndata * 2) - 1
+    # input images are in range 0 to 255
+    # output images are in range -1 to 1
+    tmp_data = data / 255.
+    ndata = (tmp_data * 2) - 1
     return tf.identity(ndata, name=name)
 
 
 def denormer(data, name='denormer'):
     ndata = (data + 1) / 2
-    tmp_data = ndata[:, :, 0] * MAX_RAYDIST
-    return tf.concat((tmp_data[:, :, None], ndata[:, :, 1:]), axis=-1, name=name)
+    tmp_data = ndata * 255
+    return tf.identity(tmp_data, name=name)
 
 
 def _conv_visual(batch):
