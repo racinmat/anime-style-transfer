@@ -11,9 +11,6 @@ from scipy.misc import imresize
 
 
 def process_sample(data):
-    print('min is: ', imresize(data, (512, 512)).min())
-    print('max is: ', imresize(data, (512, 512)).max())
-    exit()
     return imresize(data, (512, 512))
 
 
@@ -75,7 +72,7 @@ def run_real():
     # infiles = get_real_images_cityscapes()
     # tfrecord_name = 'cityscapes.tfrecord'
     infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
-    tfrecord_name = 'ade20ks.tfrecord'
+    tfrecord_name = 'ade20k.tfrecord'
     print('{} files to process'.format(len(infiles)))
     run(infiles, osp.join(tfrecords_root, tfrecord_name), 'real')
 
