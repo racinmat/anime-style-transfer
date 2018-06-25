@@ -10,7 +10,7 @@ from PIL import Image
 from scipy.misc import imsave
 
 import cycle
-from cycle.models.lidar import X_DATA_SHAPE
+from cycle.models.anime import X_DATA_SHAPE
 from train import initialize_networks
 from data_preparation.images_to_tfrecord import get_real_images_cityscapes, process_sample
 

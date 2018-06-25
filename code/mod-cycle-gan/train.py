@@ -18,10 +18,10 @@ NEEDED_IMPORTS = ['X_Discriminator', 'XY_Generator', 'Y_Discriminator', 'YX_Gene
 FLAGS = tf.flags.FLAGS
 
 # Flags for train
-tf.flags.DEFINE_string('model', 'lidar',
+tf.flags.DEFINE_string('model', 'anime',
                        'Model dir to use. Can choose from %s.\nNeeds to export {X,Y}_{normer,denormer} and functions, {X,Y}_DATA_SHAPE and classes {XY,YX}_{Generator,Discriminator}.' % str(
                            _valid_names(cycle.models)))
-tf.flags.DEFINE_string('Xtfr', '/datagrid/personal/racinmat/anime-style-transfer/datasets/real/cityscapes.tfrecord',
+tf.flags.DEFINE_string('Xtfr', '/datagrid/personal/racinmat/anime-style-transfer/datasets/real/ade20k.tfrecord',
                        'tfrecords file for X dataset')
 tf.flags.DEFINE_string('Ytfr',
                        '/datagrid/personal/racinmat/anime-style-transfer/datasets/anime/no-game-no-life.tfrecord',

@@ -1,3 +1,3 @@
 __all__ = ['lidar']
 
-from . import lidar
+from . import anime
