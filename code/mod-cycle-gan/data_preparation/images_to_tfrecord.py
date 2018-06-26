@@ -2,7 +2,6 @@ import logging
 import os
 import os.path as osp
 import glob
-
 import progressbar
 import tensorflow as tf
 import numpy as np
@@ -10,7 +9,17 @@ from PIL import Image
 from scipy.misc import imresize
 
 
-def process_sample(data):
+def make_square(im, fill_color=(0, 0, 0, 0)):
+    y, x = im.shape[0:2]
+    size = max(x, y)
+    new_im = Image.new('RGB', (size, size), fill_color)
+    new_im.paste(Image.fromarray(im), (int((size - x) / 2), int((size - y) / 2)))
+    return np.array(new_im)
+
+
+def process_sample(data, padding=False):
+    if padding:
+        data = make_square(data)
     return imresize(data, (512, 512))
 
 

@@ -99,7 +99,7 @@ def create_cyclegan():
     return cygan
 
 
-def initialize_networks():
+def import_model():
     try:
         modellib = importlib.import_module('cycle.models.' + FLAGS.model)
         modelnames = _valid_names(modellib)
@@ -119,6 +119,11 @@ def initialize_networks():
     except ImportError:
         logging.warning('Could not import your model %s! Will not continue!', FLAGS.model)
         raise
+    return modellib
+
+
+def initialize_networks():
+    modellib = import_model()
     xfeed = cycle.utils.TFReader(FLAGS.Xtfr, FLAGS.Xname,
                                  modellib.X_DATA_SHAPE, normer=modellib.X_normer,
                                  denormer=modellib.X_denormer, batch_size=FLAGS.batchsize)

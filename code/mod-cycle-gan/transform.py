@@ -16,6 +16,7 @@ Examples:
     python transform.py --inpath=../images/*.png    # takes all images from specified dir and transforms them
     python transform.py --inpath=../images/*.jpg --includein    # takes all images from specified dir and transforms them, including input images
     python transform.py --inpath=../../data/images/20180625-1659-0/20000/*-in.png --extract
+    python transform.py --inpath=../../data/images/shizu/*.jpg --outdir=../../data/images/shizu/out --includein=0
 """
 
 import glob
@@ -27,10 +28,9 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 from scipy.misc import imsave
-
 import cycle
 from cycle.models.anime import X_DATA_SHAPE
-from train import initialize_networks
+from train import initialize_networks, import_model
 from data_preparation.images_to_tfrecord import process_sample, get_real_images_ade20k
 
 FLAGS = tf.flags.FLAGS
@@ -63,7 +63,7 @@ def images_to_numpy(im_paths):
     one_img_size = X_DATA_SHAPE
     data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
     for i, f in enumerate(im_paths):
-        image = process_sample(np.array(Image.open(f)))
+        image = process_sample(np.array(Image.open(f)), True)
         data[i, :, :, :] = image
     return data
 
@@ -103,18 +103,22 @@ def main(_):
         if not osp.exists(pb_dir):
             os.makedirs(pb_dir)
         step = load_and_export(fulldir, pb_dir)
+        rundir = FLAGS.rundir
     else:
+        import_model()      # model is imported during load_and_export in other case
         pb_dir = osp.join(FLAGS.cpdir, '..', 'export')
         rundir = sorted([d for d in os.listdir(pb_dir) if osp.isdir(osp.join(pb_dir, d))])[-1]
-        step = max([int(d) for d in os.listdir(rundir) if osp.isdir(osp.join(rundir, d))])
+        full_rundir = osp.join(pb_dir, rundir)
+        print('rundir:', rundir)
+        step = str(max([int(d) for d in os.listdir(full_rundir) if osp.isdir(osp.join(full_rundir, d))]))
 
     d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
-        osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+        osp.join(pb_dir, rundir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
         in_data)
 
     if FLAGS.includein:
-        numpy_to_images(in_data, osp.join(FLAGS.outdir, FLAGS.rundir, step), suffix='-in')
-    numpy_to_images(outputs, osp.join(FLAGS.outdir, FLAGS.rundir, step), suffix='-out')
+        numpy_to_images(in_data, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
+    numpy_to_images(outputs, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
     print('all done')
 
 
