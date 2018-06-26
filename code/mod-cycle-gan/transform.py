@@ -14,7 +14,9 @@ Examples:
     python transform.py --random=20    # takes 20 random images from ade20k dataset and transforms them
     python transform.py --inpath=../images/*.png    # takes all images from specified dir and transforms them
     python transform.py --inpath=../images/*.jpg --includein    # takes all images from specified dir and transforms them, including input images
+    python transform.py --inpath=../../data/images/20180625-1659-0/20000/*-in.png --extract
 """
+
 import glob
 import os
 import os.path as osp
@@ -32,6 +34,7 @@ from data_preparation.images_to_tfrecord import process_sample, get_real_images_
 
 FLAGS = tf.flags.FLAGS
 
+tf.flags.DEFINE_bool('extract', False, 'if true, extraction of newest checkpoint will be performed. Needs tensorflow checkpoints')
 tf.flags.DEFINE_string('inpath', None, 'path to input images, with unix wildcards')
 tf.flags.DEFINE_integer('random', 20, 'If not none, random images are taken')
 tf.flags.DEFINE_string('outdir', '../../data/images', 'Name of output dir')
@@ -88,16 +91,21 @@ def main(_):
     print('will transform {} images: '.format(len(im_paths)))
     in_data = images_to_numpy(im_paths)
 
-    if FLAGS.rundir is None:
-        FLAGS.rundir = sorted([d for d in os.listdir(FLAGS.cpdir)
-                               if osp.isdir(osp.join(FLAGS.cpdir, d))])[-1]
-    fulldir = osp.join(FLAGS.cpdir, FLAGS.rundir)
+    if FLAGS.extract:
+        if FLAGS.rundir is None:
+            FLAGS.rundir = sorted([d for d in os.listdir(FLAGS.cpdir)
+                                   if osp.isdir(osp.join(FLAGS.cpdir, d))])[-1]
+        fulldir = osp.join(FLAGS.cpdir, FLAGS.rundir)
 
-    print('rundir: ', FLAGS.rundir)
-    pb_dir = osp.join(FLAGS.cpdir, '..', 'export', FLAGS.rundir)
-    if not osp.exists(pb_dir):
-        os.makedirs(pb_dir)
-    step = load_and_export(fulldir, pb_dir)
+        print('rundir: ', FLAGS.rundir)
+        pb_dir = osp.join(FLAGS.cpdir, '..', 'export', FLAGS.rundir)
+        if not osp.exists(pb_dir):
+            os.makedirs(pb_dir)
+        step = load_and_export(fulldir, pb_dir)
+    else:
+        pb_dir = osp.join(FLAGS.cpdir, '..', 'export')
+        rundir = sorted([d for d in os.listdir(pb_dir) if osp.isdir(osp.join(pb_dir, d))])[-1]
+        step = max([int(d) for d in os.listdir(rundir) if osp.isdir(osp.join(rundir, d))])
 
     d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
         osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
