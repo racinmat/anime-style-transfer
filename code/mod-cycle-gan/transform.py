@@ -73,18 +73,20 @@ def numpy_to_images(data, out_dir, suffix='-out'):
 
 
 def main(_):
+    logging.getLogger().setLevel(logging.INFO)
     # just as test, but with loading from checkpoint
-    if FLAGS.random is not None:
-        num_images = FLAGS.random
-        im_paths = random.sample(get_real_images_ade20k(), num_images)
-        in_data = images_to_numpy(im_paths)
-    elif FLAGS.inpath is not None:
+    if FLAGS.inpath is not None:
+        print('using images in path: ', FLAGS.inpath)
         im_paths = list(glob.glob(FLAGS.inpath))
-        in_data = images_to_numpy(im_paths)
+    elif FLAGS.random is not None:
+        num_images = FLAGS.random
+        print('using {} random images from ade20k'.format(num_images))
+        im_paths = random.sample(get_real_images_ade20k(), num_images)
     else:
         raise Exception("No data source specified")
 
-    logging.getLogger().setLevel(logging.INFO)
+    print('will transform {} images: '.format(len(im_paths)))
+    in_data = images_to_numpy(im_paths)
 
     if FLAGS.rundir is None:
         FLAGS.rundir = sorted([d for d in os.listdir(FLAGS.cpdir)

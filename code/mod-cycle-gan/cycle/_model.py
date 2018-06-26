@@ -371,13 +371,13 @@ class CycleGAN:
                                checkpoint_dir, export_dir,
                                X_name='X', Y_name='Y'):
         step_1 = CycleGAN._export_cp_one_part(XtoY.gen, XtoY.dis, YtoX.dis,
-                                     X_normer, Y_denormer,
-                                     XtoY.in_shape,
-                                     checkpoint_dir, export_dir, '{}2{}.pb'.format(X_name, Y_name))
+                                              X_normer, Y_denormer,
+                                              XtoY.in_shape,
+                                              checkpoint_dir, export_dir, '{}2{}.pb'.format(X_name, Y_name))
         step_2 = CycleGAN._export_cp_one_part(YtoX.gen, YtoX.dis, XtoY.dis,
-                                     Y_normer, X_denormer,
-                                     YtoX.in_shape,
-                                     checkpoint_dir, export_dir, '{}2{}.pb'.format(Y_name, X_name))
+                                              Y_normer, X_denormer,
+                                              YtoX.in_shape,
+                                              checkpoint_dir, export_dir, '{}2{}.pb'.format(Y_name, X_name))
         assert step_1 == step_2
         return step_1
 
@@ -399,7 +399,8 @@ class CycleGAN:
             tf.reduce_mean(d_out, name='d_output')
             restore = tf.train.Saver()
 
-        config = tf.ConfigProto()
+        # no need to use GPU for export
+        config = tf.ConfigProto(device_count={'GPU': 0})
         config.gpu_options.allow_growth = True
         with tf.Session(graph=graph, config=config) as sess:
             sess.run(tf.global_variables_initializer())
@@ -413,7 +414,7 @@ class CycleGAN:
                 CycleGAN.SAVE_NODES)
 
             # just getting the current step
-            meta_graph_path = cp_dir + '.meta'
+            meta_graph_path = cp + '.meta'
             step = str(osp.basename(meta_graph_path).split('-')[1].split('.')[0])
 
             tf.train.write_graph(output_graph_def, osp.join(export_dir, step), model_name, as_text=False)
@@ -436,7 +437,7 @@ class CycleGAN:
         outputs = []
         d_inputs = []
         d_outputs = []
-        config = tf.ConfigProto()
+        config = tf.ConfigProto(device_count={'GPU': 0})
         config.gpu_options.allow_growth = True
         with tf.Session(graph=graph, config=config) as sess:
             sess.run(tf.global_variables_initializer())
