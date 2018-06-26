@@ -5,11 +5,12 @@ Script for neural network inference. Transforms real images into anime.
 Inference from anime into real world is possible, but not implemented, because no one cares about real world.
 
 Params:
-    includein   includes original images into output data
-    random=number   how many random images from ade20k dataset will be taken
-    inpath=path  path to dir with input images
-    outdir=path    dir for output, where dir with network name is created with images in it
-    rundir=path     dir with model checkpoint. If not specified, last network is taken
+    --includein   includes original images into output data
+    --random=number   how many random images from ade20k dataset will be taken
+    --inpath=path  path to dir with input images
+    --outdir=path    dir for output, where dir with network name is created with images in it
+    --rundir=path     dir with model checkpoint. If not specified, last network is taken
+
 Examples:
     python transform.py --random=20    # takes 20 random images from ade20k dataset and transforms them
     python transform.py --inpath=../images/*.png    # takes all images from specified dir and transforms them
