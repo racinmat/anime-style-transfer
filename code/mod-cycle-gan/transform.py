@@ -7,13 +7,13 @@ Inference from anime into real world is possible, but not implemented, because n
 Params:
     includein   includes original images into output data
     random=number   how many random images from ade20k dataset will be taken
-    indir=path  path to dir with input images
+    inpath=path  path to dir with input images
     outdir=path    dir for output, where dir with network name is created with images in it
     rundir=path     dir with model checkpoint. If not specified, last network is taken
 Examples:
     python transform.py --random=20    # takes 20 random images from ade20k dataset and transforms them
-    python transform.py --indir=../images    # takes all images from specified dir and transforms them
-    python transform.py --indir=../images --includein    # takes all images from specified dir and transforms them, including input images
+    python transform.py --inpath=../images/*.png    # takes all images from specified dir and transforms them
+    python transform.py --inpath=../images/*.jpg --includein    # takes all images from specified dir and transforms them, including input images
 """
 import glob
 import os
@@ -32,9 +32,9 @@ from data_preparation.images_to_tfrecord import process_sample, get_real_images_
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string('in_dir', None, 'Name of dir with input images')
+tf.flags.DEFINE_string('inpath', None, 'path to input images, with unix wildcards')
 tf.flags.DEFINE_integer('random', 20, 'If not none, random images are taken')
-tf.flags.DEFINE_string('out_dir', '../../data/images', 'Name of output dir')
+tf.flags.DEFINE_string('outdir', '../../data/images', 'Name of output dir')
 tf.flags.DEFINE_bool('includein', True,
                      'Whether to include input data in the output file. If on, output file will be larger, but self-contained.')
 
@@ -77,9 +77,8 @@ def main(_):
         num_images = FLAGS.random
         im_paths = random.sample(get_real_images_ade20k(), num_images)
         in_data = images_to_numpy(im_paths)
-    elif FLAGS.indir is not None:
-        im_paths = list(glob.glob(osp.join(FLAGS.indir, '*.png')))
-        im_paths += list(glob.glob(osp.join(FLAGS.indir, '*.jpg')))
+    elif FLAGS.inpath is not None:
+        im_paths = list(glob.glob(FLAGS.inpath))
         in_data = images_to_numpy(im_paths)
     else:
         raise Exception("No data source specified")
