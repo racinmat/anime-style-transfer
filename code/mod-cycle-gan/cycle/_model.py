@@ -370,14 +370,16 @@ class CycleGAN:
     def export_from_checkpoint(XtoY, YtoX, X_normer, X_denormer, Y_normer, Y_denormer,
                                checkpoint_dir, export_dir,
                                X_name='X', Y_name='Y'):
-        CycleGAN._export_cp_one_part(XtoY.gen, XtoY.dis, YtoX.dis,
+        step_1 = CycleGAN._export_cp_one_part(XtoY.gen, XtoY.dis, YtoX.dis,
                                      X_normer, Y_denormer,
                                      XtoY.in_shape,
                                      checkpoint_dir, export_dir, '{}2{}.pb'.format(X_name, Y_name))
-        CycleGAN._export_cp_one_part(YtoX.gen, YtoX.dis, XtoY.dis,
+        step_2 = CycleGAN._export_cp_one_part(YtoX.gen, YtoX.dis, XtoY.dis,
                                      Y_normer, X_denormer,
                                      YtoX.in_shape,
                                      checkpoint_dir, export_dir, '{}2{}.pb'.format(Y_name, X_name))
+        assert step_1 == step_2
+        return step_1
 
     @staticmethod
     def _export_cp_one_part(gen,
@@ -409,7 +411,13 @@ class CycleGAN:
                         sess, graph.as_graph_def(), CycleGAN.SAVE_NODES),
                     CycleGAN.SAVE_NODES),
                 CycleGAN.SAVE_NODES)
-            tf.train.write_graph(output_graph_def, export_dir, model_name, as_text=False)
+
+            # just getting the current step
+            meta_graph_path = cp_dir + '.meta'
+            step = str(osp.basename(meta_graph_path).split('-')[1].split('.')[0])
+
+            tf.train.write_graph(output_graph_def, osp.join(export_dir, step), model_name, as_text=False)
+        return step
 
     @staticmethod
     def test_one_part(pb_model, all_data):

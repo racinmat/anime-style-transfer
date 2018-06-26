@@ -50,8 +50,9 @@ def load_and_export(checkpoint_dir, export_dir):
     X_denormer = xfeed.denormalize
     Y_denormer = yfeed.denormalize
 
-    cycle.CycleGAN.export_from_checkpoint(XtoY, YtoX, X_normer, X_denormer, Y_normer, Y_denormer,
-                                          checkpoint_dir, export_dir, FLAGS.Xname, FLAGS.Yname)
+    step = cycle.CycleGAN.export_from_checkpoint(XtoY, YtoX, X_normer, X_denormer, Y_normer, Y_denormer,
+                                                 checkpoint_dir, export_dir, FLAGS.Xname, FLAGS.Yname)
+    return step
 
 
 def images_to_numpy(im_paths):
@@ -94,14 +95,15 @@ def main(_):
     pb_dir = osp.join(FLAGS.cpdir, '..', 'export', FLAGS.rundir)
     if not osp.exists(pb_dir):
         os.makedirs(pb_dir)
-    load_and_export(fulldir, pb_dir)
+    step = load_and_export(fulldir, pb_dir)
 
-    d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(pb_dir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-                                 in_data)
+    d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
+        osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+        in_data)
 
     if FLAGS.includein:
-        numpy_to_images(in_data, osp.join(FLAGS.XYout, FLAGS.rundir), suffix='-in')
-    numpy_to_images(outputs, osp.join(FLAGS.XYout, FLAGS.rundir), suffix='-out')
+        numpy_to_images(in_data, osp.join(FLAGS.outdir, FLAGS.rundir, step), suffix='-in')
+    numpy_to_images(outputs, osp.join(FLAGS.outdir, FLAGS.rundir, step), suffix='-out')
     print('all done')
 
 
