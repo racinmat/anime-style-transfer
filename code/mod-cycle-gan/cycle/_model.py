@@ -412,8 +412,7 @@ class CycleGAN:
             tf.train.write_graph(output_graph_def, export_dir, model_name, as_text=False)
 
     @staticmethod
-    def test_one_part(pb_model, infile, outfile, include_input=False):
-        all_data = np.load(infile, mmap_mode='r')
+    def test_one_part(pb_model, all_data):
         in_shape = all_data.shape[1:]
         graph = tf.Graph()
         with graph.as_default():
@@ -438,7 +437,7 @@ class CycleGAN:
                 outputs.append(out)
                 d_inputs.append(din)
                 d_outputs.append(dout)
-        return all_data, d_inputs, d_outputs, outputs
+        return d_inputs, d_outputs, outputs
 
     @staticmethod
     def save_output(all_data, d_inputs, d_outputs, include_input, outfile, outputs):

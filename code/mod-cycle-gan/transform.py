@@ -1,5 +1,21 @@
 #!/usr/bin/env python3
 
+"""
+Script for neural network inference. Transforms real images into anime.
+Inference from anime into real world is possible, but not implemented, because no one cares about real world.
+
+Params:
+    includein   includes original images into output data
+    random=number   how many random images from ade20k dataset will be taken
+    indir=path  path to dir with input images
+    outdir=path    dir for output, where dir with network name is created with images in it
+    rundir=path     dir with model checkpoint. If not specified, last network is taken
+Examples:
+    python transform.py --random=20    # takes 20 random images from ade20k dataset and transforms them
+    python transform.py --indir=../images    # takes all images from specified dir and transforms them
+    python transform.py --indir=../images --includein    # takes all images from specified dir and transforms them, including input images
+"""
+import glob
 import os
 import os.path as osp
 import logging
@@ -12,20 +28,13 @@ from scipy.misc import imsave
 import cycle
 from cycle.models.anime import X_DATA_SHAPE
 from train import initialize_networks
-from data_preparation.images_to_tfrecord import get_real_images_cityscapes, process_sample
+from data_preparation.images_to_tfrecord import process_sample, get_real_images_ade20k
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string('Xin', '/datagrid/personal/racinmat/anime-style-transfer/data/real_in.npy',
-                       'Name of the X input npy file.')
-# tf.flags.DEFINE_string('Yin', '/datagrid/personal/jasekota/dip-dataset/gta/gta-tst.npy',
-#                        'Name of the Y input npy file.')
-# tf.flags.DEFINE_string('XYout', '/datagrid/personal/racinmat/anime-style-transfer/data/anime_out.npy',
-#                        'Name of the X converted to Y output npz file.')
-tf.flags.DEFINE_string('XYout', '/datagrid/personal/racinmat/anime-style-transfer/data/images',
-                       'Name of the X converted to Y output npz file.')
-# tf.flags.DEFINE_string('YXout', '/datagrid/personal/jasekota/dip-dataset/gta/gta-tst-out.npz',
-#                        'Name of the Y converted to X output npz file.')
+tf.flags.DEFINE_string('in_dir', None, 'Name of dir with input images')
+tf.flags.DEFINE_integer('random', 20, 'If not none, random images are taken')
+tf.flags.DEFINE_string('out_dir', '../../data/images', 'Name of output dir')
 tf.flags.DEFINE_bool('includein', True,
                      'Whether to include input data in the output file. If on, output file will be larger, but self-contained.')
 
@@ -45,16 +54,18 @@ def load_and_export(checkpoint_dir, export_dir):
                                           checkpoint_dir, export_dir, FLAGS.Xname, FLAGS.Yname)
 
 
-def images_to_numpy(im_paths, out_path):
+def images_to_numpy(im_paths):
     one_img_size = X_DATA_SHAPE
     data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
     for i, f in enumerate(im_paths):
         image = process_sample(np.array(Image.open(f)))
         data[i, :, :, :] = image
-    np.save(out_path, data)
+    return data
 
 
 def numpy_to_images(data, out_dir, suffix='-out'):
+    if not osp.exists(out_dir):
+        os.makedirs(out_dir)
     for i, im in enumerate(data):
         # im = data[i, :, :, :]
         imsave(osp.join(out_dir, '{}{}.png'.format(i, suffix)), im)
@@ -62,9 +73,16 @@ def numpy_to_images(data, out_dir, suffix='-out'):
 
 def main(_):
     # just as test, but with loading from checkpoint
-    num_images = 20
-    im_paths = random.sample(get_real_images_cityscapes(), num_images)
-    images_to_numpy(im_paths, FLAGS.Xin)
+    if FLAGS.random is not None:
+        num_images = FLAGS.random
+        im_paths = random.sample(get_real_images_ade20k(), num_images)
+        in_data = images_to_numpy(im_paths)
+    elif FLAGS.indir is not None:
+        im_paths = list(glob.glob(osp.join(FLAGS.indir, '*.png')))
+        im_paths += list(glob.glob(osp.join(FLAGS.indir, '*.jpg')))
+        in_data = images_to_numpy(im_paths)
+    else:
+        raise Exception("No data source specified")
 
     logging.getLogger().setLevel(logging.INFO)
 
@@ -73,19 +91,18 @@ def main(_):
                                if osp.isdir(osp.join(FLAGS.cpdir, d))])[-1]
     fulldir = osp.join(FLAGS.cpdir, FLAGS.rundir)
 
-    pb_dir = osp.join(FLAGS.cpdir, '..', 'export')
+    print('rundir: ', FLAGS.rundir)
+    pb_dir = osp.join(FLAGS.cpdir, '..', 'export', FLAGS.rundir)
+    if not osp.exists(pb_dir):
+        os.makedirs(pb_dir)
     load_and_export(fulldir, pb_dir)
 
-    all_data, d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(pb_dir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-                                 FLAGS.Xin, FLAGS.XYout, FLAGS.includein)
-    # cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Yname, FLAGS.Xname)),
-    #                              FLAGS.Yin, FLAGS.YXout, FLAGS.includein)
+    d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(pb_dir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+                                 in_data)
 
-    numpy_to_images(all_data, FLAGS.XYout, suffix='-in')
-    print(type(outputs))
-    print(len(outputs))
-    print(outputs)
-    numpy_to_images(outputs, FLAGS.XYout, suffix='-out')
+    if FLAGS.includein:
+        numpy_to_images(in_data, osp.join(FLAGS.XYout, FLAGS.rundir), suffix='-in')
+    numpy_to_images(outputs, osp.join(FLAGS.XYout, FLAGS.rundir), suffix='-out')
     print('all done')
 
 

@@ -5,6 +5,7 @@ import os.path as osp
 import logging
 import tensorflow as tf
 import cycle
+import numpy as np
 
 FLAGS = tf.flags.FLAGS
 
@@ -21,12 +22,14 @@ def main(_):
         FLAGS.rundir = sorted([d for d in os.listdir(FLAGS.cpdir)
                                if osp.isdir(osp.join(FLAGS.cpdir, d))])[-1]
     fulldir = osp.join(FLAGS.cpdir, FLAGS.rundir)
-    all_data, d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-                                 FLAGS.Xin, FLAGS.XYout, FLAGS.includein)
-    cycle.CycleGAN.save_output(all_data, d_inputs, d_outputs, FLAGS.includein, FLAGS.XYout, outputs)
-    all_data, d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Yname, FLAGS.Xname)),
-                                 FLAGS.Yin, FLAGS.YXout, FLAGS.includein)
-    cycle.CycleGAN.save_output(all_data, d_inputs, d_outputs, FLAGS.includein, FLAGS.YXout, outputs)
+    in_data = np.load(FLAGS.Xin, mmap_mode='r')
+    d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+                                 in_data)
+    cycle.CycleGAN.save_output(in_data, d_inputs, d_outputs, FLAGS.includein, FLAGS.XYout, outputs)
+    in_data = np.load(FLAGS.Yin, mmap_mode='r')
+    d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(osp.join(fulldir, '{}2{}.pb'.format(FLAGS.Yname, FLAGS.Xname)),
+                                 in_data)
+    cycle.CycleGAN.save_output(in_data, d_inputs, d_outputs, FLAGS.includein, FLAGS.YXout, outputs)
 
 
 if __name__ == '__main__':

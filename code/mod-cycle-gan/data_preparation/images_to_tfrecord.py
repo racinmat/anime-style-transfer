@@ -32,6 +32,9 @@ def run(infiles, outfile, tf_name):
         pbar.update(i)
         try:
             data = np.array(Image.open(f))
+            if data.ndim == 2 or data.shape[2] == 1:
+                # black and white image detected, skipping
+                continue
             ex = tf.train.Example(features=tf.train.Features(
                 feature={name: tf.train.Feature(float_list=tf.train.FloatList(value=process_sample(data).ravel()))}))
             writer.write(ex.SerializeToString())
