@@ -117,9 +117,16 @@ def images_to_numpy_parallel(im_paths):
 def numpy_to_images(data, out_dir, suffix='-out'):
     if not osp.exists(out_dir):
         os.makedirs(out_dir)
+    num_digits = int(np.log10(len(data)))+1
+
+    widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
+               progressbar.FileTransferSpeed()]
+    pbar = progressbar.ProgressBar(widgets=widgets, max_value=len(im_paths)).start()
+
     for i, im in enumerate(data):
-        # im = data[i, :, :, :]
-        imsave(osp.join(out_dir, '{}{}.png'.format(i, suffix)), im)
+        pbar.update(i)
+        imsave(osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits), suffix)), im)
+    pbar.finish()
 
 
 def main(_):
@@ -164,6 +171,8 @@ def main(_):
     d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
         osp.join(pb_dir, rundir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
         in_data)
+
+    print('data fransformed, going to persist them')
 
     if FLAGS.includein:
         numpy_to_images(in_data, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
