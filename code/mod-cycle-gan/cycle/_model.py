@@ -4,6 +4,8 @@ import os
 import os.path as osp
 import logging
 from datetime import datetime
+
+import progressbar
 import tensorflow as tf
 from tensorflow import graph_util as gu
 import numpy as np
@@ -437,15 +439,25 @@ class CycleGAN:
         outputs = []
         d_inputs = []
         d_outputs = []
-        config = tf.ConfigProto(device_count={'GPU': 0})
+        config = tf.ConfigProto()
+        # config = tf.ConfigProto(device_count={'GPU': 0})
         config.gpu_options.allow_growth = True
         with tf.Session(graph=graph, config=config) as sess:
             sess.run(tf.global_variables_initializer())
-            for data in all_data:
+
+            if all_data.shape[0] > 100:
+                widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
+                           progressbar.FileTransferSpeed()]
+                pbar = progressbar.ProgressBar(widgets=widgets, max_value=all_data.shape[0]).start()
+            for i, data in enumerate(all_data):
+                if all_data.shape[0] > 100:
+                    pbar.update(i)
                 out, din, dout = sess.run([output, d_input, d_output], feed_dict={input_var: data})
                 outputs.append(out)
                 d_inputs.append(din)
                 d_outputs.append(dout)
+            if all_data.shape[0] > 100:
+                pbar.finish()
         return d_inputs, d_outputs, outputs
 
     @staticmethod

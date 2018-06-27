@@ -17,6 +17,7 @@ Examples:
     python transform.py --inpath=../images/*.jpg --includein    # takes all images from specified dir and transforms them, including input images
     python transform.py --inpath=../../data/images/20180625-1659-0/20000/*-in.png --extract
     python transform.py --inpath=../../data/images/shizu/*.jpg --outdir=../../data/images/shizu/out --includein=0
+    python transform.py --inpath=../../dataset-sources/real/images/animefest-2016/*.png --outdir=../../data/images/animefest-2016 --includein=0
 """
 
 import glob
@@ -25,8 +26,10 @@ import os.path as osp
 import logging
 import random
 import numpy as np
+import progressbar
 import tensorflow as tf
 from PIL import Image
+from joblib import Parallel, delayed
 from scipy.misc import imsave
 import cycle
 from cycle.models.anime import X_DATA_SHAPE
@@ -60,11 +63,54 @@ def load_and_export(checkpoint_dir, export_dir):
 
 
 def images_to_numpy(im_paths):
+    # show progressbar for more images and use parallelism. It is not needed for small amount of data, but very useful for bigger amount.
+    if len(im_paths) > 100:
+        return images_to_numpy_parallel(im_paths)
+    else:
+        return images_to_numpy_parallel(im_paths)
+
+
+def images_to_numpy_simple(im_paths):
     one_img_size = X_DATA_SHAPE
     data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
+
+    # show progressbar for more images
     for i, f in enumerate(im_paths):
+        try:
+            image = process_sample(np.array(Image.open(f)), True)
+            data[i, :, :, :] = image
+        except OSError:
+            data[i, :, :, :] = data[i-1, :, :, :]   # just use previous sample if anything goes wrong
+
+    return data
+
+
+def one_image_to_numpy(i, f, pbar, data, counter):
+    pbar.update(counter[0])
+    counter[0] += 1
+    try:
         image = process_sample(np.array(Image.open(f)), True)
         data[i, :, :, :] = image
+    except OSError:
+        data[i, :, :, :] = data[i - 1, :, :, :]  # just use previous sample if anything goes wrong
+
+
+def images_to_numpy_parallel(im_paths):
+    one_img_size = X_DATA_SHAPE
+    data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
+
+    widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
+               progressbar.FileTransferSpeed()]
+    pbar = progressbar.ProgressBar(widgets=widgets, max_value=len(im_paths)).start()
+
+    counter = [0]
+    workers = 10
+
+    Parallel(n_jobs=workers, backend='threading')(
+        delayed(one_image_to_numpy)(i, f, pbar, data, counter) for i, f in enumerate(im_paths))
+
+    pbar.finish()
+
     return data
 
 
@@ -81,7 +127,7 @@ def main(_):
     # just as test, but with loading from checkpoint
     if FLAGS.inpath is not None:
         print('using images in path: ', FLAGS.inpath)
-        im_paths = list(glob.glob(FLAGS.inpath))
+        im_paths = list(sorted(glob.glob(FLAGS.inpath)))
     elif FLAGS.random is not None:
         num_images = FLAGS.random
         print('using {} random images from ade20k'.format(num_images))
@@ -91,6 +137,7 @@ def main(_):
 
     print('will transform {} images: '.format(len(im_paths)))
     in_data = images_to_numpy(im_paths)
+    print('images prepared in numpy')
 
     if FLAGS.extract:
         if FLAGS.rundir is None:
@@ -111,6 +158,8 @@ def main(_):
         full_rundir = osp.join(pb_dir, rundir)
         print('rundir:', rundir)
         step = str(max([int(d) for d in os.listdir(full_rundir) if osp.isdir(osp.join(full_rundir, d))]))
+
+    print('model loaded, starting with inference')
 
     d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
         osp.join(pb_dir, rundir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
