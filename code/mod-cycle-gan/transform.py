@@ -121,7 +121,7 @@ def numpy_to_images(data, out_dir, suffix='-out'):
 
     widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
                progressbar.FileTransferSpeed()]
-    pbar = progressbar.ProgressBar(widgets=widgets, max_value=len(im_paths)).start()
+    pbar = progressbar.ProgressBar(widgets=widgets, max_value=len(data)).start()
 
     for i, im in enumerate(data):
         pbar.update(i)

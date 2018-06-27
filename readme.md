@@ -22,3 +22,12 @@ Trained network is stored in `.pb` files, which contain its very compressed repr
 It is much smaller than checkpoints, so it can be even versioned in git.
 
 Trained networks are stored in `export/<network name>/<current training step>`
+
+When transforming video, we must split it to images, transform them, and then create video from them.
+Using this approach, audio is lost, obviously.
+Commands for that, example:
+```
+python videos_to_images.py --videos_dir=../../../dataset-sources/real/videos/animefest-2017-cosplay --images_dir=../../../dataset-sources/real/images/animefest-2017-cosplay
+python transform.py --inpath=../../dataset-sources/real/images/animefest-2017-cosplay/*.png --outdir=../../data/images/animefest-2017-cosplay --includein=0
+
+```
