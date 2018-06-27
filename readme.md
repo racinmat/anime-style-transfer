@@ -27,7 +27,13 @@ When transforming video, we must split it to images, transform them, and then cr
 Using this approach, audio is lost, obviously.
 Commands for that, example:
 ```
-python videos_to_images.py --videos_dir=../../../dataset-sources/real/videos/animefest-2017-cosplay --images_dir=../../../dataset-sources/real/images/animefest-2017-cosplay
+python data_preparation/videos_to_images.py --videos_dir=../../dataset-sources/real/videos/animefest-2017-cosplay --images_dir=../../dataset-sources/real/images/animefest-2017-cosplay
 python transform.py --inpath=../../dataset-sources/real/images/animefest-2017-cosplay/*.png --outdir=../../data/images/animefest-2017-cosplay --includein=0
+python data_preparation/images_to_videos.py --images_dir=../../data/images/animefest-2017-cosplay/20180625-1659-0/80000 --video_path=../../data/videos/animefest-cosplay.avi
 
 ```
+
+
+notes:
+zkusit WGAN, zkusit původní cyclegan architekturu generátorů
+kusit vyhodit weight los, nechat self-regularizaci

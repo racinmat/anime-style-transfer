@@ -18,6 +18,7 @@ Examples:
     python transform.py --inpath=../../data/images/20180625-1659-0/20000/*-in.png --extract
     python transform.py --inpath=../../data/images/shizu/*.jpg --outdir=../../data/images/shizu/out --includein=0
     python transform.py --inpath=../../dataset-sources/real/images/animefest-2016/*.png --outdir=../../data/images/animefest-2016 --includein=0
+    python transform.py --random=30 --outdir=../../data/images/ade20k --includein=1
 """
 
 import glob
@@ -67,7 +68,7 @@ def images_to_numpy(im_paths):
     if len(im_paths) > 100:
         return images_to_numpy_parallel(im_paths)
     else:
-        return images_to_numpy_parallel(im_paths)
+        return images_to_numpy_simple(im_paths)
 
 
 def images_to_numpy_simple(im_paths):
@@ -117,6 +118,7 @@ def images_to_numpy_parallel(im_paths):
 def numpy_to_images(data, out_dir, suffix='-out'):
     if not osp.exists(out_dir):
         os.makedirs(out_dir)
+    print('going to persist {} images'.format(len(data)))
     num_digits = int(np.log10(len(data)))+1
 
     widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
@@ -165,14 +167,15 @@ def main(_):
         full_rundir = osp.join(pb_dir, rundir)
         print('rundir:', rundir)
         step = str(max([int(d) for d in os.listdir(full_rundir) if osp.isdir(osp.join(full_rundir, d))]))
+        pb_dir = osp.join(pb_dir, rundir)
 
     print('model loaded, starting with inference')
 
     d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
-        osp.join(pb_dir, rundir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+        osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
         in_data)
 
-    print('data fransformed, going to persist them')
+    print('data transformed, going to persist them')
 
     if FLAGS.includein:
         numpy_to_images(in_data, osp.join(FLAGS.outdir, rundir, step), suffix='-in')

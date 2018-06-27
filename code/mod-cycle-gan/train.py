@@ -51,7 +51,7 @@ tf.flags.DEFINE_bool('visualize', True,
                      'Whether to visualize during training in tensorboard. model then must have function visualize. Only valid if tbverbose.')
 tf.flags.DEFINE_bool('tbverbose', True, 'Whether to export tensorboard data for visualization using Tensorboard.')
 tf.flags.DEFINE_bool('verbose', True, 'Verbose mode.')
-tf.flags.DEFINE_bool('selftransform', True,
+tf.flags.DEFINE_bool('selftransform', False,
                      'Whether to use specific feature map transform for self regularization loss. If set to True, it will use function feature_map from model, otherwise it will be an identity. Not used if self regularization lossess\' lambdas set to 0.')
 tf.flags.DEFINE_integer('dtsteps', 1, 'How many times will be trained discriminator during one step.')
 tf.flags.DEFINE_integer('gtsteps', 1, 'How many times will be trained generator during one step.')

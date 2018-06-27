@@ -31,6 +31,8 @@ def visualize(data_orig, data_conv, data_conv_conv, name_orig, name_conv):
 
 
 def feature_map(orig, conv):
+    # pixelwise loss s maskováním na validní pixely, vracím dvojici
+    # je to flag ---selftransform, bez toho flagu se nepoužije
     odepth = orig[:, :, :, 0]
     ointensity = orig[:, :, :, 1]
     omask = orig[:, :, :, 2]
