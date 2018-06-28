@@ -44,7 +44,3 @@ python data_preparation/images_to_videos.py --images_dir=../../data/images/anime
 
 ```
 
-
-notes:
-zkusit WGAN, zkusit původní cyclegan architekturu generátorů
-kusit vyhodit weight los, nechat self-regularizaci
