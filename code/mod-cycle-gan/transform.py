@@ -20,7 +20,7 @@ Examples:
     python transform.py --inpath=../../dataset-sources/real/images/animefest-2016/*.png --outdir=../../data/images/animefest-2016 --includein=0
     python transform.py --random=30 --outdir=../../data/images/ade20k --includein=1
     python transform.py --inpath=../../dataset-sources/real/images/animefest-2017-cosplay/*.png --outdir=../../data/images/animefest-2017-cosplay --includein=0
-
+    python transform.py --inpath=../../data/images/20180625-1659-0/20000/*-in.png --extract --rundir=20180625-1659-0 extracts last checkpoint from specified run, and then transforms specified images
 """
 
 import glob
@@ -76,23 +76,28 @@ def images_to_numpy(im_paths):
 def images_to_numpy_simple(im_paths):
     one_img_size = X_DATA_SHAPE
     data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
+    shapes = np.zeros((len(im_paths), 2), dtype=np.int32)       # orig shape so padded data can be cropped later
 
     # show progressbar for more images
     for i, f in enumerate(im_paths):
         try:
-            image = process_sample(np.array(Image.open(f)), True)
+            orig_image = np.array(Image.open(f))
+            shapes[i, :] = orig_image.shape[0:2]
+            image = process_sample(orig_image, True)
             data[i, :, :, :] = image
         except OSError:
             data[i, :, :, :] = data[i-1, :, :, :]   # just use previous sample if anything goes wrong
 
-    return data
+    return data, shapes
 
 
-def one_image_to_numpy(i, f, pbar, data, counter):
+def one_image_to_numpy(i, f, pbar, data, shapes, counter):
     pbar.update(counter[0])
     counter[0] += 1
     try:
-        image = process_sample(np.array(Image.open(f)), True)
+        orig_image = np.array(Image.open(f))
+        shapes[i, :] = orig_image.shape[0:2]
+        image = process_sample(orig_image, True)
         data[i, :, :, :] = image
     except OSError:
         data[i, :, :, :] = data[i - 1, :, :, :]  # just use previous sample if anything goes wrong
@@ -101,6 +106,7 @@ def one_image_to_numpy(i, f, pbar, data, counter):
 def images_to_numpy_parallel(im_paths):
     one_img_size = X_DATA_SHAPE
     data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
+    shapes = np.zeros((len(im_paths), 2), dtype=np.int32)       # orig shape so padded data can be cropped later
 
     widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
                progressbar.FileTransferSpeed()]
@@ -110,14 +116,14 @@ def images_to_numpy_parallel(im_paths):
     workers = 10
 
     Parallel(n_jobs=workers, backend='threading')(
-        delayed(one_image_to_numpy)(i, f, pbar, data, counter) for i, f in enumerate(im_paths))
+        delayed(one_image_to_numpy)(i, f, pbar, data, shapes, counter) for i, f in enumerate(im_paths))
 
     pbar.finish()
 
-    return data
+    return data, shapes
 
 
-def numpy_to_images(data, out_dir, suffix='-out'):
+def numpy_to_images(data, shapes, out_dir, suffix='-out'):
     if not osp.exists(out_dir):
         os.makedirs(out_dir)
     print('going to persist {} images'.format(len(data)))
@@ -129,7 +135,12 @@ def numpy_to_images(data, out_dir, suffix='-out'):
 
     for i, im in enumerate(data):
         pbar.update(i)
-        imsave(osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits), suffix)), im)
+        y, x = shapes[i, :] / (shapes[i, :].max() / 512)    # 512 is size of input, which is rectangular
+        size_y, size_x = im.shape[0:2]
+        y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
+        y_to, x_to = size_y - y_from, size_x - x_from
+        cropped_im = im[y_from:y_to, x_from:x_to]
+        imsave(osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits), suffix)), cropped_im)
     pbar.finish()
 
 
@@ -147,9 +158,27 @@ def main(_):
         raise Exception("No data source specified")
 
     print('will transform {} images: '.format(len(im_paths)))
-    in_data = images_to_numpy(im_paths)
+    # keeping original sizes before reshaping so I can crop black stripes from reshaped images
+    in_data, in_shapes = images_to_numpy(im_paths)
     print('images prepared in numpy')
 
+    pb_dir, rundir, step = extract_and_get_pb_dir()
+
+    print('model loaded, starting with inference')
+
+    d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
+        osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+        in_data)
+
+    print('data transformed, going to persist them')
+
+    if FLAGS.includein:
+        numpy_to_images(in_data, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
+    numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
+    print('all done')
+
+
+def extract_and_get_pb_dir():
     if FLAGS.extract:
         if FLAGS.rundir is None:
             FLAGS.rundir = sorted([d for d in os.listdir(FLAGS.cpdir)
@@ -163,26 +192,14 @@ def main(_):
         step = load_and_export(fulldir, pb_dir)
         rundir = FLAGS.rundir
     else:
-        import_model()      # model is imported during load_and_export in other case
+        import_model()  # model is imported during load_and_export in other case
         pb_dir = osp.join(FLAGS.cpdir, '..', 'export')
         rundir = sorted([d for d in os.listdir(pb_dir) if osp.isdir(osp.join(pb_dir, d))])[-1]
         full_rundir = osp.join(pb_dir, rundir)
         print('rundir:', rundir)
         step = str(max([int(d) for d in os.listdir(full_rundir) if osp.isdir(osp.join(full_rundir, d))]))
         pb_dir = osp.join(pb_dir, rundir)
-
-    print('model loaded, starting with inference')
-
-    d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
-        osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-        in_data)
-
-    print('data transformed, going to persist them')
-
-    if FLAGS.includein:
-        numpy_to_images(in_data, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
-    numpy_to_images(outputs, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
-    print('all done')
+    return pb_dir, rundir, step
 
 
 if __name__ == '__main__':
