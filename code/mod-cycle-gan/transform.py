@@ -19,6 +19,8 @@ Examples:
     python transform.py --inpath=../../data/images/shizu/*.jpg --outdir=../../data/images/shizu/out --includein=0
     python transform.py --inpath=../../dataset-sources/real/images/animefest-2016/*.png --outdir=../../data/images/animefest-2016 --includein=0
     python transform.py --random=30 --outdir=../../data/images/ade20k --includein=1
+    python transform.py --inpath=../../dataset-sources/real/images/animefest-2017-cosplay/*.png --outdir=../../data/images/animefest-2017-cosplay --includein=0
+
 """
 
 import glob

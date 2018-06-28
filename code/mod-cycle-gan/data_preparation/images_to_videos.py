@@ -4,6 +4,7 @@ Script for transforming images to videos.
 Examples:
 python images_to_videos.py --images_dir=../../../data/images/animefest-2016/20180625-1659-0/80000 --video_path=../../../data/videos/animefest.mp4
 python images_to_videos.py --images_dir=../../../data/images/animefest-2016/20180625-1659-0/80000 --video_path=../../../data/videos/animefest.avi
+python data_preparation/images_to_videos.py --images_dir=../../data/images/animefest-2017-cosplay/20180625-1659-0/130000 --video_path=../../data/videos/animefest-cosplay-2.avi
 """
 
 import cv2

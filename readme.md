@@ -18,7 +18,18 @@ Videos are sampled to obtain images and then images are converted into `.tfrecor
 Neural network is then trained in `code/mod-cycle-gan/train.py` by feeding it two tfrecord files, one with real data, one with anime data.
 Trained network then can be used for inference, transforming real images to anime data by `code/mod-cycle-gan/transform.py` script.
 
-Trained network is stored in `.pb` files, which contain its very compressed representation.
+Example for start training:
+```
+python3 train.py --batchsize=2 --Ytfr=../../datasets/anime/houseki-no-kuni.tfrecord
+```
+
+if you need to run training on server, in background, you can use `run-network-bg.sh` script.
+For example, you can run the same network in background by:
+```
+./run-network-bg.sh --batchsize=2 --Ytfr='../../datasets/anime/houseki-no-kuni.tfrecord'
+```
+
+Trained network is stored in `.pb` files, which contain its very compact, protobuf representation.
 It is much smaller than checkpoints, so it can be even versioned in git.
 
 Trained networks are stored in `export/<network name>/<current training step>`
