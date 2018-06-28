@@ -15,7 +15,7 @@ Examples:
     python transform.py --random=20    # takes 20 random images from ade20k dataset and transforms them
     python transform.py --inpath=../images/*.png    # takes all images from specified dir and transforms them
     python transform.py --inpath=../images/*.jpg --includein    # takes all images from specified dir and transforms them, including input images
-    python transform.py --inpath=../../data/images/20180625-1659-0/20000/*-in.png --extract
+    python transform.py --inpath=../../data/images/20180625-1659-0/20000/*-in.png --extract     # that does the transformation of specified images, and before that it extracts last checkopoint of last run into the protobuf
     python transform.py --inpath=../../data/images/shizu/*.jpg --outdir=../../data/images/shizu/out --includein=0
     python transform.py --inpath=../../dataset-sources/real/images/animefest-2016/*.png --outdir=../../data/images/animefest-2016 --includein=0
     python transform.py --random=30 --outdir=../../data/images/ade20k --includein=1
