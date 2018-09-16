@@ -285,11 +285,14 @@ class CycleGAN:
                         sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
                     for _ in range(gen_train):
                         sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
-                    summary, _ = sess.run([model_ops['summary'], model_ops['train']['global_step']],
-                                          feed_dict=feeder_dict)
 
-                    train_writer.add_summary(summary, step)
-                    train_writer.flush()
+                    # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
+                    # every 100 steps mean cca every minute it is logged on 1080Ti
+                    if step % 100 == 0:
+                        summary, _ = sess.run([model_ops['summary'], model_ops['train']['global_step']],
+                                              feed_dict=feeder_dict)
+                        train_writer.add_summary(summary, step)
+                        train_writer.flush()
 
                     if log_verbose and step % 100 == 0:
                         logging.info('------ Step {:d} ------'.format(step))
@@ -297,7 +300,8 @@ class CycleGAN:
                         for k, v in losses.items():
                             logging.info('\t{}:\t{:8f}'.format(k, v))
 
-                    if step % 10000 == 0:
+                    # every 5000 means cca every hour and 15 minutes model is saved on 1080Ti
+                    if step % 5000 == 0:
                         save_path = saver.save(sess,
                                                osp.join(full_checkpoints_dir, 'model.ckpt'),
                                                global_step=step)
@@ -426,16 +430,8 @@ class CycleGAN:
     def test_one_part(pb_model, all_data):
         in_shape = all_data.shape[1:]
         graph = tf.Graph()
-        with graph.as_default():
-            graph_def = tf.GraphDef()
-            with tf.gfile.FastGFile(pb_model, 'rb') as model_file:
-                graph_def.ParseFromString(model_file.read())
-            input_var = tf.placeholder(all_data.dtype, shape=in_shape)
-            output, d_input, d_output = list(
-                map(lambda x: x.outputs[0],
-                    tf.import_graph_def(graph_def,
-                                        input_map={'input': input_var},
-                                        return_elements=CycleGAN.OUTPUT_NODES)))
+        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(all_data.dtype, graph, in_shape, pb_model)
+
         outputs = []
         d_inputs = []
         d_outputs = []
@@ -459,6 +455,48 @@ class CycleGAN:
             if all_data.shape[0] > 100:
                 pbar.finish()
         return d_inputs, d_outputs, outputs
+
+    @staticmethod
+    def test_one_part_dataset(pb_model, data, data_size):
+        in_shape = data.shape[1:]
+        graph = tf.Graph()
+        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(data.dtype, graph, in_shape, pb_model)
+
+        outputs = []
+        d_inputs = []
+        d_outputs = []
+        config = tf.ConfigProto()
+        # config = tf.ConfigProto(device_count={'GPU': 0})
+        config.gpu_options.allow_growth = True
+        with tf.Session(graph=graph, config=config) as sess:
+            sess.run(tf.global_variables_initializer())
+
+            widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
+                       progressbar.FileTransferSpeed()]
+            pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size).start()
+            for i in range(data_size):
+                pbar.update(i)
+                data_value = sess.run(data)
+                out, din, dout = sess.run([output, d_input, d_output], feed_dict={input_var: data_value})
+                outputs.append(out)
+                d_inputs.append(din)
+                d_outputs.append(dout)
+                yield din, dout, out
+            pbar.finish()
+
+    @staticmethod
+    def get_graph_outputs(dtype, graph, in_shape, pb_model):
+        with graph.as_default():
+            graph_def = tf.GraphDef()
+            with tf.gfile.FastGFile(pb_model, 'rb') as model_file:
+                graph_def.ParseFromString(model_file.read())
+            input_var = tf.placeholder(dtype, shape=in_shape)
+            output, d_input, d_output = list(
+                map(lambda x: x.outputs[0],
+                    tf.import_graph_def(graph_def,
+                                        input_map={'input': input_var},
+                                        return_elements=CycleGAN.OUTPUT_NODES)))
+        return d_input, d_output, input_var, output
 
     @staticmethod
     def save_output(all_data, d_inputs, d_outputs, include_input, outfile, outputs):

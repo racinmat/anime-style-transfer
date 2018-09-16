@@ -72,15 +72,16 @@ def main(_):
                                                         if k != 'h' and 'help' not in k and getattr(FLAGS,
                                                                                                     k) is not None)))
 
-    # setting up only one GPU to use
-    devices_environ_var = 'CUDA_VISIBLE_DEVICES'
-    if devices_environ_var not in os.environ:
-        raise Exception(devices_environ_var + ' variable not found in environment')
-    available_devices = os.environ[devices_environ_var].split(',')
-    if not len(available_devices):
-        raise Exception(devices_environ_var + 'no gpu visible')
-    gpu = FLAGS.gpu_idx
-    os.environ[devices_environ_var] = available_devices[gpu]
+    # I have only one GPU, no need for this now
+    # # setting up only one GPU to use
+    # devices_environ_var = 'CUDA_VISIBLE_DEVICES'
+    # if devices_environ_var not in os.environ:
+    #     raise Exception(devices_environ_var + ' variable not found in environment')
+    # available_devices = os.environ[devices_environ_var].split(',')
+    # if not len(available_devices):
+    #     raise Exception(devices_environ_var + 'no gpu visible')
+    # gpu = FLAGS.gpu_idx
+    # os.environ[devices_environ_var] = available_devices[gpu]
 
     cygan = create_cyclegan()
 

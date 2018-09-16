@@ -9,6 +9,12 @@ from PIL import Image
 from scipy.misc import imresize
 
 
+FLAGS = tf.flags.FLAGS
+
+tf.flags.DEFINE_enum('type', None, ['real', 'anime'], 'Type, either anime or real')
+tf.flags.DEFINE_string('name', None, 'Name of the dataset in tfrecord file (must correspond with Xname and Yname files).')
+
+
 def make_square(im, fill_color=(0, 0, 0, 0)):
     y, x = im.shape[0:2]
     size = max(x, y)
@@ -56,10 +62,11 @@ def run(infiles, outfile, tf_name):
 def run_anime():
     images_root = '../../../dataset-sources/anime/images'
     tfrecords_root = '../../../datasets/anime'
-    for dir_name in os.listdir(images_root):
-        print('processing directory {}'.format(dir_name))
-        run(glob.glob(osp.join(images_root, dir_name, '*.png')), osp.join(tfrecords_root, dir_name + '.tfrecord'),
-            'anime')
+    anime_name = FLAGS.name
+    anime_root = os.path.join(images_root, anime_name)
+    print('processing directory {}'.format(anime_root))
+    run(glob.glob(osp.join(anime_root, '*.png')), osp.join(tfrecords_root, anime_name + '.tfrecord'),
+        anime_name)
 
 
 def get_real_images_cityscapes():
@@ -72,7 +79,7 @@ def get_real_images_cityscapes():
 
 
 def get_real_images_ade20k():
-    images_root = '/datagrid/public_datasets/ADE20K_2016_07_26/images/training'
+    images_root = '../../../dataset-sources/real/images/ADE20K_2016_07_26/images/training'
     print('processing ade20k')
     # ade20k dataset has 1 to 2 dir levels and all ground truth images are jpg ending with number
     infiles = list(glob.glob(osp.join(images_root, '**', '*[0-9].jpg'), recursive=True))
@@ -81,15 +88,20 @@ def get_real_images_ade20k():
 
 def run_real():
     tfrecords_root = '../../../datasets/real'
+    infiles = []
+    tfrecord_name = ''
     # infiles = get_real_images_cityscapes()
     # tfrecord_name = 'cityscapes.tfrecord'
-    infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
-    tfrecord_name = 'ade20k.tfrecord'
+    if FLAGS.name == 'ade20k':
+        infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
+        tfrecord_name = 'ade20k.tfrecord'
     print('{} files to process'.format(len(infiles)))
-    run(infiles, osp.join(tfrecords_root, tfrecord_name), 'real')
+    run(infiles, osp.join(tfrecords_root, tfrecord_name), FLAGS.name)
 
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
-    # run_anime()
-    run_real()
+    if FLAGS.type == 'real':
+        run_real()
+    if FLAGS.type == 'anime':
+        run_anime()

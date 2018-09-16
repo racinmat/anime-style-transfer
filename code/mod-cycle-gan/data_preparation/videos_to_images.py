@@ -23,8 +23,8 @@ import os.path as osp
 FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_integer('period', None, 'If not none, next sample is taken from video after <period> seconds.')
-tf.flags.DEFINE_string('videos_dir', '../../dataset-sources/anime/videos', 'Directory with videos.')
-tf.flags.DEFINE_string('images_dir', '../../dataset-sources/anime/images', 'Directory where to output images.')
+tf.flags.DEFINE_string('videos_dir', '../../../dataset-sources/anime/videos', 'Directory with videos.')
+tf.flags.DEFINE_string('images_dir', '../../../dataset-sources/anime/images', 'Directory where to output images.')
 
 
 def get_base_name(name):

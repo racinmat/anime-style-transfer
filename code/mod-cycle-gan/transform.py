@@ -124,6 +124,7 @@ def images_to_numpy_parallel(im_paths):
 
 
 def numpy_to_images(data, shapes, out_dir, suffix='-out'):
+    # todo: fixnout, pro více volání za sebou přemazává stejně pojmenované soubory, asi předělat na dataset api?
     if not osp.exists(out_dir):
         os.makedirs(out_dir)
     print('going to persist {} images'.format(len(data)))
@@ -144,23 +145,20 @@ def numpy_to_images(data, shapes, out_dir, suffix='-out'):
     pbar.finish()
 
 
-def main(_):
-    logging.getLogger().setLevel(logging.INFO)
-    # just as test, but with loading from checkpoint
-    if FLAGS.inpath is not None:
-        print('using images in path: ', FLAGS.inpath)
-        im_paths = list(sorted(glob.glob(FLAGS.inpath)))
-    elif FLAGS.random is not None:
-        num_images = FLAGS.random
-        print('using {} random images from ade20k'.format(num_images))
-        im_paths = random.sample(get_real_images_ade20k(), num_images)
-    else:
-        raise Exception("No data source specified")
-
+def transform_files(im_paths, eager_load=True):
     print('will transform {} images: '.format(len(im_paths)))
+
     # keeping original sizes before reshaping so I can crop black stripes from reshaped images
-    in_data, in_shapes = images_to_numpy(im_paths)
-    print('images prepared in numpy')
+    if eager_load:
+        in_data, in_shapes = images_to_numpy(im_paths)
+        print('images prepared in numpy')
+    else:
+        data = tf.data.TFRecordDataset(tfrecords_file)
+        data = data.map(self._parse_example, num_parallel_calls=num_threads)
+        data = data.map(self.normalize, num_parallel_calls=num_threads)
+        data = data.batch(self.batch_size)
+        iterator = self.data.make_one_shot_iterator()
+        feeder = self.iterator.get_next()
 
     pb_dir, rundir, step = extract_and_get_pb_dir()
 
@@ -175,6 +173,27 @@ def main(_):
     if FLAGS.includein:
         numpy_to_images(in_data, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
     numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
+
+
+def main(_):
+    logging.getLogger().setLevel(logging.INFO)
+    # just as test, but with loading from checkpoint
+    if FLAGS.inpath is not None:
+        print('using images in path: ', FLAGS.inpath)
+        im_paths = list(sorted(glob.glob(FLAGS.inpath)))
+    elif FLAGS.random is not None:
+        num_images = FLAGS.random
+        print('using {} random images from ade20k'.format(num_images))
+        im_paths = random.sample(get_real_images_ade20k(), num_images)
+    else:
+        raise Exception("No data source specified")
+
+    chunk_size = 1000
+    if len(im_paths) <= chunk_size:
+        # everything fits into memory at once without problem
+        transform_files(im_paths, eager_load=True)
+    else:
+        transform_files(im_paths, eager_load=False)
     print('all done')
 
 
