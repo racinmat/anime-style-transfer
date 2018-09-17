@@ -433,8 +433,6 @@ class CycleGAN:
         d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(all_data.dtype, graph, in_shape, pb_model)
 
         outputs = []
-        d_inputs = []
-        d_outputs = []
         config = tf.ConfigProto()
         # config = tf.ConfigProto(device_count={'GPU': 0})
         config.gpu_options.allow_growth = True
@@ -450,21 +448,16 @@ class CycleGAN:
                     pbar.update(i)
                 out, din, dout = sess.run([output, d_input, d_output], feed_dict={input_var: data})
                 outputs.append(out)
-                d_inputs.append(din)
-                d_outputs.append(dout)
             if all_data.shape[0] > 100:
                 pbar.finish()
-        return d_inputs, d_outputs, outputs
+        return outputs
 
     @staticmethod
     def test_one_part_dataset(pb_model, data, data_size):
         in_shape = data.shape[1:]
-        graph = tf.Graph()
+        graph = tf.get_default_graph()
         d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(data.dtype, graph, in_shape, pb_model)
 
-        outputs = []
-        d_inputs = []
-        d_outputs = []
         config = tf.ConfigProto()
         # config = tf.ConfigProto(device_count={'GPU': 0})
         config.gpu_options.allow_growth = True
@@ -476,13 +469,11 @@ class CycleGAN:
             pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size).start()
             for i in range(data_size):
                 pbar.update(i)
-                data_value = sess.run(data)
+                data_value = sess.run(data)[0, ::]
                 out, din, dout = sess.run([output, d_input, d_output], feed_dict={input_var: data_value})
-                outputs.append(out)
-                d_inputs.append(din)
-                d_outputs.append(dout)
-                yield din, dout, out
+                yield out
             pbar.finish()
+    #         todo: dodělat to celé a otestovat, a přegenerovat
 
     @staticmethod
     def get_graph_outputs(dtype, graph, in_shape, pb_model):

@@ -6,6 +6,7 @@ import progressbar
 import tensorflow as tf
 import numpy as np
 from PIL import Image
+from object_detection.utils import dataset_util
 from scipy.misc import imresize
 
 
@@ -50,8 +51,13 @@ def run(infiles, outfile, tf_name):
             if data.ndim == 2 or data.shape[2] == 1:
                 # black and white image detected, skipping
                 continue
-            ex = tf.train.Example(features=tf.train.Features(
-                feature={name: tf.train.Feature(float_list=tf.train.FloatList(value=process_sample(data).ravel()))}))
+            with tf.gfile.GFile(f, 'rb') as fid:
+                encoded_png = fid.read()
+            ex = tf.train.Example(features=tf.train.Features(feature={
+                'image/encoded': dataset_util.bytes_feature(encoded_png),
+                'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
+                'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
+            }))
             writer.write(ex.SerializeToString())
         except (IOError, ValueError) as e:
             logging.warning('Opening %s failed', f)

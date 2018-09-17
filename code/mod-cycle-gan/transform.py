@@ -125,6 +125,8 @@ def images_to_numpy_parallel(im_paths):
 
 def numpy_to_images(data, shapes, out_dir, suffix='-out'):
     # todo: fixnout, pro více volání za sebou přemazává stejně pojmenované soubory, asi předělat na dataset api?
+    # todo: propojit s yield a shape z dataset api
+    # todo: předělat loading na nový tfrecord formát
     if not osp.exists(out_dir):
         os.makedirs(out_dir)
     print('going to persist {} images'.format(len(data)))
@@ -148,25 +150,38 @@ def numpy_to_images(data, shapes, out_dir, suffix='-out'):
 def transform_files(im_paths, eager_load=True):
     print('will transform {} images: '.format(len(im_paths)))
 
+    def _parse_example(filename):
+        image_string = tf.read_file(filename)
+        image = tf.image.decode_png(image_string)
+        im_shape = image.shape[0:2]
+        image = tf.py_func(lambda x: process_sample(x, True), [image], tf.uint8)
+        image = tf.cast(image, dtype=tf.float32)
+        return tf.group(image, im_shape)
+    # todo: předělat do nového tfrecord formátu, používat jeden název fíčur v tfrecordu
+
     # keeping original sizes before reshaping so I can crop black stripes from reshaped images
     if eager_load:
         in_data, in_shapes = images_to_numpy(im_paths)
         print('images prepared in numpy')
     else:
-        data = tf.data.TFRecordDataset(tfrecords_file)
-        data = data.map(self._parse_example, num_parallel_calls=num_threads)
-        data = data.map(self.normalize, num_parallel_calls=num_threads)
-        data = data.batch(self.batch_size)
-        iterator = self.data.make_one_shot_iterator()
-        feeder = self.iterator.get_next()
+        data = tf.data.Dataset.from_tensor_slices(im_paths)
+        data = data.map(_parse_example, num_parallel_calls=10)
+        data = data.batch(batch_size=8)
+        iterator = data.make_one_shot_iterator()
+        feeder = iterator.get_next()
 
     pb_dir, rundir, step = extract_and_get_pb_dir()
 
     print('model loaded, starting with inference')
 
-    d_inputs, d_outputs, outputs = cycle.CycleGAN.test_one_part(
-        osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-        in_data)
+    if eager_load:
+        outputs = cycle.CycleGAN.test_one_part(
+            osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+            in_data)
+    else:
+        outputs = cycle.CycleGAN.test_one_part_dataset(
+            osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+            feeder, len(im_paths))
 
     print('data transformed, going to persist them')
 
