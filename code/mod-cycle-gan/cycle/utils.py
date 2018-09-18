@@ -4,6 +4,7 @@ import os
 import os.path as osp
 import tensorflow as tf
 import numpy as np
+from object_detection.data_decoders import tf_example_decoder
 
 
 def _identity(x, name=None):
@@ -60,7 +61,8 @@ class TFReader:
             print('fetching data from tfrecords_file: {}'.format(tfrecords_file))
             print('with name: {}'.format(self.name))
             self.data = tf.data.TFRecordDataset(tfrecords_file)
-            self.data = self.data.map(self._parse_example, num_parallel_calls=num_threads)
+            # self.data = self.data.map(self._parse_example, num_parallel_calls=num_threads)    # for old, numpy way of storing data
+            self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)  # for new, binary png data stream
             self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
             self.data = self.data.shuffle(shuffle_buffer_size)
             self.data = self.data.repeat()
@@ -76,6 +78,11 @@ class TFReader:
         features = tf.parse_single_example(serialized_example,
                                            {name: tf.FixedLenFeature(self.shape, tf.float32)})
         return features[name]
+    
+    def _parse_example_encoded(self, serialized_example):
+        example_decoder = tf_example_decoder.TfExampleDecoder()
+        features = example_decoder.decode(tf.convert_to_tensor(serialized_example))
+        return features['image']
 
 
 class TFWriter:

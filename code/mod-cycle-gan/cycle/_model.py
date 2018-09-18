@@ -453,10 +453,12 @@ class CycleGAN:
         return outputs
 
     @staticmethod
-    def test_one_part_dataset(pb_model, data, data_size):
+    def test_one_part_dataset(pb_model, data, data_size, postprocessing=lambda x, y, z: x):
         in_shape = data.shape[1:]
         graph = tf.get_default_graph()
         d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(data.dtype, graph, in_shape, pb_model)
+        iteration_num = tf.placeholder(tf.int32, shape=[1])
+        postprocess = postprocessing(output, data[1], iteration_num)
 
         config = tf.ConfigProto()
         # config = tf.ConfigProto(device_count={'GPU': 0})
@@ -469,10 +471,13 @@ class CycleGAN:
             pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size).start()
             for i in range(data_size):
                 pbar.update(i)
-                data_value = sess.run(data)[0, ::]
-                out, din, dout = sess.run([output, d_input, d_output], feed_dict={input_var: data_value})
-                yield out
+                input_image, input_shape = sess.run(data)[0, ::]
+                out, din, dout, _ = sess.run([output, d_input, d_output, postprocess],
+                                             feed_dict={
+                                                 input_var: input_image,
+                                                 iteration_num: i})
             pbar.finish()
+
     #         todo: dodělat to celé a otestovat, a přegenerovat
 
     @staticmethod

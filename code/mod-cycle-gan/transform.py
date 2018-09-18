@@ -127,8 +127,7 @@ def numpy_to_images(data, shapes, out_dir, suffix='-out'):
     # todo: fixnout, pro více volání za sebou přemazává stejně pojmenované soubory, asi předělat na dataset api?
     # todo: propojit s yield a shape z dataset api
     # todo: předělat loading na nový tfrecord formát
-    if not osp.exists(out_dir):
-        os.makedirs(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
     print('going to persist {} images'.format(len(data)))
     num_digits = int(np.log10(len(data)))+1
 
@@ -138,13 +137,17 @@ def numpy_to_images(data, shapes, out_dir, suffix='-out'):
 
     for i, im in enumerate(data):
         pbar.update(i)
-        y, x = shapes[i, :] / (shapes[i, :].max() / 512)    # 512 is size of input, which is rectangular
-        size_y, size_x = im.shape[0:2]
-        y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
-        y_to, x_to = size_y - y_from, size_x - x_from
-        cropped_im = im[y_from:y_to, x_from:x_to]
-        imsave(osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits), suffix)), cropped_im)
+        save_image(shapes[i, :], im, out_dir, suffix, num_digits, i)
     pbar.finish()
+
+
+def save_image(shape, image, out_dir, suffix, num_digits, i):
+    y, x = shape / (shape.max() / 512)  # 512 is size of input, which is rectangular
+    size_y, size_x = image.shape[0:2]
+    y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
+    y_to, x_to = size_y - y_from, size_x - x_from
+    cropped_im = image[y_from:y_to, x_from:x_to]
+    imsave(osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits), suffix)), cropped_im)
 
 
 def transform_files(im_paths, eager_load=True):
@@ -178,16 +181,28 @@ def transform_files(im_paths, eager_load=True):
         outputs = cycle.CycleGAN.test_one_part(
             osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
             in_data)
+
+        print('data transformed, going to persist them')
+
+        if FLAGS.includein:
+            numpy_to_images(in_data, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
+        numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
     else:
-        outputs = cycle.CycleGAN.test_one_part_dataset(
+        out_dir = osp.join(FLAGS.outdir, rundir, step)
+        num_digits = int(np.log10(len(im_paths))) + 1
+        os.makedirs(out_dir, exist_ok=True)
+
+        def persist_images_postprocessing(out_images, in_shapes, iteration):
+            return tf.py_func(persist_image, [out_images, in_shapes, iteration])
+
+        def persist_image(out_image, in_shape, i):
+            if FLAGS.includein:
+                save_image(in_shape, out_image, out_dir, '-in', num_digits, i)
+            save_image(in_shape, out_image, out_dir, '-out', num_digits, i)
+
+        cycle.CycleGAN.test_one_part_dataset(
             osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-            feeder, len(im_paths))
-
-    print('data transformed, going to persist them')
-
-    if FLAGS.includein:
-        numpy_to_images(in_data, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
-    numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
+            feeder, len(im_paths), persist_images_postprocessing)
 
 
 def main(_):
