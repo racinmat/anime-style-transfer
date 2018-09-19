@@ -2,6 +2,8 @@ import logging
 import os
 import os.path as osp
 import glob
+from io import BytesIO
+
 import progressbar
 import tensorflow as tf
 import numpy as np
@@ -30,7 +32,7 @@ def process_sample(data, padding=False):
     return imresize(data, (512, 512))
 
 
-def run(infiles, outfile, tf_name):
+def run(infiles, outfile):
     outfile = osp.abspath(outfile)
     if osp.isfile(outfile):
         # logging.warning('File %s already exists, it will be overwritten', outfile)
@@ -38,7 +40,6 @@ def run(infiles, outfile, tf_name):
         return
     os.makedirs(osp.dirname(outfile), exist_ok=True)
     writer = tf.python_io.TFRecordWriter(outfile)
-    name = tf_name + '_data'
 
     widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
                progressbar.FileTransferSpeed()]
@@ -48,16 +49,19 @@ def run(infiles, outfile, tf_name):
         pbar.update(i)
         try:
             data = np.array(Image.open(f))
-            if data.ndim == 2 or data.shape[2] == 1:
+            if data.ndim == 2 or data.shape[2] == 1:   # grayscale
                 # black and white image detected, skipping
                 continue
-            with tf.gfile.GFile(f, 'rb') as fid:
-                encoded_png = fid.read()
+            im = Image.fromarray(process_sample(data))
+            stream = BytesIO()
+            im.save(stream, format='PNG')
+            encoded_png = stream.getvalue()
             ex = tf.train.Example(features=tf.train.Features(feature={
                 'image/encoded': dataset_util.bytes_feature(encoded_png),
                 'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
                 'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
             }))
+            # todo: check if training works
             writer.write(ex.SerializeToString())
         except (IOError, ValueError) as e:
             logging.warning('Opening %s failed', f)
@@ -71,8 +75,7 @@ def run_anime():
     anime_name = FLAGS.name
     anime_root = os.path.join(images_root, anime_name)
     print('processing directory {}'.format(anime_root))
-    run(glob.glob(osp.join(anime_root, '*.png')), osp.join(tfrecords_root, anime_name + '.tfrecord'),
-        anime_name)
+    run(glob.glob(osp.join(anime_root, '*.png')), osp.join(tfrecords_root, anime_name + '.tfrecord'))
 
 
 def get_real_images_cityscapes():
@@ -102,7 +105,7 @@ def run_real():
         infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
         tfrecord_name = 'ade20k.tfrecord'
     print('{} files to process'.format(len(infiles)))
-    run(infiles, osp.join(tfrecords_root, tfrecord_name), FLAGS.name)
+    run(infiles, osp.join(tfrecords_root, tfrecord_name))
 
 
 if __name__ == '__main__':

@@ -156,28 +156,19 @@ def transform_files(im_paths, eager_load=True):
     def _parse_example(filename):
         image_string = tf.read_file(filename)
         image = tf.image.decode_png(image_string)
-        im_shape = image.shape[0:2]
+        im_shape = image.shape[0:2] # shape not workling, todo: read shape from tensorflow
         image = tf.py_func(lambda x: process_sample(x, True), [image], tf.uint8)
         image = tf.cast(image, dtype=tf.float32)
         return tf.group(image, im_shape)
     # todo: předělat do nového tfrecord formátu, používat jeden název fíčur v tfrecordu
 
+    pb_dir, rundir, step = extract_and_get_pb_dir()
+    print('model loaded, starting with inference')
+
     # keeping original sizes before reshaping so I can crop black stripes from reshaped images
     if eager_load:
         in_data, in_shapes = images_to_numpy(im_paths)
         print('images prepared in numpy')
-    else:
-        data = tf.data.Dataset.from_tensor_slices(im_paths)
-        data = data.map(_parse_example, num_parallel_calls=10)
-        data = data.batch(batch_size=8)
-        iterator = data.make_one_shot_iterator()
-        feeder = iterator.get_next()
-
-    pb_dir, rundir, step = extract_and_get_pb_dir()
-
-    print('model loaded, starting with inference')
-
-    if eager_load:
         outputs = cycle.CycleGAN.test_one_part(
             osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
             in_data)
@@ -188,6 +179,12 @@ def transform_files(im_paths, eager_load=True):
             numpy_to_images(in_data, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
         numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
     else:
+        data = tf.data.Dataset.from_tensor_slices(im_paths)
+        data = data.map(_parse_example, num_parallel_calls=10)
+        data = data.batch(batch_size=8)
+        iterator = data.make_one_shot_iterator()
+        feeder = iterator.get_next()
+
         out_dir = osp.join(FLAGS.outdir, rundir, step)
         num_digits = int(np.log10(len(im_paths))) + 1
         os.makedirs(out_dir, exist_ok=True)

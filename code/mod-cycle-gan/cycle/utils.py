@@ -78,11 +78,11 @@ class TFReader:
         features = tf.parse_single_example(serialized_example,
                                            {name: tf.FixedLenFeature(self.shape, tf.float32)})
         return features[name]
-    
+
     def _parse_example_encoded(self, serialized_example):
         example_decoder = tf_example_decoder.TfExampleDecoder()
         features = example_decoder.decode(tf.convert_to_tensor(serialized_example))
-        return features['image']
+        return tf.cast(features['image'], dtype=tf.float32)
 
 
 class TFWriter:
