@@ -453,12 +453,11 @@ class CycleGAN:
         return outputs
 
     @staticmethod
-    def test_one_part_dataset(pb_model, data, data_size, postprocessing=lambda x, y, z: x):
-        in_shape = data.shape[1:]
+    def test_one_part_dataset(pb_model, dataset, data_size, postprocessing=lambda x, y, z: x):
         graph = tf.get_default_graph()
-        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(data.dtype, graph, in_shape, pb_model)
-        iteration_num = tf.placeholder(tf.int32, shape=[1])
-        postprocess = postprocessing(output, data[1], iteration_num)
+        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(dataset[0].dtype, graph, (512, 512, 3), pb_model)   # todo: probably parameterize the shape and read it from input
+        iteration_num = tf.placeholder(tf.int32, shape=())  # this is scalar placeholder
+        postprocess = postprocessing(output, dataset[1], iteration_num)
 
         config = tf.ConfigProto()
         # config = tf.ConfigProto(device_count={'GPU': 0})
@@ -471,7 +470,7 @@ class CycleGAN:
             pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size).start()
             for i in range(data_size):
                 pbar.update(i)
-                input_image, input_shape = sess.run(data)[0, ::]
+                input_image, input_shape = sess.run(dataset)
                 out, din, dout, _ = sess.run([output, d_input, d_output, postprocess],
                                              feed_dict={
                                                  input_var: input_image,

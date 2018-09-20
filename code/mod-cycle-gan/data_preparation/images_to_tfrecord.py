@@ -52,7 +52,7 @@ def run(infiles, outfile):
             if data.ndim == 2 or data.shape[2] == 1:   # grayscale
                 # black and white image detected, skipping
                 continue
-            im = Image.fromarray(process_sample(data))
+            im = Image.fromarray(data)  # resizing is done in tensorflow during preprocessing, don't modify it here
             stream = BytesIO()
             im.save(stream, format='PNG')
             encoded_png = stream.getvalue()

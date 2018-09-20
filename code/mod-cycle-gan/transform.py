@@ -153,14 +153,19 @@ def save_image(shape, image, out_dir, suffix, num_digits, i):
 def transform_files(im_paths, eager_load=True):
     print('will transform {} images: '.format(len(im_paths)))
 
-    def _parse_example(filename):
+    def load_image(filename):
         image_string = tf.read_file(filename)
         image = tf.image.decode_png(image_string)
-        im_shape = image.shape[0:2] # shape not workling, todo: read shape from tensorflow
+        return image
+        # im_shape = tf.shape(image)[0:2]
+        # image = tf.py_func(lambda x: process_sample(x, True), [image], tf.uint8)
+        # image = tf.cast(image, dtype=tf.float32)
+        # return tf.group(image, im_shape)
+
+    def reshape_image(image):
         image = tf.py_func(lambda x: process_sample(x, True), [image], tf.uint8)
         image = tf.cast(image, dtype=tf.float32)
-        return tf.group(image, im_shape)
-    # todo: předělat do nového tfrecord formátu, používat jeden název fíčur v tfrecordu
+        return image
 
     pb_dir, rundir, step = extract_and_get_pb_dir()
     print('model loaded, starting with inference')
@@ -180,8 +185,11 @@ def transform_files(im_paths, eager_load=True):
         numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
     else:
         data = tf.data.Dataset.from_tensor_slices(im_paths)
-        data = data.map(_parse_example, num_parallel_calls=10)
-        data = data.batch(batch_size=8)
+        orig_images = data.map(load_image, num_parallel_calls=10)
+        orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
+        reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
+        data = tf.data.Dataset.zip((reshaped_images, orig_shapes))
+        # data = data.batch(batch_size=1) # todo: check if I can change the batch size for inference so it will be different from training batch size
         iterator = data.make_one_shot_iterator()
         feeder = iterator.get_next()
 
@@ -190,12 +198,13 @@ def transform_files(im_paths, eager_load=True):
         os.makedirs(out_dir, exist_ok=True)
 
         def persist_images_postprocessing(out_images, in_shapes, iteration):
-            return tf.py_func(persist_image, [out_images, in_shapes, iteration])
+            return tf.py_func(persist_image, [out_images, in_shapes, iteration], tf.int32)   # apparently it must return something
 
         def persist_image(out_image, in_shape, i):
             if FLAGS.includein:
                 save_image(in_shape, out_image, out_dir, '-in', num_digits, i)
             save_image(in_shape, out_image, out_dir, '-out', num_digits, i)
+            return 0
 
         cycle.CycleGAN.test_one_part_dataset(
             osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
