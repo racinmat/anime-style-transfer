@@ -461,11 +461,11 @@ class CycleGAN:
         return outputs
 
     @staticmethod
-    def test_one_part_dataset(pb_model, dataset, data_size, batch_size, postprocessing=lambda x, y, z: x):
+    def test_one_part_dataset(pb_model, dataset, data_size, batch_size, postprocessing=lambda a, b, c, d: a):
         graph = tf.get_default_graph()
         d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(graph, dataset[0], pb_model)
         iteration_num = tf.placeholder(tf.int32)
-        postprocess = postprocessing(output, dataset[1], iteration_num)
+        postprocess = postprocessing(output, dataset[1], dataset[2], iteration_num)
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True

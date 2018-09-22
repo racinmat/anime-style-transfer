@@ -143,7 +143,11 @@ def numpy_to_images(data, shapes, out_dir, suffix='-out'):
     pbar.finish()
 
 
-def save_image(shapes, images, out_dir, suffix, num_digits, i):
+def get_base_name(name):
+    return osp.basename(os.path.splitext(name)[0])
+
+
+def save_image(shapes, images, out_dir, suffix, num_digits, i, in_filenames=None):
     # whole batch of images is here
     shape = shapes[0]   # shapes, because there is shape for each picture in the batch
     y, x = shape / (shape.max() / 512)  # 512 is size of input, which is rectangular
@@ -153,7 +157,13 @@ def save_image(shapes, images, out_dir, suffix, num_digits, i):
         y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
         y_to, x_to = size_y - y_from, size_x - x_from
         cropped_im = image[y_from:y_to, x_from:x_to]
-        imsave(osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits)+str(j), suffix)), cropped_im)
+        if in_filenames is None:
+            new_name = osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits)+str(j), suffix))
+        else:
+            in_filename = in_filenames[j].decode("utf-8")
+            basename = get_base_name(in_filename)
+            new_name = osp.join(out_dir, "{}{}.png".format(basename, suffix))
+        imsave(new_name, cropped_im)
 
 
 def transform_files(im_paths, eager_load=True):
@@ -191,11 +201,11 @@ def transform_files(im_paths, eager_load=True):
         numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
     else:
         with tf.device('/cpu:0'):
-            data = tf.data.Dataset.from_tensor_slices(im_paths)
-            orig_images = data.map(load_image, num_parallel_calls=10)
+            orig_names = tf.data.Dataset.from_tensor_slices(im_paths)
+            orig_images = orig_names.map(load_image, num_parallel_calls=10)
             orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
             reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
-            data = tf.data.Dataset.zip((reshaped_images, orig_shapes))
+            data = tf.data.Dataset.zip((reshaped_images, orig_shapes, orig_names))
             data = data.batch(batch_size=FLAGS.batchsize)
             data = data.prefetch(buffer_size=3)
             iterator = data.make_one_shot_iterator()
@@ -205,13 +215,13 @@ def transform_files(im_paths, eager_load=True):
         num_digits = int(np.log10(len(im_paths))) + 1
         os.makedirs(out_dir, exist_ok=True)
 
-        def persist_images_postprocessing(out_images, in_shapes, iteration):
-            return tf.py_func(persist_image, [out_images, in_shapes, iteration], tf.int32)   # apparently it must return something
+        def persist_images_postprocessing(out_images, in_shapes, in_filenames, iteration):
+            return tf.py_func(persist_image, [out_images, in_shapes, in_filenames, iteration], tf.int32)   # apparently it must return something
 
-        def persist_image(out_image, in_shape, i):
+        def persist_image(out_image, in_shape, in_filenames, i):
             if FLAGS.includein:
-                save_image(in_shape, out_image, out_dir, '-in', num_digits, i)
-            save_image(in_shape, out_image, out_dir, '-out', num_digits, i)
+                save_image(in_shape, out_image, out_dir, '-in', num_digits, i, in_filenames)
+            save_image(in_shape, out_image, out_dir, '-out', num_digits, i, in_filenames)
             return 0
 
         cycle.CycleGAN.test_one_part_dataset(
