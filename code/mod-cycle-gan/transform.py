@@ -28,6 +28,8 @@ import os
 import os.path as osp
 import logging
 import random
+from math import ceil
+
 import numpy as np
 import progressbar
 import tensorflow as tf
@@ -141,7 +143,8 @@ def numpy_to_images(data, shapes, out_dir, suffix='-out'):
     pbar.finish()
 
 
-def save_image(shape, image, out_dir, suffix, num_digits, i):
+def save_image(shapes, image, out_dir, suffix, num_digits, i):
+    shape = shapes[0]   # shapes, because there is shape for each picture in the batch
     y, x = shape / (shape.max() / 512)  # 512 is size of input, which is rectangular
     size_y, size_x = image.shape[0:2]
     y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
@@ -189,7 +192,7 @@ def transform_files(im_paths, eager_load=True):
         orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
         reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
         data = tf.data.Dataset.zip((reshaped_images, orig_shapes))
-        # data = data.batch(batch_size=1) # todo: check if I can change the batch size for inference so it will be different from training batch size
+        data = data.batch(batch_size=FLAGS.batchsize)
         iterator = data.make_one_shot_iterator()
         feeder = iterator.get_next()
 
@@ -208,7 +211,7 @@ def transform_files(im_paths, eager_load=True):
 
         cycle.CycleGAN.test_one_part_dataset(
             osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-            feeder, len(im_paths), persist_images_postprocessing)
+            feeder, ceil(len(im_paths) / FLAGS.batchsize), FLAGS.batchsize, persist_images_postprocessing)
 
 
 def main(_):
@@ -234,27 +237,21 @@ def main(_):
 
 
 def extract_and_get_pb_dir():
+    if FLAGS.rundir is None:
+        FLAGS.rundir = sorted([d for d in os.listdir(FLAGS.cpdir)
+                               if osp.isdir(osp.join(FLAGS.cpdir, d))])[-1]
+    fulldir = osp.join(FLAGS.cpdir, FLAGS.rundir)
+    print('rundir: ', FLAGS.rundir)
+    pb_dir = osp.join(FLAGS.cpdir, '..', 'export', FLAGS.rundir)
+    pb_dir = osp.join(pb_dir, rundir)
     if FLAGS.extract:
-        if FLAGS.rundir is None:
-            FLAGS.rundir = sorted([d for d in os.listdir(FLAGS.cpdir)
-                                   if osp.isdir(osp.join(FLAGS.cpdir, d))])[-1]
-        fulldir = osp.join(FLAGS.cpdir, FLAGS.rundir)
-
-        print('rundir: ', FLAGS.rundir)
-        pb_dir = osp.join(FLAGS.cpdir, '..', 'export', FLAGS.rundir)
         if not osp.exists(pb_dir):
             os.makedirs(pb_dir)
         step = load_and_export(fulldir, pb_dir)
-        rundir = FLAGS.rundir
     else:
         import_model()  # model is imported during load_and_export in other case
-        pb_dir = osp.join(FLAGS.cpdir, '..', 'export')
-        rundir = sorted([d for d in os.listdir(pb_dir) if osp.isdir(osp.join(pb_dir, d))])[-1]
-        full_rundir = osp.join(pb_dir, rundir)
-        print('rundir:', rundir)
-        step = str(max([int(d) for d in os.listdir(full_rundir) if osp.isdir(osp.join(full_rundir, d))]))
-        pb_dir = osp.join(pb_dir, rundir)
-    return pb_dir, rundir, step
+        step = str(max([int(d) for d in os.listdir(pb_dir) if osp.isdir(osp.join(pb_dir, d))]))
+    return pb_dir, FLAGS.rundir, step
 
 
 if __name__ == '__main__':

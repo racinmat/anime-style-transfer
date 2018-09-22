@@ -60,7 +60,7 @@ def extract_to_tensorboard():
 
 def get_pb_dir():
     pb_dir = osp.join(FLAGS.cpdir, '..', 'export')
-    rundir = sorted([d for d in os.listdir(pb_dir) if osp.isdir(osp.join(pb_dir, d))])[-1]
+    rundir = FLAGS.rundir
     full_rundir = osp.join(pb_dir, rundir)
     print('rundir:', rundir)
     step = str(max([int(d) for d in os.listdir(full_rundir) if osp.isdir(osp.join(full_rundir, d))]))

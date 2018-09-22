@@ -394,13 +394,19 @@ class CycleGAN:
                             cp_dir, export_dir, model_name):
         graph = tf.Graph()
         with graph.as_default():
-            data_in = tf.expand_dims(normer(tf.placeholder(tf.float32,
-                                                           shape=in_shape,
-                                                           name='input')), 0)
+            # data_in = tf.expand_dims(normer(tf.placeholder(tf.float32,
+            #                                                shape=in_shape,
+            #                                                name='input')), 0)
+            # above is for one image per batch, this is for any size batch
+            data_in = normer(tf.placeholder(tf.float32,
+                                            shape=[None] + list(in_shape),
+                                            name='input'))
             out = gen(data_in)
             d_in = in_dis(data_in)
             d_out = out_dis(out)
-            denormer(tf.squeeze(out, axis=0), name='output')
+            # denormer(tf.squeeze(out, axis=0), name='output')
+            # above is for one image per batch, this is for any size batch
+            denormer(out, name='output')
             tf.reduce_mean(d_in, name='d_input')
             tf.reduce_mean(d_out, name='d_output')
             restore = tf.train.Saver()
@@ -453,9 +459,10 @@ class CycleGAN:
         return outputs
 
     @staticmethod
-    def test_one_part_dataset(pb_model, dataset, data_size, postprocessing=lambda x, y, z: x):
+    def test_one_part_dataset(pb_model, dataset, data_size, batch_size, postprocessing=lambda x, y, z: x):
         graph = tf.get_default_graph()
-        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(dataset[0].dtype, graph, (512, 512, 3), pb_model)   # todo: probably parameterize the shape and read it from input
+        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(dataset[0].dtype, graph, (None, 512, 512, 3),
+                                                                          pb_model)  # todo: probably parameterize the shape and read it from input
         iteration_num = tf.placeholder(tf.int32, shape=())  # this is scalar placeholder
         postprocess = postprocessing(output, dataset[1], iteration_num)
 
@@ -467,9 +474,9 @@ class CycleGAN:
 
             widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
                        progressbar.FileTransferSpeed()]
-            pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size).start()
+            pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size * batch_size).start()
             for i in range(data_size):
-                pbar.update(i)
+                pbar.update(i * batch_size)
                 input_image, input_shape = sess.run(dataset)
                 out, din, dout, _ = sess.run([output, d_input, d_output, postprocess],
                                              feed_dict={
