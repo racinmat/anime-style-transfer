@@ -143,14 +143,17 @@ def numpy_to_images(data, shapes, out_dir, suffix='-out'):
     pbar.finish()
 
 
-def save_image(shapes, image, out_dir, suffix, num_digits, i):
+def save_image(shapes, images, out_dir, suffix, num_digits, i):
+    # whole batch of images is here
     shape = shapes[0]   # shapes, because there is shape for each picture in the batch
     y, x = shape / (shape.max() / 512)  # 512 is size of input, which is rectangular
-    size_y, size_x = image.shape[0:2]
-    y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
-    y_to, x_to = size_y - y_from, size_x - x_from
-    cropped_im = image[y_from:y_to, x_from:x_to]
-    imsave(osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits), suffix)), cropped_im)
+    for j in range(images.shape[0]):    # iterate through the batch
+        image = images[0]
+        size_y, size_x = image.shape[0:2]
+        y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
+        y_to, x_to = size_y - y_from, size_x - x_from
+        cropped_im = image[y_from:y_to, x_from:x_to]
+        imsave(osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits)+str(j), suffix)), cropped_im)
 
 
 def transform_files(im_paths, eager_load=True):
@@ -187,14 +190,16 @@ def transform_files(im_paths, eager_load=True):
             numpy_to_images(in_data, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
         numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
     else:
-        data = tf.data.Dataset.from_tensor_slices(im_paths)
-        orig_images = data.map(load_image, num_parallel_calls=10)
-        orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
-        reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
-        data = tf.data.Dataset.zip((reshaped_images, orig_shapes))
-        data = data.batch(batch_size=FLAGS.batchsize)
-        iterator = data.make_one_shot_iterator()
-        feeder = iterator.get_next()
+        with tf.device('/cpu:0'):
+            data = tf.data.Dataset.from_tensor_slices(im_paths)
+            orig_images = data.map(load_image, num_parallel_calls=10)
+            orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
+            reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
+            data = tf.data.Dataset.zip((reshaped_images, orig_shapes))
+            data = data.batch(batch_size=FLAGS.batchsize)
+            data = data.prefetch(buffer_size=3)
+            iterator = data.make_one_shot_iterator()
+            feeder = iterator.get_next()
 
         out_dir = osp.join(FLAGS.outdir, rundir, step)
         num_digits = int(np.log10(len(im_paths))) + 1
@@ -243,7 +248,6 @@ def extract_and_get_pb_dir():
     fulldir = osp.join(FLAGS.cpdir, FLAGS.rundir)
     print('rundir: ', FLAGS.rundir)
     pb_dir = osp.join(FLAGS.cpdir, '..', 'export', FLAGS.rundir)
-    pb_dir = osp.join(pb_dir, rundir)
     if FLAGS.extract:
         if not osp.exists(pb_dir):
             os.makedirs(pb_dir)

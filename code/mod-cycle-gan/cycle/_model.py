@@ -3,6 +3,7 @@
 import os
 import os.path as osp
 import logging
+import time
 from datetime import datetime
 
 import progressbar
@@ -436,7 +437,8 @@ class CycleGAN:
     def test_one_part(pb_model, all_data):
         in_shape = all_data.shape[1:]
         graph = tf.Graph()
-        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(all_data.dtype, graph, in_shape, pb_model)
+        input_var = tf.placeholder(all_data.dtype, shape=in_shape)
+        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(graph, in_shape, pb_model)
 
         outputs = []
         config = tf.ConfigProto()
@@ -461,13 +463,11 @@ class CycleGAN:
     @staticmethod
     def test_one_part_dataset(pb_model, dataset, data_size, batch_size, postprocessing=lambda x, y, z: x):
         graph = tf.get_default_graph()
-        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(dataset[0].dtype, graph, (None, 512, 512, 3),
-                                                                          pb_model)  # todo: probably parameterize the shape and read it from input
-        iteration_num = tf.placeholder(tf.int32, shape=())  # this is scalar placeholder
+        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(graph, dataset[0], pb_model)
+        iteration_num = tf.placeholder(tf.int32)
         postprocess = postprocessing(output, dataset[1], iteration_num)
 
         config = tf.ConfigProto()
-        # config = tf.ConfigProto(device_count={'GPU': 0})
         config.gpu_options.allow_growth = True
         with tf.Session(graph=graph, config=config) as sess:
             sess.run(tf.global_variables_initializer())
@@ -475,24 +475,24 @@ class CycleGAN:
             widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
                        progressbar.FileTransferSpeed()]
             pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size * batch_size).start()
+            start = 0
             for i in range(data_size):
+                if i % 10 == 0:
+                    print('loading and inference time per 10 iters: ', time.time() - start)
+                    start = time.time()
+
                 pbar.update(i * batch_size)
-                input_image, input_shape = sess.run(dataset)
                 out, din, dout, _ = sess.run([output, d_input, d_output, postprocess],
-                                             feed_dict={
-                                                 input_var: input_image,
-                                                 iteration_num: i})
+                                             feed_dict={iteration_num: i})
+
             pbar.finish()
 
-    #         todo: dodělat to celé a otestovat, a přegenerovat
-
     @staticmethod
-    def get_graph_outputs(dtype, graph, in_shape, pb_model):
+    def get_graph_outputs(graph, input_var, pb_model):
         with graph.as_default():
             graph_def = tf.GraphDef()
             with tf.gfile.FastGFile(pb_model, 'rb') as model_file:
                 graph_def.ParseFromString(model_file.read())
-            input_var = tf.placeholder(dtype, shape=in_shape)
             output, d_input, d_output = list(
                 map(lambda x: x.outputs[0],
                     tf.import_graph_def(graph_def,
