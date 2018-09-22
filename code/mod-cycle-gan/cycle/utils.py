@@ -6,6 +6,8 @@ import tensorflow as tf
 import numpy as np
 from object_detection.data_decoders import tf_example_decoder
 
+from data_preparation.images_to_tfrecord import process_sample
+
 
 def _identity(x, name=None):
     return tf.identity(x, name=name)
@@ -61,7 +63,6 @@ class TFReader:
             print('fetching data from tfrecords_file: {}'.format(tfrecords_file))
             print('with name: {}'.format(self.name))
             self.data = tf.data.TFRecordDataset(tfrecords_file)
-            # self.data = self.data.map(self._parse_example, num_parallel_calls=num_threads)    # for old, numpy way of storing data
             self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)  # for new, binary png data stream
             self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
             self.data = self.data.shuffle(shuffle_buffer_size)
@@ -82,7 +83,8 @@ class TFReader:
     def _parse_example_encoded(self, serialized_example):
         example_decoder = tf_example_decoder.TfExampleDecoder()
         features = example_decoder.decode(tf.convert_to_tensor(serialized_example))
-        return tf.cast(features['image'], dtype=tf.float32)
+        image = tf.py_func(lambda x: process_sample(x, True), [features['image']], np.uint8)
+        return tf.cast(image, dtype=tf.float32)
 
 
 class TFWriter:

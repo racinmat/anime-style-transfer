@@ -8,6 +8,7 @@ import progressbar
 import tensorflow as tf
 import numpy as np
 from PIL import Image
+from joblib import Parallel, delayed
 from object_detection.utils import dataset_util
 from scipy.misc import imresize
 
@@ -32,6 +33,28 @@ def process_sample(data, padding=False):
     return imresize(data, (512, 512))
 
 
+def image_to_tfrecord(i, f, writer, pbar):
+    try:
+        pbar.update(i)
+        data = np.array(Image.open(f))
+        if data.ndim == 2 or data.shape[2] == 1:  # grayscale
+            # black and white image detected, skipping
+            return
+        im = Image.fromarray(data)  # resizing is done in tensorflow during preprocessing, don't modify it here
+        stream = BytesIO()
+        im.save(stream, format='PNG')
+        encoded_png = stream.getvalue()
+        ex = tf.train.Example(features=tf.train.Features(feature={
+            'image/encoded': dataset_util.bytes_feature(encoded_png),
+            'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
+            'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
+        }))
+        writer.write(ex.SerializeToString())
+    except (IOError, ValueError) as e:
+        logging.warning('Opening %s failed', f)
+        logging.warning(e)
+
+
 def run(infiles, outfile):
     outfile = osp.abspath(outfile)
     if osp.isfile(outfile):
@@ -45,27 +68,10 @@ def run(infiles, outfile):
                progressbar.FileTransferSpeed()]
     pbar = progressbar.ProgressBar(widgets=widgets, max_value=len(infiles)).start()
 
-    for i, f in enumerate(infiles):
-        pbar.update(i)
-        try:
-            data = np.array(Image.open(f))
-            if data.ndim == 2 or data.shape[2] == 1:   # grayscale
-                # black and white image detected, skipping
-                continue
-            im = Image.fromarray(data)  # resizing is done in tensorflow during preprocessing, don't modify it here
-            stream = BytesIO()
-            im.save(stream, format='PNG')
-            encoded_png = stream.getvalue()
-            ex = tf.train.Example(features=tf.train.Features(feature={
-                'image/encoded': dataset_util.bytes_feature(encoded_png),
-                'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
-                'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
-            }))
-            # todo: check if training works
-            writer.write(ex.SerializeToString())
-        except (IOError, ValueError) as e:
-            logging.warning('Opening %s failed', f)
-            logging.warning(e)
+    workers = 12
+    Parallel(n_jobs=workers, backend='threading')(
+        delayed(image_to_tfrecord)(i, f, writer, pbar) for i, f in enumerate(infiles))
+
     writer.close()
 
 
