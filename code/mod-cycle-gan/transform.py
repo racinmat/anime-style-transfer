@@ -77,11 +77,11 @@ def save_image(shapes, images, out_dir, suffix, in_filenames):
     y, x = shape / (shape.max() / 512)  # 512 is size of input, which is rectangular
     for i in range(images.shape[0]):    # iterate through the batch
         image = images[i]
+        in_filename = in_filenames[i].decode("utf-8")
         size_y, size_x = image.shape[0:2]
         y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
         y_to, x_to = size_y - y_from, size_x - x_from
         cropped_im = image[y_from:y_to, x_from:x_to]
-        in_filename = in_filenames[j].decode("utf-8")
         basename = get_base_name(in_filename)
         new_name = osp.join(out_dir, "{}{}.png".format(basename, suffix))
         imsave(new_name, cropped_im)
@@ -121,8 +121,8 @@ def transform_files(im_paths):
     out_dir = osp.join(FLAGS.outdir, rundir, step)
     os.makedirs(out_dir, exist_ok=True)
 
-    def persist_images_postprocessing(out_images, in_shapes, in_filenames, iteration):
-        return tf.py_func(persist_image, [out_images, in_shapes, in_filenames, iteration], tf.int32)   # apparently it must return something
+    def persist_images_postprocessing(out_images, in_shapes, in_filenames):
+        return tf.py_func(persist_image, [out_images, in_shapes, in_filenames], tf.int32)   # apparently it must return something
 
     def persist_image(out_image, in_shape, in_filenames):
         if FLAGS.includein:
