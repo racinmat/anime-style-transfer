@@ -434,7 +434,7 @@ class CycleGAN:
         return step
 
     @staticmethod
-    def test_one_part_dataset(pb_model, dataset, data_size, batch_size, postprocessing=lambda a, b, c, d: a):
+    def test_one_part(pb_model, dataset, data_size, batch_size, postprocessing=lambda a, b, c, d: a):
         graph = tf.get_default_graph()
         d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(graph, dataset[0], pb_model)
         iteration_num = tf.placeholder(tf.int32)
@@ -448,16 +448,15 @@ class CycleGAN:
             widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
                        progressbar.FileTransferSpeed()]
             pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size * batch_size).start()
-            all_names = []
-            for i in range(data_size):
-                pbar.update(i * batch_size)
-                names = sess.run(dataset[2], feed_dict={iteration_num: i})
-                all_names += list(names)
-                # out, din, dout, _ = sess.run([output, d_input, d_output, postprocess],
-                #                              feed_dict={iteration_num: i})
-
-            pbar.finish()
-            print('all_names len: ', len(all_names))
+            i = 0
+            while True:
+                try:
+                    pbar.update(i * batch_size)
+                    i += 1
+                    out, din, dout, _ = sess.run([output, d_input, d_output, postprocess],
+                                                 feed_dict={iteration_num: i})
+                except tf.errors.OutOfRangeError:
+                    break
 
     @staticmethod
     def get_graph_outputs(graph, input_var, pb_model):

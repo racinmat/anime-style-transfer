@@ -130,7 +130,7 @@ def transform_files(im_paths):
         save_image(in_shape, out_image, out_dir, '-out', in_filenames)
         return 0
 
-    cycle.CycleGAN.test_one_part_dataset(
+    cycle.CycleGAN.test_one_part(
         osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
         feeder, ceil(len(im_paths) / FLAGS.batchsize), FLAGS.batchsize, persist_images_postprocessing)
 
