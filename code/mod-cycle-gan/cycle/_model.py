@@ -434,33 +434,6 @@ class CycleGAN:
         return step
 
     @staticmethod
-    def test_one_part(pb_model, all_data):
-        in_shape = all_data.shape[1:]
-        graph = tf.Graph()
-        input_var = tf.placeholder(all_data.dtype, shape=in_shape)
-        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(graph, in_shape, pb_model)
-
-        outputs = []
-        config = tf.ConfigProto()
-        # config = tf.ConfigProto(device_count={'GPU': 0})
-        config.gpu_options.allow_growth = True
-        with tf.Session(graph=graph, config=config) as sess:
-            sess.run(tf.global_variables_initializer())
-
-            if all_data.shape[0] > 100:
-                widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
-                           progressbar.FileTransferSpeed()]
-                pbar = progressbar.ProgressBar(widgets=widgets, max_value=all_data.shape[0]).start()
-            for i, data in enumerate(all_data):
-                if all_data.shape[0] > 100:
-                    pbar.update(i)
-                out, din, dout = sess.run([output, d_input, d_output], feed_dict={input_var: data})
-                outputs.append(out)
-            if all_data.shape[0] > 100:
-                pbar.finish()
-        return outputs
-
-    @staticmethod
     def test_one_part_dataset(pb_model, dataset, data_size, batch_size, postprocessing=lambda a, b, c, d: a):
         graph = tf.get_default_graph()
         d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(graph, dataset[0], pb_model)
@@ -475,17 +448,16 @@ class CycleGAN:
             widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
                        progressbar.FileTransferSpeed()]
             pbar = progressbar.ProgressBar(widgets=widgets, max_value=data_size * batch_size).start()
-            start = 0
+            all_names = []
             for i in range(data_size):
-                if i % 10 == 0:
-                    print('loading and inference time per 10 iters: ', time.time() - start)
-                    start = time.time()
-
                 pbar.update(i * batch_size)
-                out, din, dout, _ = sess.run([output, d_input, d_output, postprocess],
-                                             feed_dict={iteration_num: i})
+                names = sess.run(dataset[2], feed_dict={iteration_num: i})
+                all_names += list(names)
+                # out, din, dout, _ = sess.run([output, d_input, d_output, postprocess],
+                #                              feed_dict={iteration_num: i})
 
             pbar.finish()
+            print('all_names len: ', len(all_names))
 
     @staticmethod
     def get_graph_outputs(graph, input_var, pb_model):

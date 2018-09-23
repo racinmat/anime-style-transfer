@@ -67,106 +67,27 @@ def load_and_export(checkpoint_dir, export_dir):
     return step
 
 
-def images_to_numpy(im_paths):
-    # show progressbar for more images and use parallelism. It is not needed for small amount of data, but very useful for bigger amount.
-    if len(im_paths) > 100:
-        return images_to_numpy_parallel(im_paths)
-    else:
-        return images_to_numpy_simple(im_paths)
-
-
-def images_to_numpy_simple(im_paths):
-    one_img_size = X_DATA_SHAPE
-    data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
-    shapes = np.zeros((len(im_paths), 2), dtype=np.int32)       # orig shape so padded data can be cropped later
-
-    # show progressbar for more images
-    for i, f in enumerate(im_paths):
-        try:
-            orig_image = np.array(Image.open(f))
-            shapes[i, :] = orig_image.shape[0:2]
-            image = process_sample(orig_image, True)
-            data[i, :, :, :] = image
-        except OSError:
-            data[i, :, :, :] = data[i-1, :, :, :]   # just use previous sample if anything goes wrong
-
-    return data, shapes
-
-
-def one_image_to_numpy(i, f, pbar, data, shapes, counter):
-    pbar.update(counter[0])
-    counter[0] += 1
-    try:
-        orig_image = np.array(Image.open(f))
-        shapes[i, :] = orig_image.shape[0:2]
-        image = process_sample(orig_image, True)
-        data[i, :, :, :] = image
-    except OSError:
-        data[i, :, :, :] = data[i - 1, :, :, :]  # just use previous sample if anything goes wrong
-
-
-def images_to_numpy_parallel(im_paths):
-    one_img_size = X_DATA_SHAPE
-    data = np.zeros((len(im_paths), one_img_size[0], one_img_size[1], one_img_size[2]), dtype=np.float32)
-    shapes = np.zeros((len(im_paths), 2), dtype=np.int32)       # orig shape so padded data can be cropped later
-
-    widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
-               progressbar.FileTransferSpeed()]
-    pbar = progressbar.ProgressBar(widgets=widgets, max_value=len(im_paths)).start()
-
-    counter = [0]
-    workers = 10
-
-    Parallel(n_jobs=workers, backend='threading')(
-        delayed(one_image_to_numpy)(i, f, pbar, data, shapes, counter) for i, f in enumerate(im_paths))
-
-    pbar.finish()
-
-    return data, shapes
-
-
-def numpy_to_images(data, shapes, out_dir, suffix='-out'):
-    # todo: fixnout, pro více volání za sebou přemazává stejně pojmenované soubory, asi předělat na dataset api?
-    # todo: propojit s yield a shape z dataset api
-    # todo: předělat loading na nový tfrecord formát
-    os.makedirs(out_dir, exist_ok=True)
-    print('going to persist {} images'.format(len(data)))
-    num_digits = int(np.log10(len(data)))+1
-
-    widgets = [progressbar.Percentage(), ' ', progressbar.Counter(), ' ', progressbar.Bar(), ' ',
-               progressbar.FileTransferSpeed()]
-    pbar = progressbar.ProgressBar(widgets=widgets, max_value=len(data)).start()
-
-    for i, im in enumerate(data):
-        pbar.update(i)
-        save_image(shapes[i, :], im, out_dir, suffix, num_digits, i)
-    pbar.finish()
-
-
 def get_base_name(name):
     return osp.basename(os.path.splitext(name)[0])
 
 
-def save_image(shapes, images, out_dir, suffix, num_digits, i, in_filenames=None):
+def save_image(shapes, images, out_dir, suffix, in_filenames):
     # whole batch of images is here
     shape = shapes[0]   # shapes, because there is shape for each picture in the batch
     y, x = shape / (shape.max() / 512)  # 512 is size of input, which is rectangular
-    for j in range(images.shape[0]):    # iterate through the batch
-        image = images[0]
+    for i in range(images.shape[0]):    # iterate through the batch
+        image = images[i]
         size_y, size_x = image.shape[0:2]
         y_from, x_from = int((size_y - y) / 2), int((size_x - x) / 2)
         y_to, x_to = size_y - y_from, size_x - x_from
         cropped_im = image[y_from:y_to, x_from:x_to]
-        if in_filenames is None:
-            new_name = osp.join(out_dir, '{}{}.png'.format(str(i).zfill(num_digits)+str(j), suffix))
-        else:
-            in_filename = in_filenames[j].decode("utf-8")
-            basename = get_base_name(in_filename)
-            new_name = osp.join(out_dir, "{}{}.png".format(basename, suffix))
+        in_filename = in_filenames[j].decode("utf-8")
+        basename = get_base_name(in_filename)
+        new_name = osp.join(out_dir, "{}{}.png".format(basename, suffix))
         imsave(new_name, cropped_im)
 
 
-def transform_files(im_paths, eager_load=True):
+def transform_files(im_paths):
     print('will transform {} images: '.format(len(im_paths)))
 
     def load_image(filename):
@@ -186,47 +107,32 @@ def transform_files(im_paths, eager_load=True):
     pb_dir, rundir, step = extract_and_get_pb_dir()
     print('model loaded, starting with inference')
 
-    # keeping original sizes before reshaping so I can crop black stripes from reshaped images
-    if eager_load:
-        in_data, in_shapes = images_to_numpy(im_paths)
-        print('images prepared in numpy')
-        outputs = cycle.CycleGAN.test_one_part(
-            osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-            in_data)
+    with tf.device('/cpu:0'):
+        orig_names = tf.data.Dataset.from_tensor_slices(im_paths)
+        orig_images = orig_names.map(load_image, num_parallel_calls=10)
+        orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
+        reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
+        data = tf.data.Dataset.zip((reshaped_images, orig_shapes, orig_names))
+        data = data.batch(batch_size=FLAGS.batchsize)
+        data = data.prefetch(buffer_size=3)
+        iterator = data.make_one_shot_iterator()
+        feeder = iterator.get_next()
 
-        print('data transformed, going to persist them')
+    out_dir = osp.join(FLAGS.outdir, rundir, step)
+    os.makedirs(out_dir, exist_ok=True)
 
+    def persist_images_postprocessing(out_images, in_shapes, in_filenames, iteration):
+        return tf.py_func(persist_image, [out_images, in_shapes, in_filenames, iteration], tf.int32)   # apparently it must return something
+
+    def persist_image(out_image, in_shape, in_filenames):
         if FLAGS.includein:
-            numpy_to_images(in_data, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-in')
-        numpy_to_images(outputs, in_shapes, osp.join(FLAGS.outdir, rundir, step), suffix='-out')
-    else:
-        with tf.device('/cpu:0'):
-            orig_names = tf.data.Dataset.from_tensor_slices(im_paths)
-            orig_images = orig_names.map(load_image, num_parallel_calls=10)
-            orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
-            reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
-            data = tf.data.Dataset.zip((reshaped_images, orig_shapes, orig_names))
-            data = data.batch(batch_size=FLAGS.batchsize)
-            data = data.prefetch(buffer_size=3)
-            iterator = data.make_one_shot_iterator()
-            feeder = iterator.get_next()
+            save_image(in_shape, out_image, out_dir, '-in', in_filenames)
+        save_image(in_shape, out_image, out_dir, '-out', in_filenames)
+        return 0
 
-        out_dir = osp.join(FLAGS.outdir, rundir, step)
-        num_digits = int(np.log10(len(im_paths))) + 1
-        os.makedirs(out_dir, exist_ok=True)
-
-        def persist_images_postprocessing(out_images, in_shapes, in_filenames, iteration):
-            return tf.py_func(persist_image, [out_images, in_shapes, in_filenames, iteration], tf.int32)   # apparently it must return something
-
-        def persist_image(out_image, in_shape, in_filenames, i):
-            if FLAGS.includein:
-                save_image(in_shape, out_image, out_dir, '-in', num_digits, i, in_filenames)
-            save_image(in_shape, out_image, out_dir, '-out', num_digits, i, in_filenames)
-            return 0
-
-        cycle.CycleGAN.test_one_part_dataset(
-            osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
-            feeder, ceil(len(im_paths) / FLAGS.batchsize), FLAGS.batchsize, persist_images_postprocessing)
+    cycle.CycleGAN.test_one_part_dataset(
+        osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Xname, FLAGS.Yname)),
+        feeder, ceil(len(im_paths) / FLAGS.batchsize), FLAGS.batchsize, persist_images_postprocessing)
 
 
 def main(_):
@@ -242,12 +148,7 @@ def main(_):
     else:
         raise Exception("No data source specified")
 
-    chunk_size = 1000
-    if len(im_paths) <= chunk_size:
-        # everything fits into memory at once without problem
-        transform_files(im_paths, eager_load=True)
-    else:
-        transform_files(im_paths, eager_load=False)
+    transform_files(im_paths)
     print('all done')
 
 
