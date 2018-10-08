@@ -43,7 +43,8 @@ from data_preparation.images_to_tfrecord import process_sample, get_real_images_
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_bool('extract', False, 'if true, extraction of newest checkpoint will be performed. Needs tensorflow checkpoints')
+tf.flags.DEFINE_bool('extract', False,
+                     'if true, extraction of newest checkpoint will be performed. Needs tensorflow checkpoints')
 tf.flags.DEFINE_string('inpath', None, 'path to input images, with unix wildcards')
 tf.flags.DEFINE_integer('random', 20, 'If not none, random images are taken')
 tf.flags.DEFINE_string('outdir', '../../data/images', 'Name of output dir')
@@ -73,9 +74,9 @@ def get_base_name(name):
 
 def save_image(shapes, images, out_dir, suffix, in_filenames):
     # whole batch of images is here
-    shape = shapes[0]   # shapes, because there is shape for each picture in the batch
+    shape = shapes[0]  # shapes, because there is shape for each picture in the batch
     y, x = shape / (shape.max() / 512)  # 512 is size of input, which is rectangular
-    for i in range(images.shape[0]):    # iterate through the batch
+    for i in range(images.shape[0]):  # iterate through the batch
         image = images[i]
         in_filename = in_filenames[i].decode("utf-8")
         size_y, size_x = image.shape[0:2]
@@ -90,14 +91,17 @@ def save_image(shapes, images, out_dir, suffix, in_filenames):
 def transform_files(im_paths):
     print('will transform {} images: '.format(len(im_paths)))
 
+    def is_valid_image(filename):
+        try:
+            Image.open(filename)
+            return True
+        except IOError:
+            return False
+
     def load_image(filename):
         image_string = tf.read_file(filename)
         image = tf.image.decode_png(image_string)
         return image
-        # im_shape = tf.shape(image)[0:2]
-        # image = tf.py_func(lambda x: process_sample(x, True), [image], tf.uint8)
-        # image = tf.cast(image, dtype=tf.float32)
-        # return tf.group(image, im_shape)
 
     def reshape_image(image):
         image = tf.py_func(lambda x: process_sample(x, True), [image], tf.uint8)
@@ -109,6 +113,8 @@ def transform_files(im_paths):
 
     with tf.device('/cpu:0'):
         orig_names = tf.data.Dataset.from_tensor_slices(im_paths)
+        # some images are not valid, this filters them out
+        orig_names = orig_names.filter(lambda x: tf.py_func(is_valid_image, [x], tf.bool))
         orig_images = orig_names.map(load_image, num_parallel_calls=10)
         orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
         reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
@@ -122,7 +128,8 @@ def transform_files(im_paths):
     os.makedirs(out_dir, exist_ok=True)
 
     def persist_images_postprocessing(out_images, in_shapes, in_filenames):
-        return tf.py_func(persist_image, [out_images, in_shapes, in_filenames], tf.int32)   # apparently it must return something
+        return tf.py_func(persist_image, [out_images, in_shapes, in_filenames],
+                          tf.int32)  # apparently it must return something
 
     def persist_image(out_image, in_shape, in_filenames):
         if FLAGS.includein:
