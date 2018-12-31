@@ -59,4 +59,5 @@ threcords are generated so you can delete them.
 
 Trained on 2 datasets: [Ade20k](http://groups.csail.mit.edu/vision/datasets/ADE20K/) and anime series + movie [No Game No Life](https://myanimelist.net/anime/19815/No_Game_No_Life), 
 I obtained following results on Ade20k dataset (training data):
+
 ![Image of results](https://raw.github.com/racinmat/anime-style-transfer/master/ade20k-images.png)
