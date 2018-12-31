@@ -114,8 +114,9 @@ def transform_files(im_paths):
     with tf.device('/cpu:0'):
         orig_names = tf.data.Dataset.from_tensor_slices(im_paths)
         # some images are not valid, this filters them out
-        orig_names = orig_names.filter(lambda x: tf.py_func(is_valid_image, [x], tf.bool))
+        # orig_names = orig_names.filter(lambda x: tf.py_func(is_valid_image, [x], tf.bool))
         orig_images = orig_names.map(load_image, num_parallel_calls=10)
+        orig_images = orig_images.apply(tf.contrib.data.ignore_errors())    # this skips invalid images
         orig_shapes = orig_images.map(lambda x: tf.shape(x)[0:2])
         reshaped_images = orig_images.map(reshape_image, num_parallel_calls=10)
         data = tf.data.Dataset.zip((reshaped_images, orig_shapes, orig_names))

@@ -1,8 +1,10 @@
 import tensorflow as tf
 
+
 def to_num(s):
     n = float(s)
     return int(n) if int(n) == n else n
+
 
 def safe_log(x, eps=1e-12):
     return tf.log(x + eps)
@@ -10,7 +12,7 @@ def safe_log(x, eps=1e-12):
 
 def weights(name, shape):
     return tf.get_variable(name, shape,
-                          initializer=tf.contrib.layers.xavier_initializer())
+                           initializer=tf.contrib.layers.xavier_initializer())
 
 
 def biases(name, shape, constant=0.0):
@@ -29,7 +31,8 @@ def norm(data, is_training, normtype):
     return data
 
 
-def conv_block(inputs, kernel_size, stride, out_channels, activation, normtype='instance', is_training=True, name=None, bias=False):
+def conv_block(inputs, kernel_size, stride, out_channels, activation, normtype='instance', is_training=True, name=None,
+               bias=False):
     with tf.variable_scope(name):
         kernel_shape = [kernel_size, kernel_size, inputs.get_shape()[3], out_channels]
         strides = [1, stride, stride, 1]
@@ -58,14 +61,15 @@ def res_block(inputs, kernel_size, num_res, activation, normtype='instance', is_
         out = inputs
         for i in range(num_res):
             out = conv_block(out, kernel_size, 1, out.get_shape()[3], activation,
-                             normtype, is_training, name+str(i), bias)
+                             normtype, is_training, name + str(i), bias)
         return inputs + out
 
 
-def reconv_block(inputs, kernel_size, stride, out_channels, out_coeff, activation, normtype='instance', is_training=True, name=None, bias=False):
+def reconv_block(inputs, kernel_size, stride, out_channels, out_coeff, activation, normtype='instance',
+                 is_training=True, name=None, bias=False):
     with tf.variable_scope(name):
         inshape = inputs.get_shape().as_list()
-        out_size = [int(out_coeff*inshape[1]), int(out_coeff*inshape[2])]
+        out_size = [int(out_coeff * inshape[1]), int(out_coeff * inshape[2])]
         kernel_shape = [kernel_size, kernel_size, inshape[3], out_channels]
         strides = [1, stride, stride, 1]
         resized = tf.image.resize_images(inputs, out_size, tf.image.ResizeMethod.NEAREST_NEIGHBOR)

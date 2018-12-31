@@ -63,7 +63,8 @@ class TFReader:
             print('fetching data from tfrecords_file: {}'.format(tfrecords_file))
             print('with name: {}'.format(self.name))
             self.data = tf.data.TFRecordDataset(tfrecords_file)
-            self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)  # for new, binary png data stream
+            self.data = self.data.map(self._parse_example_encoded,
+                                      num_parallel_calls=num_threads)  # for new, binary png data stream
             self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
             self.data = self.data.shuffle(shuffle_buffer_size)
             self.data = self.data.repeat()
