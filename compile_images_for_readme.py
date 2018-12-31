@@ -13,19 +13,16 @@ if __name__ == '__main__':
 
     fig = plt.figure(figsize=(6, 12))
     for i, (path_from, path_to) in enumerate(image_pairs.items()):
-        img_from = Image.open(path_from)
-        img_to = Image.open(path_to)
-        ax = fig.add_subplot(len(image_pairs), 2, 2*i+1)
-        ax.imshow(img_from)
-        ax.axis('off')
-        if i == 0:
-            ax.set_title('real', {'fontsize': 20})
-
-        ax = fig.add_subplot(len(image_pairs), 2, 2*i+2)
-        ax.imshow(img_to)
-        ax.axis('off')
-        if i == 0:
-            ax.set_title('anime', {'fontsize': 20})
+        for j, (path, label) in enumerate(zip([path_from, path_to], ['real', 'anime'])):
+            img = Image.open(path)
+            ax = fig.add_subplot(len(image_pairs), 2, 2*i+j+1)
+            ax.imshow(img)
+            ax.axis('off')
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+            ax.set_aspect('equal')
+            if i == 0:
+                ax.set_title(label, {'fontsize': 20})
 
     plt.tight_layout()
     plt.savefig('images.png')
