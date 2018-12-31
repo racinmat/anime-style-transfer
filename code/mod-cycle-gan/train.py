@@ -85,17 +85,15 @@ def main(_):
 
     cygan = create_cyclegan()
 
-    cygan.train(FLAGS.cpdir, FLAGS.gtsteps, FLAGS.dtsteps,
-                FLAGS.poolsize, FLAGS.rundir, FLAGS.verbose, flagstr)
+    cygan.train(FLAGS.gtsteps, FLAGS.dtsteps, FLAGS.poolsize, FLAGS.verbose, flagstr)
 
 
 def create_cyclegan():
     modellib, xfeed, xy, yfeed, yx = initialize_networks()
-    cygan = cycle.CycleGAN(xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname,
-                           FLAGS.cll, FLAGS.tbverbose,
-                           modellib.visualize if FLAGS.visualize else None,
-                           FLAGS.lr, FLAGS.beta1, FLAGS.steps,
-                           (FLAGS.decayfrom * FLAGS.steps), FLAGS.history)
+    cygan = cycle.CycleGAN(
+        xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose,
+        modellib.visualize if FLAGS.visualize else None, FLAGS.lr, FLAGS.beta1, FLAGS.steps,
+        (FLAGS.decayfrom * FLAGS.steps), FLAGS.history, FLAGS.cpdir, FLAGS.rundir)
     return cygan
 
 

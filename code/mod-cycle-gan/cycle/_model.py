@@ -17,10 +17,9 @@ class CycleGAN:
     SAVE_NODES = ['input', 'output', 'd_input', 'd_output']
     OUTPUT_NODES = SAVE_NODES[1:]
 
-    def __init__(self, XtoY, YtoX, X_feed, Y_feed, X_name='X', Y_name='Y',
-                 cycle_lambda=10.0, tb_verbose=True, visualizer=None,
-                 learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5,
-                 history=True, graph=None):
+    def __init__(self, XtoY, YtoX, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0, tb_verbose=True,
+                 visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5, history=True, graph=None,
+                 checkpoints_dir='../../checkpoint', load_model=None):
 
         self.XtoY = XtoY
         self.YtoX = YtoX
@@ -58,6 +57,11 @@ class CycleGAN:
                 self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape)
             self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape)
             self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape)
+
+        self.name = None
+        self.load_from_ckpt = False
+        self.full_checkpoints_dir = None
+        self.create_name(checkpoints_dir, load_model)
 
         logging.info('Cycle GAN instantiated.\n'
                      '%s_shape=' + str(XtoY.in_shape) + '\t%s_shape=' + str(YtoX.in_shape) + '\n'
@@ -208,37 +212,24 @@ class CycleGAN:
                 },
                 'fakes': [fake_x, fake_y]}
 
-    def train(self, checkpoints_dir,
-              gen_train=1, dis_train=1, pool_size=50,
-              load_model=None, log_verbose=True, param_string=None, export_final=True):
-        if load_model is not None:
-            full_checkpoints_dir = osp.join(checkpoints_dir, load_model)
-        else:
-            full_checkpoints_dir = osp.join(checkpoints_dir,
-                                            datetime.now().strftime('%Y%m%d-%H%M'))
-            i = 0
-            checkpoints_dir_try = full_checkpoints_dir + '-' + str(i)
-            while osp.exists(checkpoints_dir_try):
-                i += 1
-                checkpoints_dir_try = full_checkpoints_dir + '-' + str(i)
-            full_checkpoints_dir = checkpoints_dir_try
-        os.makedirs(full_checkpoints_dir, exist_ok=True)
+    def train(self, gen_train=1, dis_train=1, pool_size=50, log_verbose=True, param_string=None, export_final=True):
+        os.makedirs(self.full_checkpoints_dir, exist_ok=True)
 
         if param_string is not None:
-            with open(osp.join(full_checkpoints_dir, 'params.flagfile'), 'w') as f:
+            with open(osp.join(self.full_checkpoints_dir, 'params.flagfile'), 'w') as f:
                 f.write(param_string)
 
         with self.graph.as_default():
             model_ops = self.get_model()
             model_ops['summary'] = tf.summary.merge_all()
-            train_writer = tf.summary.FileWriter(full_checkpoints_dir, self.graph)
+            train_writer = tf.summary.FileWriter(self.full_checkpoints_dir, self.graph)
             saver = tf.train.Saver()
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         with tf.Session(graph=self.graph, config=config) as sess:
-            if load_model is not None:
-                step = self.load_saved_model(full_checkpoints_dir, sess)
+            if self.load_from_ckpt is not None:
+                step = self.load_saved_model(self.full_checkpoints_dir, sess)
             else:
                 step = 0
                 sess.run(tf.global_variables_initializer())
@@ -303,9 +294,7 @@ class CycleGAN:
 
                     # every 5000 means cca every hour and 15 minutes model is saved on 1080Ti
                     if step % 5000 == 0:
-                        save_path = saver.save(sess,
-                                               osp.join(full_checkpoints_dir, 'model.ckpt'),
-                                               global_step=step)
+                        save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
                         logging.info('Model saved in file: %s', save_path)
 
                     step += 1
@@ -319,13 +308,11 @@ class CycleGAN:
                     logging.info(e)
                 coord.request_stop()
             finally:
-                save_path = saver.save(sess,
-                                       osp.join(full_checkpoints_dir, 'model.ckpt'),
-                                       global_step=step)
+                save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
                 if log_verbose:
                     logging.info('Model saved in file: %s', save_path)
                 if export_final:
-                    self.export(sess, full_checkpoints_dir)
+                    self.export(sess, self.full_checkpoints_dir)
                 coord.request_stop()
                 coord.join(threads)
 
@@ -504,3 +491,21 @@ class CycleGAN:
         y_to_y_diff = tf.abs(self.XtoY.gen(self.YtoX.gen(y)) - y)
         x_to_x_diff = tf.abs(self.YtoX.gen(self.XtoY.gen(x)) - x)
         return cycle_lambda * (tf.reduce_mean(x_to_x_diff) + tf.reduce_mean(y_to_y_diff))
+
+    def create_name(self, checkpoints_dir, load_model):
+        if load_model is not None:
+            self.name = load_model
+            full_checkpoints_dir = osp.join(checkpoints_dir, self.name)
+            self.load_from_ckpt = True
+        else:
+            name = datetime.now().strftime('%Y-%m-%d--%H-%M')
+
+            i = 0
+            name_try = name + '-' + str(i)
+            while osp.exists(osp.join(checkpoints_dir, name_try)):
+                i += 1
+                name_try = name + '-' + str(i)
+            self.name = name_try
+            full_checkpoints_dir = osp.join(checkpoints_dir, self.name)
+            self.load_from_ckpt = False
+        self.full_checkpoints_dir = full_checkpoints_dir
