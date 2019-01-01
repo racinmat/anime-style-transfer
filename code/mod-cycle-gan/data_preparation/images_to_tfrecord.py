@@ -110,6 +110,10 @@ def run_real():
     if FLAGS.name == 'ade20k':
         infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
         tfrecord_name = 'ade20k.tfrecord'
+    else:
+        # my own image directories, without train/test split
+        # todo: implement me like anime version
+        pass
     print('{} files to process'.format(len(infiles)))
     run(infiles, osp.join(tfrecords_root, tfrecord_name))
 
