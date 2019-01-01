@@ -21,10 +21,10 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('model', 'anime',
                        'Model dir to use. Can choose from %s.\nNeeds to export {X,Y}_{normer,denormer} and functions, {X,Y}_DATA_SHAPE and classes {XY,YX}_{Generator,Discriminator}.' % str(
                            _valid_names(cycle.models)))
-tf.flags.DEFINE_string('Xtfr', '../../datasets/real/ade20k.tfrecord',
-                       'tfrecords file for X dataset')
-tf.flags.DEFINE_string('Ytfr', '../../datasets/anime/no-game-no-life.tfrecord',
-                       'tfrecords file for Y dataset')
+tf.flags.DEFINE_list('Xtfr', '../../datasets/real/ade20k.tfrecord',
+                     'tfrecords files for X dataset (can be 1 or more files)')
+tf.flags.DEFINE_list('Ytfr', '../../datasets/anime/no-game-no-life.tfrecord',
+                     'tfrecords files for Y dataset (can be 1 or more files)')
 tf.flags.DEFINE_string('gantype', 'LSGAN',
                        'Type of GAN to use within CycleGAN. Can choose from GAN/LSGAN/WGAN.\nWhile it is theoretically possible to use different GAN type for each part of training, it is generally not advised.')
 tf.flags.DEFINE_string('XYgenstr', 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc',

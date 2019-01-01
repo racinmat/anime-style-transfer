@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 if __name__ == '__main__':
-    # todo: compile results for readme to table as in https://github.com/junyanz/CycleGAN
     image_pairs = {
         'data/images/2018-06-25--16-59-0/200000/03-in.png': 'data/images/2018-06-25--16-59-0/200000/03-out.png',
         'data/images/2018-06-25--16-59-0/200000/05-in.png': 'data/images/2018-06-25--16-59-0/200000/05-out.png',
@@ -26,4 +25,3 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     plt.savefig('images.png')
-    pass
