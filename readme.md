@@ -61,3 +61,9 @@ Trained on 2 datasets: [Ade20k](http://groups.csail.mit.edu/vision/datasets/ADE2
 I obtained following results on Ade20k dataset (training data):
 
 ![Image of results](https://raw.github.com/racinmat/anime-style-transfer/master/ade20k-images.png)
+
+Tried on testing data (not used for training), I obtained following results:
+
+![Image of results](https://raw.github.com/racinmat/anime-style-transfer/master/lena-images-testset.png)
+
+Abovementioned images are photos of Czech cosplayer Lena, be sure to check her content ([Facebook](https://www.facebook.com/LenaCosplayCZ/), [Instagram](https://www.instagram.com/lena_cosplayer/))
