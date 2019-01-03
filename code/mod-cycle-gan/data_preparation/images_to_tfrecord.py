@@ -33,6 +33,12 @@ def process_sample(data, padding=False):
     return imresize(data, (512, 512))
 
 
+def process_sample_tf(image, padding=False):
+    if padding:
+        return tf.image.resize_image_with_pad(image, 512, 512)
+    return tf.image.resize_images(image, (512, 512), preserve_aspect_ratio=True)
+
+
 def image_to_tfrecord(i, f, writer, pbar):
     try:
         pbar.update(i)
@@ -111,9 +117,12 @@ def run_real():
         infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
         tfrecord_name = 'ade20k.tfrecord'
     else:
-        # my own image directories, without train/test split
-        # todo: implement me like anime version
-        pass
+        images_root = 'dataset-sources/real/images'
+        dir_name = FLAGS.name
+        real_root = os.path.join(images_root, dir_name)
+        infiles = list(glob.glob(osp.join(real_root, '**', '*.jpg'), recursive=True))
+        infiles += list(glob.glob(osp.join(real_root, '**', '*.png'), recursive=True))
+        tfrecord_name = dir_name + '.tfrecord'
     print('{} files to process'.format(len(infiles)))
     run(infiles, osp.join(tfrecords_root, tfrecord_name))
 

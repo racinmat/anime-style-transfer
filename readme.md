@@ -5,12 +5,13 @@ This is repository of TensorFlow implementation of CycleGAN:
 https://arxiv.org/abs/1703.10593 CycleGAN is GAN-like neural network for style
 transfer, which does not require paired training data.
 
-This implementation is heavily based on Otakar Jašek's diploma thesis
-https://dspace.cvut.cz/handle/10467/77173
+This implementation is heavily based on Otakar Jašek's [diploma thesis](https://dspace.cvut.cz/handle/10467/77173)
 
-It uses 2 datasets: real and anime. Real data are from common machine learning
-datasets for computer vision. Namely ade20k. Anime data are from anime videos,
-sampled at 1 FPS.
+Basically tt uses 2 datasets: real and anime. 
+Real data are from common machine learning
+datasets for computer vision, namely Ade20k, but combined with various cosplay photographs. 
+Anime data are from anime videos, sampled at 1 FPS.
+
 
 Code is in `code/mod-cycle-gan`. `code/mod-cycle-gan/data_preparation` contains
 data preparation scripts. The input to neural network is native TensorFlow

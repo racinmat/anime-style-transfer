@@ -13,22 +13,11 @@ Params:
 
 """
 
-import glob
+import logging
 import os
 import os.path as osp
-import logging
-import random
-import numpy as np
-import progressbar
+
 import tensorflow as tf
-from PIL import Image
-from joblib import Parallel, delayed
-from scipy.misc import imsave
-import cycle
-from cycle import CycleGAN
-from cycle.models.anime import X_DATA_SHAPE
-from train import initialize_networks, import_model
-from data_preparation.images_to_tfrecord import process_sample, get_real_images_ade20k
 
 FLAGS = tf.flags.FLAGS
 
