@@ -39,7 +39,7 @@ from scipy.misc import imsave
 import cycle
 from cycle.models.anime import X_DATA_SHAPE
 from train import initialize_networks, import_model
-from data_preparation.images_to_tfrecord import process_sample, get_real_images_ade20k
+from data_preparation.images_to_tfrecord import process_sample, get_real_images_ade20k, process_sample_tf
 
 FLAGS = tf.flags.FLAGS
 
@@ -104,7 +104,8 @@ def transform_files(im_paths):
         return image
 
     def reshape_image(image):
-        image = tf.py_func(lambda x: process_sample(x, True), [image], tf.uint8)
+        # image = tf.py_func(lambda x: process_sample(x, True), [image], tf.uint8)
+        image = process_sample_tf(image, True)
         image = tf.cast(image, dtype=tf.float32)
         return image
 

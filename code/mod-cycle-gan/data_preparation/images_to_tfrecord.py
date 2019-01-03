@@ -117,7 +117,7 @@ def run_real():
         infiles = get_real_images_ade20k()  # hopefully ade20k will be more representative than cityscapes
         tfrecord_name = 'ade20k.tfrecord'
     else:
-        images_root = 'dataset-sources/real/images'
+        images_root = '../../../dataset-sources/real/images'
         dir_name = FLAGS.name
         real_root = os.path.join(images_root, dir_name)
         infiles = list(glob.glob(osp.join(real_root, '**', '*.jpg'), recursive=True))

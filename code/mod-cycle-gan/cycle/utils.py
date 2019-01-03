@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 from object_detection.data_decoders import tf_example_decoder
 
-from data_preparation.images_to_tfrecord import process_sample
+from data_preparation.images_to_tfrecord import process_sample, process_sample_tf
 
 
 def _identity(x, name=None):
@@ -84,7 +84,8 @@ class TFReader:
     def _parse_example_encoded(self, serialized_example):
         example_decoder = tf_example_decoder.TfExampleDecoder()
         features = example_decoder.decode(tf.convert_to_tensor(serialized_example))
-        image = tf.py_func(lambda x: process_sample(x, True), [features['image']], np.uint8)
+        # image = tf.py_func(lambda x: process_sample(x, True), [features['image']], np.uint8)
+        image = process_sample_tf(features['image'], True)
         return tf.cast(image, dtype=tf.float32)
 
 
