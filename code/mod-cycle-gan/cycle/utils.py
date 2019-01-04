@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 from object_detection.data_decoders import tf_example_decoder
 
-from data_preparation.images_to_tfrecord import process_sample, process_sample_tf
+from data_preparation.images_to_tfrecord import process_sample_tf
 
 
 def _identity(x, name=None):
@@ -51,20 +51,16 @@ class DataBuffer:
 
 
 class TFReader:
-    def __init__(self, tfrecords_file, name, shape, shuffle_buffer_size=100, normer=_identity, denormer=_identity,
+    def __init__(self, tfrecords_file, shuffle_buffer_size=100, normer=_identity, denormer=_identity,
                  batch_size=1, num_threads=8):
-        self.name = name
         self.batch_size = batch_size
         self.num_threads = num_threads
-        self.shape = shape
         self.normalize = normer
         self.denormalize = denormer
-        with tf.name_scope(self.name):
+        with tf.name_scope('tfreader'):
             print('fetching data from tfrecords_file: {}'.format(tfrecords_file))
-            print('with name: {}'.format(self.name))
             self.data = tf.data.TFRecordDataset(tfrecords_file)
-            self.data = self.data.map(self._parse_example_encoded,
-                                      num_parallel_calls=num_threads)  # for new, binary png data stream
+            self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)
             self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
             self.data = self.data.shuffle(shuffle_buffer_size)
             self.data = self.data.repeat()
@@ -75,13 +71,8 @@ class TFReader:
     def feed(self):
         return self.feeder
 
-    def _parse_example(self, serialized_example):
-        name = self.name + '_data'
-        features = tf.parse_single_example(serialized_example,
-                                           {name: tf.FixedLenFeature(self.shape, tf.float32)})
-        return features[name]
-
-    def _parse_example_encoded(self, serialized_example):
+    @staticmethod
+    def _parse_example_encoded(serialized_example):
         example_decoder = tf_example_decoder.TfExampleDecoder()
         features = example_decoder.decode(tf.convert_to_tensor(serialized_example))
         # image = tf.py_func(lambda x: process_sample(x, True), [features['image']], np.uint8)

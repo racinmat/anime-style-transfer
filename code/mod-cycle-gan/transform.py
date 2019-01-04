@@ -39,7 +39,7 @@ from scipy.misc import imsave
 import cycle
 from cycle.models.anime import X_DATA_SHAPE
 from train import initialize_networks, import_model
-from data_preparation.images_to_tfrecord import process_sample, get_real_images_ade20k, process_sample_tf
+from data_preparation.images_to_tfrecord import get_real_images_ade20k, process_sample_tf
 
 FLAGS = tf.flags.FLAGS
 

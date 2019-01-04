@@ -93,7 +93,7 @@ def create_cyclegan():
     cygan = cycle.CycleGAN(
         xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose,
         modellib.visualize if FLAGS.visualize else None, FLAGS.lr, FLAGS.beta1, FLAGS.steps,
-        (FLAGS.decayfrom * FLAGS.steps), FLAGS.history, FLAGS.cpdir, FLAGS.rundir)
+        (FLAGS.decayfrom * FLAGS.steps), history=FLAGS.history, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
     return cygan
 
 
@@ -122,12 +122,10 @@ def import_model():
 
 def initialize_networks():
     modellib = import_model()
-    xfeed = cycle.utils.TFReader(FLAGS.Xtfr, FLAGS.Xname,
-                                 modellib.X_DATA_SHAPE, normer=modellib.X_normer,
-                                 denormer=modellib.X_denormer, batch_size=FLAGS.batchsize)
-    yfeed = cycle.utils.TFReader(FLAGS.Ytfr, FLAGS.Yname,
-                                 modellib.Y_DATA_SHAPE, normer=modellib.Y_normer,
-                                 denormer=modellib.Y_denormer, batch_size=FLAGS.batchsize)
+    xfeed = cycle.utils.TFReader(FLAGS.Xtfr, normer=modellib.X_normer, denormer=modellib.X_denormer,
+                                 batch_size=FLAGS.batchsize)
+    yfeed = cycle.utils.TFReader(FLAGS.Ytfr, normer=modellib.Y_normer, denormer=modellib.Y_denormer,
+                                 batch_size=FLAGS.batchsize)
     xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen', FLAGS.XYgenstr,
                                   True, FLAGS.XYgwl, FLAGS.norm)
     yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen', FLAGS.YXgenstr,

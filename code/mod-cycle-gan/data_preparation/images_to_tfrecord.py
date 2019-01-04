@@ -2,6 +2,8 @@ import logging
 import os
 import os.path as osp
 import glob
+import queue
+import threading
 from io import BytesIO
 
 import progressbar
@@ -12,25 +14,11 @@ from joblib import Parallel, delayed
 from object_detection.utils import dataset_util
 from scipy.misc import imresize
 
-
 FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_enum('type', None, ['real', 'anime'], 'Type, either anime or real')
-tf.flags.DEFINE_string('name', None, 'Name of the dataset in tfrecord file (must correspond with Xname and Yname files).')
-
-
-def make_square(im, fill_color=(0, 0, 0, 0)):
-    y, x = im.shape[0:2]
-    size = max(x, y)
-    new_im = Image.new('RGB', (size, size), fill_color)
-    new_im.paste(Image.fromarray(im), (int((size - x) / 2), int((size - y) / 2)))
-    return np.array(new_im)
-
-
-def process_sample(data, padding=False):
-    if padding:
-        data = make_square(data)
-    return imresize(data, (512, 512))
+tf.flags.DEFINE_string('name', None,
+                       'Name of the dataset in tfrecord file (must correspond with Xname and Yname files).')
 
 
 def process_sample_tf(image, padding=False):
@@ -39,9 +27,34 @@ def process_sample_tf(image, padding=False):
     return tf.image.resize_images(image, (512, 512), preserve_aspect_ratio=True)
 
 
+q = None
+
+
+def image_to_example(f):
+    data = np.array(Image.open(f))
+    if data.ndim == 2 or data.shape[2] == 1:  # grayscale
+        # black and white image detected, skipping
+        return
+    im = Image.fromarray(data)  # resizing is done in tensorflow during preprocessing, don't modify it here
+    stream = BytesIO()
+    im.save(stream, format='PNG')
+    # im.save('image-{}.png'.format(i), format='PNG')
+    encoded_png = stream.getvalue()
+    ex = tf.train.Example(features=tf.train.Features(feature={
+        'image/encoded': dataset_util.bytes_feature(encoded_png),
+        'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
+        'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
+    }))
+    serialized = ex.SerializeToString()
+    q.put(serialized)
+    print('put to queue')
+
+
 def image_to_tfrecord(i, f, writer, pbar):
+    from time import time
     try:
         pbar.update(i)
+        start = time()
         data = np.array(Image.open(f))
         if data.ndim == 2 or data.shape[2] == 1:  # grayscale
             # black and white image detected, skipping
@@ -49,13 +62,18 @@ def image_to_tfrecord(i, f, writer, pbar):
         im = Image.fromarray(data)  # resizing is done in tensorflow during preprocessing, don't modify it here
         stream = BytesIO()
         im.save(stream, format='PNG')
+        # im.save('image-{}.png'.format(i), format='PNG')
         encoded_png = stream.getvalue()
         ex = tf.train.Example(features=tf.train.Features(feature={
             'image/encoded': dataset_util.bytes_feature(encoded_png),
             'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
             'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
         }))
-        writer.write(ex.SerializeToString())
+        serialized = ex.SerializeToString()
+        print(time() - start, 'for data preparation')
+        start = time()
+        writer.write(serialized)
+        print(time() - start, 'for writing to file')
     except (IOError, ValueError) as e:
         logging.warning('Opening %s failed', f)
         logging.warning(e)
@@ -74,9 +92,23 @@ def run(infiles, outfile):
                progressbar.FileTransferSpeed()]
     pbar = progressbar.ProgressBar(widgets=widgets, max_value=len(infiles)).start()
 
-    workers = 12
-    Parallel(n_jobs=workers, backend='threading')(
-        delayed(image_to_tfrecord)(i, f, writer, pbar) for i, f in enumerate(infiles))
+    # TFRecordWriter is not threadsafe, so I have to write to it in single thread,
+    # but I can read and prepare data (which takes most of time) in multiple threads
+
+    # for i, f in enumerate(infiles):
+    #     image_to_tfrecord(i, f, writer, pbar)
+
+    def images_to_examples():
+        workers = 12
+        Parallel(n_jobs=workers, backend='threading')(delayed(image_to_example)(f) for f in infiles)
+    threading.Thread(target=images_to_examples, name='socket_server').start()
+
+    i = 0
+    while i < len(infiles):
+        pbar.update(i)
+        serialized = q.get()
+        writer.write(serialized)
+        i += 1
 
     writer.close()
 
@@ -128,8 +160,15 @@ def run_real():
 
 
 if __name__ == '__main__':
+    from time import time
+
+    start = time()
+
+    q = queue.Queue()
     logging.getLogger().setLevel(logging.INFO)
     if FLAGS.type == 'real':
         run_real()
     if FLAGS.type == 'anime':
         run_anime()
+
+    print(time() - start, 'for everything')

@@ -5,3 +5,4 @@ python images_to_tfrecord.py --type=anime --name=hidamari-sketch
 python images_to_tfrecord.py --type=anime --name=shinkai
 python images_to_tfrecord.py --type=real --name=martin-fotky
 python images_to_tfrecord.py --type=real --name=mashiiro-fotky
+python images_to_tfrecord.py --type=real --name=cosplay-music-videos

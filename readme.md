@@ -18,6 +18,9 @@ data preparation scripts. The input to neural network is native TensorFlow
 format, protobuf. Videos are sampled to obtain images and then images are
 converted into `.tfrecord` files containing protobuf format of training data.
 
+Images in tfrecord can be corrupted, you can check them with script.
+`python data_preparation/check_tfrecords.py --file=<absolute name of tfrecord>`
+
 Neural network is then trained in `code/mod-cycle-gan/train.py` by feeding it
 two tfrecord files, one with real data, one with anime data. Trained network
 then can be used for inference, transforming real images to anime data by
