@@ -47,14 +47,13 @@ def image_to_example(f):
     }))
     serialized = ex.SerializeToString()
     q.put(serialized)
-    print('put to queue')
 
 
 def image_to_tfrecord(i, f, writer, pbar):
-    from time import time
+    # from time import time
     try:
         pbar.update(i)
-        start = time()
+        # start = time()
         data = np.array(Image.open(f))
         if data.ndim == 2 or data.shape[2] == 1:  # grayscale
             # black and white image detected, skipping
@@ -70,10 +69,10 @@ def image_to_tfrecord(i, f, writer, pbar):
             'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
         }))
         serialized = ex.SerializeToString()
-        print(time() - start, 'for data preparation')
-        start = time()
+        # print(time() - start, 'for data preparation')
+        # start = time()
         writer.write(serialized)
-        print(time() - start, 'for writing to file')
+        # print(time() - start, 'for writing to file')
     except (IOError, ValueError) as e:
         logging.warning('Opening %s failed', f)
         logging.warning(e)
