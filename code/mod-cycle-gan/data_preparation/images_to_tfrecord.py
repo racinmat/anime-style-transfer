@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 from joblib import Parallel, delayed
 from object_detection.utils import dataset_util
-from scipy.misc import imresize
+from common_params import IMAGE_HEIGHT, IMAGE_WIDTH, IMAGES_SHAPE
 
 FLAGS = tf.flags.FLAGS
 
@@ -23,8 +23,8 @@ tf.flags.DEFINE_string('name', None,
 
 def process_sample_tf(image, padding=False):
     if padding:
-        return tf.image.resize_image_with_pad(image, 512, 512)
-    return tf.image.resize_images(image, (512, 512), preserve_aspect_ratio=True)
+        return tf.image.resize_image_with_pad(image, IMAGE_HEIGHT, IMAGE_WIDTH)
+    return tf.image.resize_images(image, IMAGES_SHAPE, preserve_aspect_ratio=True)
 
 
 q = None

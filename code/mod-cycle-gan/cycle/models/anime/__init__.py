@@ -1,3 +1,5 @@
+from common_params import IMAGES_SHAPE
+
 __all__ = ['X_normer', 'X_denormer', 'Y_normer', 'Y_denormer', 'X_DATA_SHAPE', 'Y_DATA_SHAPE',
            'XY_Generator', 'YX_Generator', 'X_Discriminator', 'Y_Discriminator',
            'visualize', 'X_name', 'Y_name']
@@ -18,5 +20,5 @@ Y_name = 'anime'
 visualize = utils.visualize
 feature_map = utils.feature_map
 
-X_DATA_SHAPE = (512, 512, 3)
-Y_DATA_SHAPE = (512, 512, 3)
+X_DATA_SHAPE = IMAGES_SHAPE
+Y_DATA_SHAPE = IMAGES_SHAPE
