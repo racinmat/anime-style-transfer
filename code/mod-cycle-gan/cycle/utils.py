@@ -75,7 +75,6 @@ class TFReader:
     def _parse_example_encoded(serialized_example):
         example_decoder = tf_example_decoder.TfExampleDecoder()
         features = example_decoder.decode(tf.convert_to_tensor(serialized_example))
-        # image = tf.py_func(lambda x: process_sample(x, True), [features['image']], np.uint8)
         image = process_sample_tf(features['image'], True)
         return tf.cast(image, dtype=tf.float32)
 
