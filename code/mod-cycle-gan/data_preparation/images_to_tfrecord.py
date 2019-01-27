@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 from joblib import Parallel, delayed
 from object_detection.utils import dataset_util
+
 from common_params import IMAGE_HEIGHT, IMAGE_WIDTH, IMAGES_SIZE, IMAGES_SHAPE
 
 FLAGS = tf.flags.FLAGS
@@ -42,7 +43,7 @@ def image_to_example(f):
     data = np.array(Image.open(f))
     if data.ndim == 2 or data.shape[2] == 1:  # grayscale
         # black and white image detected, skipping
-        return
+        return None
     im = Image.fromarray(data)  # resizing is done in tensorflow during preprocessing, don't modify it here
     if MAX_WIDTH is not None and MAX_HEIGHT is not None:
         im.thumbnail((MAX_WIDTH, MAX_HEIGHT), Image.ANTIALIAS)
@@ -56,6 +57,13 @@ def image_to_example(f):
         'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
     }))
     serialized = ex.SerializeToString()
+    return serialized
+
+
+def image_to_example_queue(f):
+    serialized = image_to_example(f)
+    if serialized is None:
+        return
     q.put(serialized)
 
 
@@ -64,21 +72,7 @@ def image_to_tfrecord(i, f, writer, pbar):
     try:
         pbar.update(i)
         # start = time()
-        data = np.array(Image.open(f))
-        if data.ndim == 2 or data.shape[2] == 1:  # grayscale
-            # black and white image detected, skipping
-            return
-        im = Image.fromarray(data)  # resizing is done in tensorflow during preprocessing, don't modify it here
-        stream = BytesIO()
-        im.save(stream, format='PNG')
-        # im.save('image-{}.png'.format(i), format='PNG')
-        encoded_png = stream.getvalue()
-        ex = tf.train.Example(features=tf.train.Features(feature={
-            'image/encoded': dataset_util.bytes_feature(encoded_png),
-            'image/format': dataset_util.bytes_feature('png'.encode('utf8')),
-            'image/source_id': dataset_util.bytes_feature(f.encode('utf8')),
-        }))
-        serialized = ex.SerializeToString()
+        serialized = image_to_example(f)
         # print(time() - start, 'for data preparation')
         # start = time()
         writer.write(serialized)
@@ -110,12 +104,16 @@ def run(infiles, outfile):
     def images_to_examples():
         workers = 12
         Parallel(n_jobs=workers, backend='threading')(delayed(image_to_example)(f) for f in infiles)
+        q.put('done')
+
     threading.Thread(target=images_to_examples, name='socket_server').start()
 
     i = 0
     while i < len(infiles):
-        pbar.update(i)
         serialized = q.get()
+        if serialized == 'done':
+            break
+        pbar.update(i)
         writer.write(serialized)
         i += 1
 
