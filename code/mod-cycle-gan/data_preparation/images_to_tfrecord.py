@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 from joblib import Parallel, delayed
 from object_detection.utils import dataset_util
-from common_params import IMAGE_HEIGHT, IMAGE_WIDTH, IMAGES_SHAPE
+from common_params import IMAGE_HEIGHT, IMAGE_WIDTH, IMAGES_SIZE, IMAGES_SHAPE
 
 FLAGS = tf.flags.FLAGS
 
@@ -20,11 +20,19 @@ tf.flags.DEFINE_enum('type', None, ['real', 'anime'], 'Type, either anime or rea
 tf.flags.DEFINE_string('name', None,
                        'Name of the dataset in tfrecord file (must correspond with Xname and Yname files).')
 
+# images will be resized so they are smaller or equal this resolutions, allows having dynamic shape, but not so big max size
+MAX_HEIGHT = 600
+MAX_WIDTH = 800
+
 
 def process_sample_tf(image, padding=False):
     if padding:
         return tf.image.resize_image_with_pad(image, IMAGE_HEIGHT, IMAGE_WIDTH)
-    return tf.image.resize_images(image, IMAGES_SHAPE, preserve_aspect_ratio=True)
+    if IMAGES_SIZE == (None, None):
+        # dynamic shape, no reshaping
+        return image
+    else:
+        return tf.image.resize_images(image, IMAGES_SIZE, preserve_aspect_ratio=True)
 
 
 q = None
@@ -36,6 +44,8 @@ def image_to_example(f):
         # black and white image detected, skipping
         return
     im = Image.fromarray(data)  # resizing is done in tensorflow during preprocessing, don't modify it here
+    if MAX_WIDTH is not None and MAX_HEIGHT is not None:
+        im.thumbnail((MAX_WIDTH, MAX_HEIGHT), Image.ANTIALIAS)
     stream = BytesIO()
     im.save(stream, format='PNG')
     # im.save('image-{}.png'.format(i), format='PNG')

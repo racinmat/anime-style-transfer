@@ -52,7 +52,7 @@ def main(_):
     print(file)
     example_decoder = tf_example_decoder.TfExampleDecoder()
     dataset = tf.data.TFRecordDataset(file)
-    # dataset = dataset.map(TFReader._parse_example_encoded, num_parallel_calls=num_threads)
+    dataset = dataset.map(TFReader._parse_example_encoded, num_parallel_calls=num_threads)
     # dataset = dataset.map(tf.convert_to_tensor, num_parallel_calls=num_threads)
     # dataset = dataset.map(example_decoder.decode, num_parallel_calls=num_threads)
     iterator = dataset.make_one_shot_iterator()
