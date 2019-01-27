@@ -103,7 +103,7 @@ def run(infiles, outfile):
 
     def images_to_examples():
         workers = 12
-        Parallel(n_jobs=workers, backend='threading')(delayed(image_to_example)(f) for f in infiles)
+        Parallel(n_jobs=workers, backend='threading')(delayed(image_to_example_queue)(f) for f in infiles)
         q.put('done')
 
     threading.Thread(target=images_to_examples, name='socket_server').start()
