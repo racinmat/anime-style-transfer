@@ -13,7 +13,7 @@ from PIL import Image
 from joblib import Parallel, delayed
 from object_detection.utils import dataset_util
 
-from common_params import IMAGE_HEIGHT, IMAGE_WIDTH, IMAGES_SIZE, IMAGES_SHAPE
+from common_params import IMAGE_HEIGHT, IMAGE_WIDTH, IMAGES_SIZE
 
 FLAGS = tf.flags.FLAGS
 
@@ -40,6 +40,8 @@ q = None
 
 
 def image_to_example(f):
+    if osp.getsize(f) == 0:
+        return None
     data = np.array(Image.open(f))
     if data.ndim == 2 or data.shape[2] == 1:  # grayscale
         # black and white image detected, skipping

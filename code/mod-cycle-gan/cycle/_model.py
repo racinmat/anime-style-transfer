@@ -251,7 +251,8 @@ class CycleGAN:
                 x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
                 y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
 
-            try:
+            # try:
+            if True:    # instead of try indentation
                 if self.history:
                     cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
                 while not coord.should_stop():
@@ -276,6 +277,8 @@ class CycleGAN:
                     for _ in range(dis_train):
                         sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
                     for _ in range(gen_train):
+                        # todo, debug why it fails sometimes with dynamic input, using the self.XtoY.gen.layers_dict to see things in problematic layer
+                        # then uncomment the try-catch and probably get rid of all the coords things
                         sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
 
                     # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
@@ -302,19 +305,21 @@ class CycleGAN:
                     if step >= self.steps:
                         logging.info('Stopping after %d iterations', self.steps)
                         coord.request_stop()
-            except Exception as e:
-                if log_verbose:
-                    logging.info('Interrupted')
-                    logging.info(e)
-                coord.request_stop()
-            finally:
-                save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
-                if log_verbose:
-                    logging.info('Model saved in file: %s', save_path)
-                if export_final:
-                    self.export(sess, self.full_checkpoints_dir)
-                coord.request_stop()
-                coord.join(threads)
+            # except Exception as e:
+            #     if log_verbose:
+            #         logging.info('Interrupted')
+            #         logging.info(e)
+            #     coord.request_stop()
+            #     # coord.request_stop()
+            #     raise e
+            # finally:
+            #     save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
+            #     if log_verbose:
+            #         logging.info('Model saved in file: %s', save_path)
+            #     if export_final:
+            #         self.export(sess, self.full_checkpoints_dir)
+            #     coord.request_stop()
+            #     coord.join(threads)
 
     @staticmethod
     def load_saved_model(full_checkpoints_dir, sess):

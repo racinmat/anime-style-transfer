@@ -29,6 +29,7 @@ class BaseNet:
         self.norm = norm
         self.network_desc = network_desc.split(';')
         self.names = []
+        self.layers_dict = {}    # added for debug
         for i, n in enumerate(self.network_desc[:-1]):
             newname = n
             while True:
@@ -54,6 +55,7 @@ class BaseNet:
                                           activation=_act_map[l_params[-1]],
                                           normtype=(self.norm if i < len(self.network_desc[:-1]) - 1 else None),
                                           is_training=self.is_training, name=self.names[i])
+            self.layers_dict[layer] = out
         if self.network_desc[-1] != '':
             for op in self.network_desc[-1]:
                 if op == 's':
@@ -62,6 +64,7 @@ class BaseNet:
                     out = tf.clip_by_value(out, -1, 1)
                 if op == 'a':
                     out = tf.nn.tanh(out)
+                self.layers_dict[op] = out
         return out
 
     def weight_loss(self):

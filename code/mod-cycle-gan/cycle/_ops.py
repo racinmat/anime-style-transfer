@@ -69,7 +69,11 @@ def reconv_block(inputs, kernel_size, stride, out_channels, out_coeff, activatio
                  is_training=True, name=None, bias=False):
     with tf.variable_scope(name):
         inshape = inputs.get_shape().as_list()
-        out_size = [int(out_coeff * inshape[1]), int(out_coeff * inshape[2])]
+        if inshape[1] is None and inshape[2] is None:
+            inshape_dynamic = tf.shape(inputs)
+            out_size = [tf.to_int32(out_coeff * inshape_dynamic[1]), tf.to_int32(out_coeff * inshape_dynamic[2])]
+        else:
+            out_size = [int(out_coeff * inshape[1]), int(out_coeff * inshape[2])]
         kernel_shape = [kernel_size, kernel_size, inshape[3], out_channels]
         strides = [1, stride, stride, 1]
         resized = tf.image.resize_images(inputs, out_size, tf.image.ResizeMethod.NEAREST_NEIGHBOR)
