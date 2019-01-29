@@ -22,6 +22,7 @@ tf.flags.DEFINE_string('name', None,
                        'Name of the dataset in tfrecord file (must correspond with Xname and Yname files).')
 
 # images will be resized so they are smaller or equal this resolutions, allows having dynamic shape, but not so big max size
+# todo: probably parameterize this
 MAX_HEIGHT = 600
 MAX_WIDTH = 800
 
@@ -33,7 +34,7 @@ def process_sample_tf(image, padding=False):
         # dynamic shape, no reshaping
         return image
     else:
-        return tf.image.resize_images(image, IMAGES_SIZE, preserve_aspect_ratio=True)
+        return tf.image.resize_images(image, IMAGES_SIZE, preserve_aspect_ratio=True, align_corners=True)
 
 
 q = None

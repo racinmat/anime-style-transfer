@@ -31,6 +31,23 @@ class DataBuffer:
         self.last_step = cur_step
         if self.pool_size == -1:
             self.last_data = data
+        elif self.batch_size == 1:
+            # todo: probably refactor this
+            # special case, support for dynamic shapes, duplicate code, but so far without ideas for refactoring
+            if len(self.data) < self.pool_size:
+                self.data.append(data[0].copy())
+                self.last_data = data
+            else:
+                to_return = random.random()
+                to_replace = random.random()
+                if to_return > self.prob:
+                    self.last_data = data
+                else:
+                    idx = random.randrange(0, self.pool_size)
+                    self.last_data = self.data[idx][np.newaxis, :]
+                if to_replace > self.prob:
+                    idx = random.randrange(0, self.pool_size)
+                    self.data[idx] = data[0]
         else:
             for i, d in enumerate(data):
                 if len(self.data) < self.pool_size:
@@ -62,6 +79,7 @@ class TFReader:
             self.data = tf.data.TFRecordDataset(tfrecords_file)
             self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)
             self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
+            self.data = self.data.map(self._reshape_to_even, num_parallel_calls=num_threads)
             self.data = self.data.shuffle(shuffle_buffer_size)
             self.data = self.data.repeat()
             self.data = self.data.batch(self.batch_size)
@@ -77,6 +95,17 @@ class TFReader:
         features = example_decoder.decode(tf.convert_to_tensor(serialized_example))
         image = process_sample_tf(features['image'], False)
         return tf.cast(image, dtype=tf.float32)
+
+    @staticmethod
+    def _reshape_to_even(image):
+        # because down and up scaling in network breaks dimensions for odd shaped input images
+        # because this is max. 1 row and 1 column correction, I can use symmetry and won't change input statistics much
+        im_shape = tf.shape(image)
+        nearest_even_shape = tf.to_int32(tf.ceil(im_shape / 2) * 2)
+        diff_shape = nearest_even_shape - im_shape
+        y_diff = diff_shape[0]
+        x_diff = diff_shape[1]
+        return tf.pad(image, [[0, y_diff], [0, x_diff], [0, 0]], 'SYMMETRIC')
 
 
 class TFWriter:

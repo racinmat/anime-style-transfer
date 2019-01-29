@@ -16,4 +16,4 @@
 :: --gantype=WGAN --XYgwl=1 --YXgwl=1 --Xdwl=1 --Ydwl=1 > train.log
 ::python train.py --Xtfr=../../datasets/real/ade20k.tfrecord --Ytfr=../../datasets/anime/no-game-no-life.tfrecord --Xname=real --Yname=anime^
 :: --gantype=GAN --XYgwl=1 --YXgwl=1 --Xdwl=1 --Ydwl=1 > train.log
-python train.py --rundir=2019-01-23--23-18-0 --flagfile=E:\Projects\anime-style-transfer\checkpoint\2019-01-23--23-18-0\params.flagfile > train.log
+python train.py --Xtfr=../../datasets/real/ade20k.tfrecord --Ytfr=../../datasets/anime/no-game-no-life.tfrecord --Xname=real --Yname=anime > train.log

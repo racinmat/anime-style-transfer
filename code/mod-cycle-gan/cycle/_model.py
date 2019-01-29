@@ -234,9 +234,6 @@ class CycleGAN:
                 step = 0
                 sess.run(tf.global_variables_initializer())
 
-            coord = tf.train.Coordinator()
-            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-
             if log_verbose:
                 varsize_dict = sess.run({
                     '{}->{} gen - num params'.format(self.X_name, self.Y_name): self.XtoY.gen.num_params(),
@@ -252,74 +249,62 @@ class CycleGAN:
                 y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
 
             # try:
-            if True:    # instead of try indentation
+            if self.history:
+                cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+            while step < self.steps:
                 if self.history:
-                    cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-                while not coord.should_stop():
-                    if self.history:
-                        fx, fy = sess.run(model_ops['fakes'], feed_dict={
-                            self.cur_x: cur_x,
-                            self.cur_y: cur_y,
-                        })
-                    cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-                    if self.history:
-                        feeder_dict = {
-                            self.cur_x: cur_x,
-                            self.cur_y: cur_y,
-                            self.prev_fake_x: x_pool.query(fx, step),
-                            self.prev_fake_y: y_pool.query(fy, step),
-                        }
-                    else:
-                        feeder_dict = {
-                            self.cur_x: cur_x,
-                            self.cur_y: cur_y,
-                        }
-                    for _ in range(dis_train):
-                        sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
-                    for _ in range(gen_train):
-                        # todo, debug why it fails sometimes with dynamic input, using the self.XtoY.gen.layers_dict to see things in problematic layer
-                        # then uncomment the try-catch and probably get rid of all the coords things
-                        sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
+                    fx, fy = sess.run(model_ops['fakes'], feed_dict={
+                        self.cur_x: cur_x,
+                        self.cur_y: cur_y,
+                    })
+                cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+                if self.history:
+                    feeder_dict = {
+                        self.cur_x: cur_x,
+                        self.cur_y: cur_y,
+                        self.prev_fake_x: x_pool.query(fx, step),
+                        self.prev_fake_y: y_pool.query(fy, step),
+                    }
+                else:
+                    feeder_dict = {
+                        self.cur_x: cur_x,
+                        self.cur_y: cur_y,
+                    }
+                for _ in range(dis_train):
+                    sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
+                for _ in range(gen_train):
+                    # todo, debug why it fails sometimes with dynamic input, using the self.XtoY.gen.layers_dict to see things in problematic layer
+                    # sess.run(self.XtoY.gen.layers_dicts[1]['c-7-1-3-t'], feed_dict={self.cur_x: cur_x}) works
+                    # then uncomment the try-catch and probably get rid of all the coords things
+                    sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
 
-                    # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
-                    # every 100 steps mean cca every minute it is logged on 1080Ti
-                    if step % 100 == 0:
-                        summary, _ = sess.run([model_ops['summary'], model_ops['train']['global_step']],
-                                              feed_dict=feeder_dict)
-                        train_writer.add_summary(summary, step)
-                        train_writer.flush()
+                # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
+                # every 100 steps mean cca every minute it is logged on 1080Ti
+                if step % 100 == 0:
+                    summary, _ = sess.run([model_ops['summary'], model_ops['train']['global_step']],
+                                          feed_dict=feeder_dict)
+                    train_writer.add_summary(summary, step)
+                    train_writer.flush()
 
-                    if log_verbose and step % 100 == 0:
-                        logging.info('------ Step {:d} ------'.format(step))
-                        losses = sess.run(model_ops['losses'], feed_dict=feeder_dict)
-                        for k, v in losses.items():
-                            logging.info('\t{}:\t{:8f}'.format(k, v))
+                if log_verbose and step % 100 == 0:
+                    logging.info('------ Step {:d} ------'.format(step))
+                    losses = sess.run(model_ops['losses'], feed_dict=feeder_dict)
+                    for k, v in losses.items():
+                        logging.info('\t{}:\t{:8f}'.format(k, v))
 
-                    # every 5000 means cca every hour and 15 minutes model is saved on 1080Ti
-                    if step % 5000 == 0:
-                        save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
-                        logging.info('Model saved in file: %s', save_path)
+                # every 5000 means cca every hour and 15 minutes model is saved on 1080Ti
+                if step % 5000 == 0:
+                    save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
+                    logging.info('Model saved in file: %s', save_path)
 
-                    step += 1
+                step += 1
 
-                    if step >= self.steps:
-                        logging.info('Stopping after %d iterations', self.steps)
-                        coord.request_stop()
-            # except Exception as e:
-            #     if log_verbose:
-            #         logging.info('Interrupted')
-            #         logging.info(e)
-            #     coord.request_stop()
-            #     # coord.request_stop()
-            #     raise e
-            # finally:
-            #     save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
-            #     if log_verbose:
-            #         logging.info('Model saved in file: %s', save_path)
-            #     if export_final:
-            #         self.export(sess, self.full_checkpoints_dir)
-            #     coord.request_stop()
-            #     coord.join(threads)
+            logging.info('Stopping after %d iterations', self.steps)
+            save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
+            if log_verbose:
+                logging.info('Model saved in file: %s', save_path)
+            if export_final:
+                self.export(sess, self.full_checkpoints_dir)
 
     @staticmethod
     def load_saved_model(full_checkpoints_dir, sess):

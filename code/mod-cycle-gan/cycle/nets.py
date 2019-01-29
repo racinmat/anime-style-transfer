@@ -29,7 +29,8 @@ class BaseNet:
         self.norm = norm
         self.network_desc = network_desc.split(';')
         self.names = []
-        self.layers_dict = {}    # added for debug
+        self.layers_dicts = []    # added for debug
+        self.outputs = []    # added for debug
         for i, n in enumerate(self.network_desc[:-1]):
             newname = n
             while True:
@@ -45,17 +46,19 @@ class BaseNet:
         with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
             result = self.transform(data)
         self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
+        self.outputs.append(result)
         return result
 
     def transform(self, data):
         out = data
+        layers_dict = {}
         for i, layer in enumerate(self.network_desc[:-1]):
             l_params = layer.split('-')
             out = _layer_map[l_params[0]](out, *tuple(map(ops.to_num, l_params[1:-1])),
                                           activation=_act_map[l_params[-1]],
                                           normtype=(self.norm if i < len(self.network_desc[:-1]) - 1 else None),
                                           is_training=self.is_training, name=self.names[i])
-            self.layers_dict[layer] = out
+            layers_dict[layer] = out
         if self.network_desc[-1] != '':
             for op in self.network_desc[-1]:
                 if op == 's':
@@ -64,7 +67,8 @@ class BaseNet:
                     out = tf.clip_by_value(out, -1, 1)
                 if op == 'a':
                     out = tf.nn.tanh(out)
-                self.layers_dict[op] = out
+                layers_dict[op] = out
+        self.layers_dicts.append(layers_dict)
         return out
 
     def weight_loss(self):

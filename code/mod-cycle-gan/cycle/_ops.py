@@ -76,7 +76,7 @@ def reconv_block(inputs, kernel_size, stride, out_channels, out_coeff, activatio
             out_size = [int(out_coeff * inshape[1]), int(out_coeff * inshape[2])]
         kernel_shape = [kernel_size, kernel_size, inshape[3], out_channels]
         strides = [1, stride, stride, 1]
-        resized = tf.image.resize_images(inputs, out_size, tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        resized = tf.image.resize_images(inputs, out_size, tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=True)
         c_out = tf.nn.conv2d(resized, weights('weights', kernel_shape), strides, padding='SAME')
         if bias:
             c_out = c_out + biases('bias', c_out.shape[1:])

@@ -6,6 +6,7 @@ import os
 
 import tensorflow as tf
 import cycle
+from common_params import IMAGE_HEIGHT, IMAGE_WIDTH
 
 
 def _valid_names(module):
@@ -26,7 +27,7 @@ tf.flags.DEFINE_list('Xtfr', '../../datasets/real/ade20k.tfrecord',
 tf.flags.DEFINE_list('Ytfr', '../../datasets/anime/no-game-no-life.tfrecord',
                      'tfrecords files for Y dataset (can be 1 or more files)')
 tf.flags.DEFINE_enum('gantype', 'LSGAN', ['GAN', 'LSGAN', 'WGAN'],
-                       'Type of GAN to use within CycleGAN. Can choose from GAN/LSGAN/WGAN.\nWhile it is theoretically possible to use different GAN type for each part of training, it is generally not advised.')
+                     'Type of GAN to use within CycleGAN. Can choose from GAN/LSGAN/WGAN.\nWhile it is theoretically possible to use different GAN type for each part of training, it is generally not advised.')
 tf.flags.DEFINE_string('XYgenstr', 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc',
                        'Param string for XY generator')
 tf.flags.DEFINE_string('YXgenstr', 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc',
@@ -65,13 +66,15 @@ tf.flags.DEFINE_bool('history', True, 'Whether to keep history of generated imag
 tf.flags.DEFINE_integer('poolsize', 50, 'How large a history buffer will be. Valid only if history set to True.')
 
 
+def keep_flag(k): return k != 'h' and 'help' not in k and getattr(FLAGS, k) is not None
+
+
 def main(_):
     logging.getLogger().setLevel(logging.INFO)
-    flagstr = '\n'.join(tf.flags.flag_dict_to_args(dict((k, getattr(FLAGS, k))
-                                                        for k in dir(FLAGS)
-                                                        if k != 'h' and 'help' not in k and getattr(FLAGS,
-                                                                                                    k) is not None)))
+    flagstr = '\n'.join(tf.flags.flag_dict_to_args(dict((k, getattr(FLAGS, k)) for k in dir(FLAGS) if keep_flag(k))))
 
+    assert FLAGS.batchsize == 1 or (
+                IMAGE_HEIGHT is not None and IMAGE_WIDTH is not None), 'either use batch size 1 or specify input shapes'
     # I have only one GPU, no need for this now
     # # setting up only one GPU to use
     # devices_environ_var = 'CUDA_VISIBLE_DEVICES'
