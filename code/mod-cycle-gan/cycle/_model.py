@@ -224,7 +224,7 @@ class CycleGAN:
             model_ops['summary'] = tf.summary.merge_all()
             train_writer = tf.summary.FileWriter(self.full_checkpoints_dir, self.graph)
             saver = tf.train.Saver()
-            saver_long_term = tf.train.Saver()
+            saver_long_term = tf.train.Saver(max_to_keep=None)
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
