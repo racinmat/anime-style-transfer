@@ -224,6 +224,7 @@ class CycleGAN:
             model_ops['summary'] = tf.summary.merge_all()
             train_writer = tf.summary.FileWriter(self.full_checkpoints_dir, self.graph)
             saver = tf.train.Saver()
+            saver_long_term = tf.train.Saver()
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -296,6 +297,12 @@ class CycleGAN:
                 if step % 5000 == 0:
                     save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
                     logging.info('Model saved in file: %s', save_path)
+
+                if step % 50000 == 0:
+                    save_path = saver_long_term.save(
+                        sess, osp.join(self.full_checkpoints_dir, 'model-long-term.ckpt'), global_step=step,
+                        latest_filename='checkpoint-long-term')
+                    logging.info('Long term model saved in file: %s', save_path)
 
                 step += 1
 
