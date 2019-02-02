@@ -447,7 +447,7 @@ class CycleGAN:
             # to access gradients
             gradients = adam.compute_gradients(loss, var_list=variables)
 
-            tf.summary.scalar("global_norm/gradient_norm", clip_ops.global_norm(list(zip(*gradients))[0]))
+            tf.summary.scalar("gradient_norm/global", clip_ops.global_norm(list(zip(*gradients))[0]))
 
             # Add histograms for variables, gradients and gradient norms
             # copied from tensorflow.contrib.layers.python.layers.optimizers.optimize_loss
