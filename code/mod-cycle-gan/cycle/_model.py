@@ -100,11 +100,6 @@ class CycleGAN:
             yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss + yx_selfreg_loss
 
             if self.tb_verbose:
-                # X_dis_fake = self.YtoX.dis(fake_x)
-                # X_dis_real = self.YtoX.dis(self.cur_x)
-                # Y_dis_fake = self.XtoY.dis(fake_y)
-                # Y_dis_real = self.XtoY.dis(self.cur_y)
-
                 X_dis_fake = self.YtoX.fake_dis_output
                 X_dis_real = self.YtoX.real_dis_output
                 Y_dis_fake = self.XtoY.fake_dis_output
@@ -225,7 +220,6 @@ class CycleGAN:
 
             while step < self.steps:
                 if self.history:
-
                     # start = time()
                     fx, fy = sess.run(model_ops['fakes'], feed_dict={
                         self.cur_x: cur_x,

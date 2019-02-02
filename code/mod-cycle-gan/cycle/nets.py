@@ -115,7 +115,7 @@ class GAN(object):
 
     def gen_loss(self, orig_data):
         self.fake_dis_output = self.dis(self.gen(orig_data))
-        with tf.variable_scope('{}/gen_loss'.format(self.gen.name)):
+        with tf.variable_scope('{}-gen-loss'.format(self.gen.name)):
             return self._gen_loss(self.fake_dis_output) * self.gen_lambda
 
     def _dis_loss(self, fake):
@@ -131,16 +131,16 @@ class GAN(object):
 
     def construct_dis_full_loss(self, real, fake, name):
         self.real_dis_output = self.dis(real)
-        with tf.variable_scope('{}/dis_loss'.format(name)):
+        with tf.variable_scope('{}-dis-loss'.format(name)):
             dis_loss = self.dis_loss(fake)
             dis_weight_loss = self.dis.weight_loss()
             dis_full_loss = dis_loss + dis_weight_loss
 
-            if self.tb_verbose:
-                tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
-                tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
-                if self.dis.weight_lambda > 0:
-                    tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
+        if self.tb_verbose:
+            tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
+            tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
+            if self.dis.weight_lambda > 0:
+                tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
 
         return dis_full_loss
 
