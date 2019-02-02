@@ -74,7 +74,7 @@ def main(_):
     flagstr = '\n'.join(tf.flags.flag_dict_to_args(dict((k, getattr(FLAGS, k)) for k in dir(FLAGS) if keep_flag(k))))
 
     assert FLAGS.batchsize == 1 or (
-                IMAGE_HEIGHT is not None and IMAGE_WIDTH is not None), 'either use batch size 1 or specify input shapes'
+            IMAGE_HEIGHT is not None and IMAGE_WIDTH is not None), 'either use batch size 1 or specify input shapes'
     # I have only one GPU, no need for this now
     # # setting up only one GPU to use
     # devices_environ_var = 'CUDA_VISIBLE_DEVICES'
@@ -129,30 +129,28 @@ def initialize_networks():
                                  batch_size=FLAGS.batchsize)
     yfeed = cycle.utils.TFReader(FLAGS.Ytfr, normer=modellib.Y_normer, denormer=modellib.Y_denormer,
                                  batch_size=FLAGS.batchsize)
-    xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen', FLAGS.XYgenstr,
-                                  True, FLAGS.XYgwl, FLAGS.norm)
-    yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen', FLAGS.YXgenstr,
-                                  True, FLAGS.YXgwl, FLAGS.norm)
-    xdis = modellib.X_Discriminator(FLAGS.Xname + '-dis', FLAGS.Xdisstr,
-                                    True, FLAGS.Xdwl, FLAGS.norm)
-    ydis = modellib.Y_Discriminator(FLAGS.Yname + '-dis', FLAGS.Ydisstr,
-                                    True, FLAGS.Ydwl, FLAGS.norm)
+    xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen', FLAGS.XYgenstr, True, FLAGS.XYgwl,
+                                  FLAGS.norm)
+    yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen', FLAGS.YXgenstr, True, FLAGS.YXgwl,
+                                  FLAGS.norm)
+    xdis = modellib.X_Discriminator(FLAGS.Xname + '-dis', FLAGS.Xdisstr, True, FLAGS.Xdwl, FLAGS.norm)
+    ydis = modellib.Y_Discriminator(FLAGS.Yname + '-dis', FLAGS.Ydisstr, True, FLAGS.Ydwl, FLAGS.norm)
     xy_fmap = modellib.feature_map if FLAGS.selftransform and FLAGS.XYsrl > 0 else None
     yx_fmap = modellib.feature_map if FLAGS.selftransform and FLAGS.YXsrl > 0 else None
     if FLAGS.gantype.casefold() == 'GAN'.casefold():
-        xy = cycle.nets.GAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+        xy = cycle.nets.GAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE, FLAGS.tbverbose,
                             FLAGS.XYgll, FLAGS.Ydll, FLAGS.XYsrl, xy_fmap)
-        yx = cycle.nets.GAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+        yx = cycle.nets.GAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE, FLAGS.tbverbose,
                             FLAGS.YXgll, FLAGS.Xdll, FLAGS.YXsrl, yx_fmap)
     elif FLAGS.gantype.casefold() == 'LSGAN'.casefold():
-        xy = cycle.nets.LSGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+        xy = cycle.nets.LSGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE, FLAGS.tbverbose,
                               FLAGS.XYgll, FLAGS.Ydll, FLAGS.XYsrl, xy_fmap)
-        yx = cycle.nets.LSGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+        yx = cycle.nets.LSGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE, FLAGS.tbverbose,
                               FLAGS.YXgll, FLAGS.Xdll, FLAGS.YXsrl, yx_fmap)
     elif FLAGS.gantype.casefold() == 'WGAN'.casefold():
-        xy = cycle.nets.WGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE,
+        xy = cycle.nets.WGAN(xygen, ydis, modellib.X_DATA_SHAPE, modellib.Y_DATA_SHAPE, FLAGS.tbverbose,
                              FLAGS.XYgll, FLAGS.Ydll, FLAGS.Ygrl, FLAGS.XYsrl, xy_fmap)
-        yx = cycle.nets.WGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE,
+        yx = cycle.nets.WGAN(yxgen, xdis, modellib.Y_DATA_SHAPE, modellib.X_DATA_SHAPE, FLAGS.tbverbose,
                              FLAGS.YXgll, FLAGS.Xdll, FLAGS.Xgrl, FLAGS.YXsrl, yx_fmap)
     else:
         raise ValueError('You did not specify any gantype that would be recognizible!')

@@ -10,6 +10,8 @@ import progressbar
 import tensorflow as tf
 from tensorflow import graph_util as gu
 import numpy as np
+
+from cycle.nets import GAN
 from . import utils, nets
 
 
@@ -17,7 +19,7 @@ class CycleGAN:
     SAVE_NODES = ['input', 'output', 'd_input', 'd_output']
     OUTPUT_NODES = SAVE_NODES[1:]
 
-    def __init__(self, XtoY, YtoX, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0, tb_verbose=True,
+    def __init__(self, XtoY: GAN, YtoX: GAN, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0, tb_verbose=True,
                  visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5, history=True, graph=None,
                  checkpoints_dir='../../checkpoint', load_model=None):
 
@@ -82,38 +84,12 @@ class CycleGAN:
             xy_gen_weight_loss = self.XtoY.gen.weight_loss()
             yx_gen_weight_loss = self.YtoX.gen.weight_loss()
 
-            y_dis_weight_loss = self.XtoY.dis.weight_loss()
-            x_dis_weight_loss = self.YtoX.dis.weight_loss()
-
-            if not isinstance(self.YtoX, nets.WGAN):
-                if self.history:
-                    x_dis_loss = self.YtoX.dis_loss(self.cur_x, self.prev_fake_x)
-                else:
-                    x_dis_loss = self.YtoX.dis_loss(self.cur_x, fake_x)
-                x_dis_full_loss = x_dis_loss + x_dis_weight_loss
+            if self.history:
+                x_dis_full_loss = self.YtoX.construct_dis_full_loss(self.cur_x, self.prev_fake_x, self.X_name)
+                y_dis_full_loss = self.XtoY.construct_dis_full_loss(self.cur_y, self.prev_fake_y, self.Y_name)
             else:
-                if self.history:
-                    x_dis_loss = self.YtoX.dis_loss(self.cur_x, self.prev_fake_x)
-                    x_dis_grad_loss = self.YtoX.grad_loss(self.cur_x, self.prev_fake_x)
-                else:
-                    x_dis_loss = self.YtoX.dis_loss(self.cur_x, fake_x)
-                    x_dis_grad_loss = self.YtoX.grad_loss(self.cur_x, fake_x)
-                x_dis_full_loss = x_dis_loss + x_dis_weight_loss + x_dis_grad_loss
-
-            if not isinstance(self.XtoY, nets.WGAN):
-                if self.history:
-                    y_dis_loss = self.XtoY.dis_loss(self.cur_y, self.prev_fake_y)
-                else:
-                    y_dis_loss = self.XtoY.dis_loss(self.cur_y, fake_y)
-                y_dis_full_loss = y_dis_loss + y_dis_weight_loss
-            else:
-                if self.history:
-                    y_dis_loss = self.XtoY.dis_loss(self.cur_y, self.prev_fake_y)
-                    y_dis_grad_loss = self.XtoY.grad_loss(self.cur_y, self.prev_fake_y)
-                else:
-                    y_dis_loss = self.XtoY.dis_loss(self.cur_y, fake_y)
-                    y_dis_grad_loss = self.XtoY.grad_loss(self.cur_y, fake_y)
-                y_dis_full_loss = y_dis_loss + y_dis_weight_loss + y_dis_grad_loss
+                x_dis_full_loss = self.YtoX.construct_dis_full_loss(self.cur_x, fake_x, self.X_name)
+                y_dis_full_loss = self.XtoY.construct_dis_full_loss(self.cur_y, fake_y, self.Y_name)
 
             xy_selfreg_loss = self.XtoY.selfreg_loss(self.cur_x, fake_y)
             xy_gen_full_loss = xy_gen_loss + xy_gen_weight_loss + cycle_loss + xy_selfreg_loss
@@ -146,21 +122,6 @@ class CycleGAN:
                 tf.summary.scalar('{}-{}_gen/gen_loss'.format(self.Y_name, self.X_name), yx_gen_loss)
                 tf.summary.scalar('{}-{}_gen/full_loss'.format(self.Y_name, self.X_name), yx_gen_full_loss)
 
-                if self.YtoX.dis.weight_lambda > 0:
-                    tf.summary.scalar('{}_dis/weight_loss'.format(self.X_name), x_dis_weight_loss)
-                tf.summary.scalar('{}_dis/dis_loss'.format(self.X_name), x_dis_loss)
-                tf.summary.scalar('{}_dis/full_loss'.format(self.X_name), x_dis_full_loss)
-
-                if self.XtoY.dis.weight_lambda > 0:
-                    tf.summary.scalar('{}_dis/weight_loss'.format(self.Y_name), y_dis_weight_loss)
-                tf.summary.scalar('{}_dis/dis_loss'.format(self.Y_name), y_dis_loss)
-                tf.summary.scalar('{}_dis/full_loss'.format(self.Y_name), y_dis_full_loss)
-
-                if isinstance(self.YtoX, nets.WGAN):
-                    tf.summary.scalar('{}_dis/grad_loss'.format(self.X_name), x_dis_grad_loss)
-                if isinstance(self.XtoY, nets.WGAN):
-                    tf.summary.scalar('{}_dis/grad_loss'.format(self.Y_name), y_dis_grad_loss)
-
                 tf.summary.scalar('cycle_loss', cycle_loss)
 
                 if self.visualizer:
@@ -170,9 +131,7 @@ class CycleGAN:
 
             with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
                 with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
-                    global_step = tf.get_variable('global_step',
-                                                  shape=(),
-                                                  initializer=tf.zeros_initializer)
+                    global_step = tf.train.get_or_create_global_step()
                 yx_gen_opt = self._optimizer(yx_gen_full_loss,
                                              self.YtoX.gen.variables,
                                              global_step,
@@ -181,11 +140,11 @@ class CycleGAN:
                                              self.XtoY.gen.variables,
                                              global_step,
                                              'Adam/{}-{}_gen'.format(self.X_name, self.Y_name))
-                x_dis_opt = self._optimizer(x_dis_loss,
+                x_dis_opt = self._optimizer(x_dis_full_loss,
                                             self.YtoX.dis.variables,
                                             global_step,
                                             'Adam/{}_dis'.format(self.X_name))
-                y_dis_opt = self._optimizer(y_dis_loss,
+                y_dis_opt = self._optimizer(y_dis_full_loss,
                                             self.XtoY.dis.variables,
                                             global_step,
                                             'Adam/{}_dis'.format(self.Y_name))
@@ -194,14 +153,12 @@ class CycleGAN:
                     train_gen = tf.no_op('optimizers_gen')
                 with tf.control_dependencies([x_dis_opt, y_dis_opt]):
                     train_dis = tf.no_op('optimizers_dis')
-                global_step_op = tf.assign_add(global_step, 1)
 
             logging.info('Created CycleGAN model')
 
             return {'train': {
                 'gen': train_gen,
-                'dis': train_dis,
-                'global_step': global_step_op
+                'dis': train_dis
             },
                 'losses': {
                     'cycle': cycle_loss,
@@ -282,7 +239,7 @@ class CycleGAN:
                 # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
                 # every 100 steps mean cca every minute it is logged on 1080Ti
                 if step % 100 == 0:
-                    summary, _ = sess.run([model_ops['summary'], model_ops['train']['global_step']],
+                    summary = sess.run(model_ops['summary'],
                                           feed_dict=feeder_dict)
                     train_writer.add_summary(summary, step)
                     train_writer.flush()
@@ -473,15 +430,15 @@ class CycleGAN:
             learning_rate = tf.where(tf.greater_equal(global_step, self.decay_from),
                                      tf.train.polynomial_decay(self.learning_rate,
                                                                global_step - self.decay_from,
-                                                               self.steps - self.decay_from,
-                                                               0, power=1.0),
+                                                               decay_steps=self.steps - self.decay_from,
+                                                               end_learning_rate=0, power=1.0),
                                      self.learning_rate)
 
             if self.tb_verbose:
                 tf.summary.scalar('learning_rate', learning_rate)
 
             adam = tf.train.AdamOptimizer(learning_rate, beta1=self.beta1, name=name)
-            learning_step = adam.minimize(loss, var_list=variables)
+            learning_step = adam.minimize(loss, var_list=variables, global_step=global_step)
             return learning_step
 
     def _cycle_loss(self, x, y, cycle_lambda):

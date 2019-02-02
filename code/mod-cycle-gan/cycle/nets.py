@@ -29,8 +29,8 @@ class BaseNet:
         self.norm = norm
         self.network_desc = network_desc.split(';')
         self.names = []
-        self.layers_dicts = []    # added for debug
-        self.outputs = []    # added for debug
+        self.layers_dicts = []  # added for debug
+        self.outputs = []  # added for debug
         for i, n in enumerate(self.network_desc[:-1]):
             newname = n
             while True:
@@ -86,8 +86,8 @@ class BaseNet:
 
 
 class GAN:
-    def __init__(self, gen, dis, in_shape, out_shape,
-                 gen_lambda, dis_lambda, selfreg_lambda, selfreg_transform=None):
+    def __init__(self, gen, dis, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda, selfreg_lambda,
+                 selfreg_transform=None):
         assert isinstance(gen, BaseNet) and isinstance(dis, BaseNet)
         self.gen = gen
         self.dis = dis
@@ -97,6 +97,7 @@ class GAN:
         self.dis_lambda = dis_lambda
         self.selfreg_lambda = selfreg_lambda
         self.selfreg_transform = selfreg_transform
+        self.tb_verbose = tb_verbose
 
     def _gen_loss(self, data):
         return -tf.reduce_mean(ops.safe_log(data))
@@ -121,6 +122,19 @@ class GAN:
     def dis_loss(self, real, fake):
         return self._dis_loss(real, fake) * self.dis_lambda
 
+    def construct_dis_full_loss(self, cur, fake, name):
+        dis_loss = self.dis_loss(cur, fake)
+        dis_weight_loss = self.dis.weight_loss()
+        dis_full_loss = dis_loss + dis_weight_loss
+
+        if self.tb_verbose:
+            tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
+            tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
+            if self.dis.weight_lambda > 0:
+                tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
+
+        return dis_full_loss
+
 
 class LSGAN(GAN):
     def _gen_loss(self, data):
@@ -133,9 +147,9 @@ class LSGAN(GAN):
 
 
 class WGAN(GAN):
-    def __init__(self, gen, dis, in_shape, out_shape,
+    def __init__(self, gen, dis, in_shape, out_shape, tb_verbose,
                  gen_lambda, dis_lambda, grad_lambda, selfreg_lambda, selfreg_transform=None):
-        super().__init__(gen, dis, in_shape, out_shape,
+        super().__init__(gen, dis, in_shape, out_shape, tb_verbose,
                          gen_lambda, dis_lambda, selfreg_lambda, selfreg_transform)
         self.grad_lambda = grad_lambda
 
@@ -159,3 +173,18 @@ class WGAN(GAN):
 
     def _dis_loss(self, *args):
         raise NotImplementedError('WGAN is called differently, mate!')
+
+    def construct_dis_full_loss(self, cur, fake, name):
+        dis_loss = self.dis_loss(cur, fake)
+        dis_weight_loss = self.dis.weight_loss()
+        dis_grad_loss = self.grad_loss(cur, fake)
+        dis_full_loss = dis_loss + dis_weight_loss + dis_grad_loss
+
+        if self.tb_verbose:
+            tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
+            tf.summary.scalar('{}_dis/grad_loss'.format(name), dis_grad_loss)
+            tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
+            if self.dis.weight_lambda > 0:
+                tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
+
+        return dis_full_loss
