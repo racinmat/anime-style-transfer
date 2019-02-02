@@ -57,10 +57,10 @@ class CycleGAN:
 
         with self.graph.as_default():
             if history:
-                self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape)
-                self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape)
-            self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape)
-            self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape)
+                self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_x')
+                self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_y')
+            self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='real_x')
+            self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='real_y')
 
         self.name = None
         self.load_from_ckpt = False
@@ -100,15 +100,15 @@ class CycleGAN:
             yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss + yx_selfreg_loss
 
             if self.tb_verbose:
-                X_dis_fake = self.YtoX.dis(fake_x)
-                X_dis_real = self.YtoX.dis(self.cur_x)
-                Y_dis_fake = self.XtoY.dis(fake_y)
-                Y_dis_real = self.XtoY.dis(self.cur_y)
-
-                tf.summary.histogram('D_{}/real'.format(self.X_name), X_dis_real)
-                tf.summary.histogram('D_{}/fake'.format(self.X_name), X_dis_fake)
-                tf.summary.histogram('D_{}/real'.format(self.Y_name), Y_dis_real)
-                tf.summary.histogram('D_{}/fake'.format(self.Y_name), Y_dis_fake)
+                # X_dis_fake = self.YtoX.dis(fake_x)
+                # X_dis_real = self.YtoX.dis(self.cur_x)
+                # Y_dis_fake = self.XtoY.dis(fake_y)
+                # Y_dis_real = self.XtoY.dis(self.cur_y)
+                #
+                # tf.summary.histogram('D_{}/real'.format(self.X_name), X_dis_real)
+                # tf.summary.histogram('D_{}/fake'.format(self.X_name), X_dis_fake)
+                # tf.summary.histogram('D_{}/real'.format(self.Y_name), Y_dis_real)
+                # tf.summary.histogram('D_{}/fake'.format(self.Y_name), Y_dis_fake)
 
                 if self.XtoY.gen.weight_lambda > 0:
                     tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.X_name, self.Y_name), xy_gen_weight_loss)
@@ -208,20 +208,30 @@ class CycleGAN:
                 for k, v in varsize_dict.items():
                     logging.info('\t{}:\t{}'.format(k, v))
 
+            from time import time
+
+            start = time()
+
             if self.history:
                 x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
                 y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
-
-            # try:
-            if self.history:
                 cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+
+            logging.info('history buffering init: %s', time() - start)
+
             while step < self.steps:
                 if self.history:
+
+                    start = time()
                     fx, fy = sess.run(model_ops['fakes'], feed_dict={
                         self.cur_x: cur_x,
                         self.cur_y: cur_y,
                     })
+                    logging.info('history buffering fakes: %s', time() - start)
+
+                start = time()
                 cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+                logging.info('feeding data: %s', time() - start)
                 if self.history:
                     feeder_dict = {
                         self.cur_x: cur_x,
@@ -234,13 +244,13 @@ class CycleGAN:
                         self.cur_x: cur_x,
                         self.cur_y: cur_y,
                     }
+
+                start = time()
                 for _ in range(dis_train):
                     sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
                 for _ in range(gen_train):
-                    # todo, debug why it fails sometimes with dynamic input, using the self.XtoY.gen.layers_dict to see things in problematic layer
-                    # sess.run(self.XtoY.gen.layers_dicts[1]['c-7-1-3-t'], feed_dict={self.cur_x: cur_x}) works
-                    # then uncomment the try-catch and probably get rid of all the coords things
                     sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
+                logging.info('train ops: %s', time() - start)
 
                 # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
                 if step % 250 == 0:

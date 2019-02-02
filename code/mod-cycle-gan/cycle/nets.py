@@ -20,7 +20,7 @@ REAL_LABEL = 0.9
 # 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc' - generator
 # 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;' - discriminator
 
-class BaseNet:
+class BaseNet(object):
     def __init__(self, name, network_desc, is_training, weight_lambda=0.0, norm='instance'):
         self.name = name
         self.is_training = is_training
@@ -85,7 +85,7 @@ class BaseNet:
         return tf.reduce_sum([tf.size(v) for v in self.variables])
 
 
-class GAN:
+class GAN(object):
     def __init__(self, gen, dis, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda, selfreg_lambda,
                  selfreg_transform=None):
         assert isinstance(gen, BaseNet) and isinstance(dis, BaseNet)
@@ -98,6 +98,8 @@ class GAN:
         self.selfreg_lambda = selfreg_lambda
         self.selfreg_transform = selfreg_transform
         self.tb_verbose = tb_verbose
+        self.fake_dis_output = None
+        self.real_dis_output = None
 
     def _gen_loss(self, data):
         return -tf.reduce_mean(ops.safe_log(data))
@@ -112,26 +114,33 @@ class GAN:
         return 0
 
     def gen_loss(self, orig_data):
-        return self._gen_loss(self.dis(self.gen(orig_data))) * self.gen_lambda
+        self.fake_dis_output = self.dis(self.gen(orig_data))
+        with tf.variable_scope('{}/gen_loss'.format(self.gen.name)):
+            return self._gen_loss(self.fake_dis_output) * self.gen_lambda
 
-    def _dis_loss(self, real, fake):
-        real_l = -tf.reduce_mean(ops.safe_log(self.dis(real)))
+    def _dis_loss(self, fake):
+        real_l = -tf.reduce_mean(ops.safe_log(self.real_dis_output))
         fake_l = -tf.reduce_mean(ops.safe_log(1 - self.dis(fake)))
         return (real_l + fake_l) / 2
 
-    def dis_loss(self, real, fake):
-        return self._dis_loss(real, fake) * self.dis_lambda
+    def dis_loss(self, fake):
+        return self._dis_loss(fake) * self.dis_lambda
 
-    def construct_dis_full_loss(self, cur, fake, name):
-        dis_loss = self.dis_loss(cur, fake)
-        dis_weight_loss = self.dis.weight_loss()
-        dis_full_loss = dis_loss + dis_weight_loss
+    def _construct_dis_full_loss(self, real, fake, name):
+        pass
 
-        if self.tb_verbose:
-            tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
-            tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
-            if self.dis.weight_lambda > 0:
-                tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
+    def construct_dis_full_loss(self, real, fake, name):
+        self.real_dis_output = self.dis(real)
+        with tf.variable_scope('{}/dis_loss'.format(name)):
+            dis_loss = self.dis_loss(fake)
+            dis_weight_loss = self.dis.weight_loss()
+            dis_full_loss = dis_loss + dis_weight_loss
+
+            if self.tb_verbose:
+                tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
+                tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
+                if self.dis.weight_lambda > 0:
+                    tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
 
         return dis_full_loss
 
@@ -140,8 +149,8 @@ class LSGAN(GAN):
     def _gen_loss(self, data):
         return tf.reduce_mean(tf.squared_difference(data, REAL_LABEL))
 
-    def _dis_loss(self, real, fake):
-        real_l = tf.reduce_mean(tf.squared_difference(self.dis(real), REAL_LABEL))
+    def _dis_loss(self, fake):
+        real_l = tf.reduce_mean(tf.squared_difference(self.real_dis_output, REAL_LABEL))
         fake_l = tf.reduce_mean(tf.square(self.dis(fake)))
         return (real_l + fake_l) / 2
 
@@ -163,25 +172,27 @@ class WGAN(GAN):
         grads = tf.gradients(ys=self.dis(orig_hat), xy=[orig_hat])
         return self.grad_lambda * tf.square(tf.norm(grads[0], ord=2) - 1.0)
 
-    def dis_loss(self, real, fake):
-        real_l = -tf.reduce_mean(self.dis(real))
+    def dis_loss(self, fake):
+        real_l = -tf.reduce_mean(self.real_dis_output)
         fake_l = tf.reduce_mean(self.dis(fake))
         return self.dis_lambda * (real_l + fake_l) / 2
 
     def _dis_loss(self, *args):
         raise NotImplementedError('WGAN is called differently, mate!')
 
-    def construct_dis_full_loss(self, cur, fake, name):
-        dis_loss = self.dis_loss(cur, fake)
-        dis_weight_loss = self.dis.weight_loss()
-        dis_grad_loss = self.grad_loss(cur, fake)
-        dis_full_loss = dis_loss + dis_weight_loss + dis_grad_loss
+    def construct_dis_full_loss(self, real, fake, name):
+        self.real_dis_output = self.dis(real)
+        with tf.variable_scope('{}/dis_loss'.format(name)):
+            dis_loss = self.dis_loss(fake)
+            dis_weight_loss = self.dis.weight_loss()
+            dis_grad_loss = self.grad_loss(real, fake)
+            dis_full_loss = dis_loss + dis_weight_loss + dis_grad_loss
 
-        if self.tb_verbose:
-            tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
-            tf.summary.scalar('{}_dis/grad_loss'.format(name), dis_grad_loss)
-            tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
-            if self.dis.weight_lambda > 0:
-                tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
+            if self.tb_verbose:
+                tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
+                tf.summary.scalar('{}_dis/grad_loss'.format(name), dis_grad_loss)
+                tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
+                if self.dis.weight_lambda > 0:
+                    tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
 
         return dis_full_loss
