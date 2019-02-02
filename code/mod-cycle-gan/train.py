@@ -70,7 +70,13 @@ def keep_flag(k): return k != 'h' and 'help' not in k and getattr(FLAGS, k) is n
 
 
 def main(_):
-    logging.getLogger().setLevel(logging.INFO)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logging.basicConfig()
+    hdlr = logger.handlers[0]
+    formatter = logging.Formatter("%(asctime)s;%(levelname)s;%(message)s")
+    hdlr.setFormatter(formatter)
+
     flagstr = '\n'.join(tf.flags.flag_dict_to_args(dict((k, getattr(FLAGS, k)) for k in dir(FLAGS) if keep_flag(k))))
 
     assert FLAGS.batchsize == 1 or (

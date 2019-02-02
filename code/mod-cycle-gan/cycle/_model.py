@@ -10,6 +10,8 @@ import progressbar
 import tensorflow as tf
 from tensorflow import graph_util as gu
 import numpy as np
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import clip_ops
 
 from cycle.nets import GAN
 from . import utils, nets
@@ -124,6 +126,9 @@ class CycleGAN:
 
                 tf.summary.scalar('cycle_loss', cycle_loss)
 
+                for var in tf.trainable_variables():
+                    tf.summary.histogram(var.op.name, var)
+
                 if self.visualizer:
                     # this is mine, showing one by one
                     self.visualizer(self.cur_x, fake_y, self.YtoX.gen(fake_y), self.X_name, self.Y_name)
@@ -149,6 +154,7 @@ class CycleGAN:
                                             global_step,
                                             'Adam/{}_dis'.format(self.Y_name))
 
+                tf.summary.scalar('global_step', global_step)
                 with tf.control_dependencies([xy_gen_opt, yx_gen_opt]):
                     train_gen = tf.no_op('optimizers_gen')
                 with tf.control_dependencies([x_dis_opt, y_dis_opt]):
@@ -237,18 +243,16 @@ class CycleGAN:
                     sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
 
                 # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
-                # every 100 steps mean cca every minute it is logged on 1080Ti
-                if step % 100 == 0:
-                    summary = sess.run(model_ops['summary'],
-                                          feed_dict=feeder_dict)
+                if step % 200 == 0:
+                    summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
                     train_writer.add_summary(summary, step)
                     train_writer.flush()
 
-                if log_verbose and step % 100 == 0:
-                    logging.info('------ Step {:d} ------'.format(step))
-                    losses = sess.run(model_ops['losses'], feed_dict=feeder_dict)
-                    for k, v in losses.items():
-                        logging.info('\t{}:\t{:8f}'.format(k, v))
+                    if log_verbose:
+                        logging.info('------ Step {:d} ------'.format(step))
+                        losses = sess.run(model_ops['losses'], feed_dict=feeder_dict)
+                        for k, v in losses.items():
+                            logging.info('\t{}:\t{:8f}'.format(k, v))
 
                 # every 5000 means cca every hour and 15 minutes model is saved on 1080Ti
                 if step % 5000 == 0:
@@ -438,7 +442,28 @@ class CycleGAN:
                 tf.summary.scalar('learning_rate', learning_rate)
 
             adam = tf.train.AdamOptimizer(learning_rate, beta1=self.beta1, name=name)
-            learning_step = adam.minimize(loss, var_list=variables, global_step=global_step)
+
+            # this part is basically copied from tensorflow.python.training.optimizer.Optimizer#minimize
+            # to access gradients
+            gradients = adam.compute_gradients(loss, var_list=variables)
+
+            tf.summary.scalar("global_norm/gradient_norm", clip_ops.global_norm(list(zip(*gradients))[0]))
+
+            # Add histograms for variables, gradients and gradient norms
+            # copied from tensorflow.contrib.layers.python.layers.optimizers.optimize_loss
+            for gradient, variable in gradients:
+                if isinstance(gradient, ops.IndexedSlices):
+                    grad_values = gradient.values
+                else:
+                    grad_values = gradient
+
+                if grad_values is not None:
+                    var_name = variable.name.replace(":", "_")
+                    tf.summary.histogram("gradients/%s" % var_name, grad_values)
+                    tf.summary.scalar("gradient_norm/%s" % var_name, clip_ops.global_norm([grad_values]))
+
+            learning_step = adam.apply_gradients(gradients, global_step=global_step)
+
             return learning_step
 
     def _cycle_loss(self, x, y, cycle_lambda):

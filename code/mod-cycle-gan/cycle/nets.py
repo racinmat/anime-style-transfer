@@ -160,16 +160,13 @@ class WGAN(GAN):
         shape = [real.shape[0].value] + [1 for _ in range(len(real.shape) - 1)]
         rand_eps = tf.random_uniform(shape=shape, minval=0., maxval=1.)
         orig_hat = real * rand_eps + fake * (1 - rand_eps)
-        grads = tf.gradients(self.dis(orig_hat), [orig_hat])
+        grads = tf.gradients(ys=self.dis(orig_hat), xy=[orig_hat])
         return self.grad_lambda * tf.square(tf.norm(grads[0], ord=2) - 1.0)
 
     def dis_loss(self, real, fake):
         real_l = -tf.reduce_mean(self.dis(real))
         fake_l = tf.reduce_mean(self.dis(fake))
         return self.dis_lambda * (real_l + fake_l) / 2
-
-    def full_dis_loss(self, real, fake):
-        return self.dis_loss(real, fake) + self.grad_loss(real, fake)
 
     def _dis_loss(self, *args):
         raise NotImplementedError('WGAN is called differently, mate!')
