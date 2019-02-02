@@ -100,6 +100,11 @@ class CycleGAN:
             yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss + yx_selfreg_loss
 
             if self.tb_verbose:
+                # X_dis_fake = self.YtoX.dis(fake_x)
+                # X_dis_real = self.YtoX.dis(self.cur_x)
+                # Y_dis_fake = self.XtoY.dis(fake_y)
+                # Y_dis_real = self.XtoY.dis(self.cur_y)
+
                 X_dis_fake = self.YtoX.fake_dis_output
                 X_dis_real = self.YtoX.real_dis_output
                 Y_dis_fake = self.XtoY.fake_dis_output
@@ -208,30 +213,29 @@ class CycleGAN:
                 for k, v in varsize_dict.items():
                     logging.info('\t{}:\t{}'.format(k, v))
 
-            from time import time
-
-            start = time()
+            # from time import time
+            # start = time()
 
             if self.history:
                 x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
                 y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
                 cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
 
-            logging.info('history buffering init: %s', time() - start)
+            # logging.info('history buffering init: %s', time() - start)
 
             while step < self.steps:
                 if self.history:
 
-                    start = time()
+                    # start = time()
                     fx, fy = sess.run(model_ops['fakes'], feed_dict={
                         self.cur_x: cur_x,
                         self.cur_y: cur_y,
                     })
-                    logging.info('history buffering fakes: %s', time() - start)
+                    # logging.info('history buffering fakes: %s', time() - start)
 
-                start = time()
+                # start = time()
                 cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-                logging.info('feeding data: %s', time() - start)
+                # logging.info('feeding data: %s', time() - start)
                 if self.history:
                     feeder_dict = {
                         self.cur_x: cur_x,
@@ -245,12 +249,12 @@ class CycleGAN:
                         self.cur_y: cur_y,
                     }
 
-                start = time()
+                # start = time()
                 for _ in range(dis_train):
                     sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
                 for _ in range(gen_train):
                     sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
-                logging.info('train ops: %s', time() - start)
+                # logging.info('train ops: %s', time() - start)
 
                 # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
                 if step % 250 == 0:
