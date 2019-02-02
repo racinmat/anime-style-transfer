@@ -100,15 +100,15 @@ class CycleGAN:
             yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss + yx_selfreg_loss
 
             if self.tb_verbose:
-                # X_dis_fake = self.YtoX.dis(fake_x)
-                # X_dis_real = self.YtoX.dis(self.cur_x)
-                # Y_dis_fake = self.XtoY.dis(fake_y)
-                # Y_dis_real = self.XtoY.dis(self.cur_y)
-                #
-                # tf.summary.histogram('D_{}/real'.format(self.X_name), X_dis_real)
-                # tf.summary.histogram('D_{}/fake'.format(self.X_name), X_dis_fake)
-                # tf.summary.histogram('D_{}/real'.format(self.Y_name), Y_dis_real)
-                # tf.summary.histogram('D_{}/fake'.format(self.Y_name), Y_dis_fake)
+                X_dis_fake = self.YtoX.fake_dis_output
+                X_dis_real = self.YtoX.real_dis_output
+                Y_dis_fake = self.XtoY.fake_dis_output
+                Y_dis_real = self.XtoY.real_dis_output
+
+                tf.summary.histogram('D_{}/real'.format(self.X_name), X_dis_real)
+                tf.summary.histogram('D_{}/fake'.format(self.X_name), X_dis_fake)
+                tf.summary.histogram('D_{}/real'.format(self.Y_name), Y_dis_real)
+                tf.summary.histogram('D_{}/fake'.format(self.Y_name), Y_dis_fake)
 
                 if self.XtoY.gen.weight_lambda > 0:
                     tf.summary.scalar('{}-{}_gen/weight_loss'.format(self.X_name, self.Y_name), xy_gen_weight_loss)
