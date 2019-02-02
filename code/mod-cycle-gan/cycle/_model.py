@@ -243,7 +243,7 @@ class CycleGAN:
                     sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
 
                 # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
-                if step % 200 == 0:
+                if step % 250 == 0:
                     summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
                     train_writer.add_summary(summary, step)
                     train_writer.flush()
