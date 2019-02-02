@@ -102,7 +102,7 @@ def create_cyclegan():
     cygan = cycle.CycleGAN(
         xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose,
         modellib.visualize if FLAGS.visualize else None, FLAGS.lr, FLAGS.beta1, FLAGS.steps,
-        (FLAGS.decayfrom * FLAGS.steps), history=FLAGS.history, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
+        int(FLAGS.decayfrom * FLAGS.steps), history=FLAGS.history, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
     return cygan
 
 
