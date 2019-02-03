@@ -17,4 +17,5 @@
 ::python train.py --Xtfr=../../datasets/real/ade20k.tfrecord --Ytfr=../../datasets/anime/no-game-no-life.tfrecord --Xname=real --Yname=anime^
 :: --gantype=GAN --XYgwl=1 --YXgwl=1 --Xdwl=1 --Ydwl=1 > train.log
 ::python train.py --Xtfr=../../datasets/real/ade20k.tfrecord --Ytfr=../../datasets/anime/no-game-no-life.tfrecord --Xname=real --Yname=anime > train.log
-python train.py --Xtfr=../../datasets/real/ade20k.tfrecord --Ytfr=../../datasets/anime/no-game-no-life.tfrecord --Xname=real --Yname=anime --gantype=GAN > train.log
+::python train.py --Xtfr=../../datasets/real/ade20k.tfrecord --Ytfr=../../datasets/anime/no-game-no-life.tfrecord --Xname=real --Yname=anime --gantype=GAN > train.log
+python train.py --Xtfr=../../datasets/real/ade20k.tfrecord --Ytfr=../../datasets/anime/no-game-no-life.tfrecord --Xname=real --Yname=anime --gantype=GAN --Xdll=1 --Ydll=1 --gtsteps=2 > train.log

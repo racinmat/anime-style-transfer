@@ -57,10 +57,12 @@ class CycleGAN:
 
         with self.graph.as_default():
             if history:
-                self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_x')
-                self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_y')
-            self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='real_x')
-            self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='real_y')
+                self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape,
+                                                  name='prev_fake_{}'.format(self.X_name))
+                self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape,
+                                                  name='prev_fake_{}'.format(self.Y_name))
+            self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='real_{}'.format(self.X_name))
+            self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='real_{}'.format(self.Y_name))
 
         self.name = None
         self.load_from_ckpt = False
@@ -80,11 +82,16 @@ class CycleGAN:
             fake_y = self.XtoY.gen(self.cur_x)
             fake_x = self.YtoX.gen(self.cur_y)
 
-            yx_gen_loss = self.YtoX.gen_loss(self.cur_y)
-            xy_gen_loss = self.XtoY.gen_loss(self.cur_x)
-
-            xy_gen_weight_loss = self.XtoY.gen.weight_loss()
-            yx_gen_weight_loss = self.YtoX.gen.weight_loss()
+            with tf.name_scope('{}-{}-gen-loss'.format(self.Y_name, self.X_name)):
+                yx_gen_loss = self.YtoX.gen_loss(self.cur_y)
+                yx_gen_weight_loss = self.YtoX.gen.weight_loss()
+                yx_selfreg_loss = self.YtoX.selfreg_loss(self.cur_y, fake_x)
+                yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss + yx_selfreg_loss
+            with tf.name_scope('{}-{}-gen-loss'.format(self.X_name, self.Y_name)):
+                xy_gen_loss = self.XtoY.gen_loss(self.cur_x)
+                xy_gen_weight_loss = self.XtoY.gen.weight_loss()
+                xy_selfreg_loss = self.XtoY.selfreg_loss(self.cur_x, fake_y)
+                xy_gen_full_loss = xy_gen_loss + xy_gen_weight_loss + cycle_loss + xy_selfreg_loss
 
             if self.history:
                 x_dis_full_loss = self.YtoX.construct_dis_full_loss(self.cur_x, self.prev_fake_x, self.X_name)
@@ -93,17 +100,11 @@ class CycleGAN:
                 x_dis_full_loss = self.YtoX.construct_dis_full_loss(self.cur_x, fake_x, self.X_name)
                 y_dis_full_loss = self.XtoY.construct_dis_full_loss(self.cur_y, fake_y, self.Y_name)
 
-            xy_selfreg_loss = self.XtoY.selfreg_loss(self.cur_x, fake_y)
-            xy_gen_full_loss = xy_gen_loss + xy_gen_weight_loss + cycle_loss + xy_selfreg_loss
-
-            yx_selfreg_loss = self.YtoX.selfreg_loss(self.cur_y, fake_x)
-            yx_gen_full_loss = yx_gen_loss + yx_gen_weight_loss + cycle_loss + yx_selfreg_loss
-
             if self.tb_verbose:
-                X_dis_fake = self.YtoX.fake_dis_output
-                X_dis_real = self.YtoX.real_dis_output
-                Y_dis_fake = self.XtoY.fake_dis_output
-                Y_dis_real = self.XtoY.real_dis_output
+                X_dis_fake = self.YtoX.dis(fake_x)
+                X_dis_real = self.YtoX.dis(self.cur_x)
+                Y_dis_fake = self.XtoY.dis(fake_y)
+                Y_dis_real = self.XtoY.dis(self.cur_y)
 
                 tf.summary.histogram('D_{}/real'.format(self.X_name), X_dis_real)
                 tf.summary.histogram('D_{}/fake'.format(self.X_name), X_dis_fake)

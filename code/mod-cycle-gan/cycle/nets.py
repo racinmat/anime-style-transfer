@@ -30,7 +30,7 @@ class BaseNet(object):
         self.network_desc = network_desc.split(';')
         self.names = []
         self.layers_dicts = []  # added for debug
-        self.outputs = []  # added for debug
+        self.inputs_cache = {}
         for i, n in enumerate(self.network_desc[:-1]):
             newname = n
             while True:
@@ -43,10 +43,14 @@ class BaseNet(object):
             self.names.append(newname)
 
     def __call__(self, data):
+        # some computational graph optimization
+        if data in self.inputs_cache:
+            return self.inputs_cache[data]
+
         with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
             result = self.transform(data)
         self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
-        self.outputs.append(result)
+        self.inputs_cache[data] = result
         return result
 
     def transform(self, data):
@@ -98,8 +102,6 @@ class GAN(object):
         self.selfreg_lambda = selfreg_lambda
         self.selfreg_transform = selfreg_transform
         self.tb_verbose = tb_verbose
-        self.fake_dis_output = None
-        self.real_dis_output = None
 
     def _gen_loss(self, data):
         return -tf.reduce_mean(ops.safe_log(data))
@@ -114,25 +116,24 @@ class GAN(object):
         return 0
 
     def gen_loss(self, orig_data):
-        self.fake_dis_output = self.dis(self.gen(orig_data))
-        with tf.variable_scope('{}-gen-loss'.format(self.gen.name)):
-            return self._gen_loss(self.fake_dis_output) * self.gen_lambda
+        fake_dis_output = self.dis(self.gen(orig_data))
+        with tf.name_scope('{}-gen-loss'.format(self.gen.name)):
+            return self._gen_loss(fake_dis_output) * self.gen_lambda
 
-    def _dis_loss(self, fake):
-        real_l = -tf.reduce_mean(ops.safe_log(self.real_dis_output))
+    def _dis_loss(self, real, fake):
+        real_l = -tf.reduce_mean(ops.safe_log(self.dis(real)))
         fake_l = -tf.reduce_mean(ops.safe_log(1 - self.dis(fake)))
         return (real_l + fake_l) / 2
 
-    def dis_loss(self, fake):
-        return self._dis_loss(fake) * self.dis_lambda
+    def dis_loss(self, real, fake):
+        return self._dis_loss(real, fake) * self.dis_lambda
 
     def _construct_dis_full_loss(self, real, fake, name):
         pass
 
     def construct_dis_full_loss(self, real, fake, name):
-        self.real_dis_output = self.dis(real)
-        with tf.variable_scope('{}-dis-loss'.format(name)):
-            dis_loss = self.dis_loss(fake)
+        with tf.name_scope('{}-dis-loss'.format(name)):
+            dis_loss = self.dis_loss(real, fake)
             dis_weight_loss = self.dis.weight_loss()
             dis_full_loss = dis_loss + dis_weight_loss
 
@@ -149,8 +150,8 @@ class LSGAN(GAN):
     def _gen_loss(self, data):
         return tf.reduce_mean(tf.squared_difference(data, REAL_LABEL))
 
-    def _dis_loss(self, fake):
-        real_l = tf.reduce_mean(tf.squared_difference(self.real_dis_output, REAL_LABEL))
+    def _dis_loss(self, real, fake):
+        real_l = tf.reduce_mean(tf.squared_difference(self.dis(real), REAL_LABEL))
         fake_l = tf.reduce_mean(tf.square(self.dis(fake)))
         return (real_l + fake_l) / 2
 
@@ -172,8 +173,8 @@ class WGAN(GAN):
         grads = tf.gradients(ys=self.dis(orig_hat), xy=[orig_hat])
         return self.grad_lambda * tf.square(tf.norm(grads[0], ord=2) - 1.0)
 
-    def dis_loss(self, fake):
-        real_l = -tf.reduce_mean(self.real_dis_output)
+    def dis_loss(self, real, fake):
+        real_l = -tf.reduce_mean(self.dis(real))
         fake_l = tf.reduce_mean(self.dis(fake))
         return self.dis_lambda * (real_l + fake_l) / 2
 
@@ -181,18 +182,17 @@ class WGAN(GAN):
         raise NotImplementedError('WGAN is called differently, mate!')
 
     def construct_dis_full_loss(self, real, fake, name):
-        self.real_dis_output = self.dis(real)
-        with tf.variable_scope('{}/dis_loss'.format(name)):
-            dis_loss = self.dis_loss(fake)
+        with tf.name_scope('{}/dis_loss'.format(name)):
+            dis_loss = self.dis_loss(real, fake)
             dis_weight_loss = self.dis.weight_loss()
             dis_grad_loss = self.grad_loss(real, fake)
             dis_full_loss = dis_loss + dis_weight_loss + dis_grad_loss
 
-            if self.tb_verbose:
-                tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
-                tf.summary.scalar('{}_dis/grad_loss'.format(name), dis_grad_loss)
-                tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
-                if self.dis.weight_lambda > 0:
-                    tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
+        if self.tb_verbose:
+            tf.summary.scalar('{}_dis/dis_loss'.format(name), dis_loss)
+            tf.summary.scalar('{}_dis/grad_loss'.format(name), dis_grad_loss)
+            tf.summary.scalar('{}_dis/full_loss'.format(name), dis_full_loss)
+            if self.dis.weight_lambda > 0:
+                tf.summary.scalar('{}_dis/weight_loss'.format(name), dis_weight_loss)
 
         return dis_full_loss
