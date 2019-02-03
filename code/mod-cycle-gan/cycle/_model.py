@@ -61,8 +61,8 @@ class CycleGAN:
                                                   name='prev_fake_{}'.format(self.X_name))
                 self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape,
                                                   name='prev_fake_{}'.format(self.Y_name))
-            self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='real_{}'.format(self.X_name))
-            self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='real_{}'.format(self.Y_name))
+            self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
+            self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
 
         self.name = None
         self.load_from_ckpt = False
@@ -81,6 +81,11 @@ class CycleGAN:
 
             fake_y = self.XtoY.gen(self.cur_x)
             fake_x = self.YtoX.gen(self.cur_y)
+
+            X_dis_fake = self.YtoX.dis(fake_x)
+            X_dis_real = self.YtoX.dis(self.cur_x)
+            Y_dis_fake = self.XtoY.dis(fake_y)
+            Y_dis_real = self.XtoY.dis(self.cur_y)
 
             with tf.name_scope('{}-{}-gen-loss'.format(self.Y_name, self.X_name)):
                 yx_gen_loss = self.YtoX.gen_loss(self.cur_y)
@@ -101,11 +106,6 @@ class CycleGAN:
                 y_dis_full_loss = self.XtoY.construct_dis_full_loss(self.cur_y, fake_y, self.Y_name)
 
             if self.tb_verbose:
-                X_dis_fake = self.YtoX.dis(fake_x)
-                X_dis_real = self.YtoX.dis(self.cur_x)
-                Y_dis_fake = self.XtoY.dis(fake_y)
-                Y_dis_real = self.XtoY.dis(self.cur_y)
-
                 tf.summary.histogram('D_{}/real'.format(self.X_name), X_dis_real)
                 tf.summary.histogram('D_{}/fake'.format(self.X_name), X_dis_fake)
                 tf.summary.histogram('D_{}/real'.format(self.Y_name), Y_dis_real)
