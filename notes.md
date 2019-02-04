@@ -12,3 +12,8 @@ a taky https://arxiv.org/abs/1812.04948
 a i ten původní neural style paper
 
 až do konce ledna 2019 jsou všechny běhy se špatným global stepem, a tedy bez learning rate decay 
+
+todo: udělat benchmarky:
+původní graf vs. input cache v BaseNetworku
+formát dat NHWC vs. NCHW
+současné načítání dat vs. fronty

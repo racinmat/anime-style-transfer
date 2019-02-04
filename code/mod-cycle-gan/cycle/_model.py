@@ -64,6 +64,8 @@ class CycleGAN:
         self.full_checkpoints_dir = None
         self.create_name(checkpoints_dir, load_model)
 
+        self.train_writer = None
+
         logging.info('Cycle GAN instantiated.\n'
                      '%s_shape=' + str(XtoY.in_shape) + '\t%s_shape=' + str(YtoX.in_shape) + '\n' +
                      'cycle_lambda=%f\n'
@@ -76,8 +78,6 @@ class CycleGAN:
 
     def get_model(self):
         with self.graph.as_default():
-            with tf.name_scope('cycle-loss'):
-                cycle_loss = self._cycle_loss(self.cur_x, self.cur_y, self.cycle_lambda)
 
             fake_y = self.XtoY.gen(self.cur_x)
             fake_x = self.YtoX.gen(self.cur_y)
@@ -87,6 +87,8 @@ class CycleGAN:
             Y_dis_fake = self.XtoY.dis(fake_y)
             Y_dis_real = self.XtoY.dis(self.cur_y)
 
+            with tf.name_scope('cycle-loss'):
+                cycle_loss = self._cycle_loss(self.cur_x, self.cur_y, self.cycle_lambda)
             with tf.name_scope('{}-{}-gen-loss'.format(self.Y_name, self.X_name)):
                 yx_gen_loss = self.YtoX.gen_loss(self.cur_y)
                 yx_gen_weight_loss = self.YtoX.gen.weight_loss()
@@ -188,11 +190,11 @@ class CycleGAN:
         with self.graph.as_default():
             model_ops = self.get_model()
             model_ops['summary'] = tf.summary.merge_all()
-            train_writer = tf.summary.FileWriter(self.full_checkpoints_dir, self.graph)
+            self.train_writer = tf.summary.FileWriter(self.full_checkpoints_dir, self.graph)
             saver = tf.train.Saver()
             saver_long_term = tf.train.Saver(max_to_keep=None)
 
-        config = tf.ConfigProto(log_device_placement=True)
+        config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         with tf.Session(graph=self.graph, config=config) as sess:
             if self.load_from_ckpt is not None:
@@ -213,6 +215,8 @@ class CycleGAN:
 
             self.init_training(pool_size, sess)
 
+            # todo: try nhwc to nchw migration and benchmark it. It might be faster.
+            #  (see https://www.tensorflow.org/guide/performance/overview)
             while step < self.steps:
                 feeder_dict = self.prepare_feeder_dict(model_ops, sess, step)
 
@@ -226,16 +230,18 @@ class CycleGAN:
                 # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
                 if step % 250 == 0:
                     # full tracing for tensorboard debugging
-                    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-                    run_metadata = tf.RunMetadata()
-                    summary, losses, _ = sess.run([model_ops['summary'], model_ops['losses'], model_ops['train']],
-                                                  feed_dict=feeder_dict, options=run_options,
-                                                  run_metadata=run_metadata)
+                    # on windows, path to some dll is missing, you can fix it by
+                    # https://github.com/tensorflow/tensorflow/issues/6235
+                    # run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                    # run_metadata = tf.RunMetadata()
+                    # summary, losses, _ = sess.run([model_ops['summary'], model_ops['losses'], model_ops['train']],
+                    #                               feed_dict=feeder_dict, options=run_options,
+                    #                               run_metadata=run_metadata)
 
-                    # summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
-                    train_writer.add_summary(summary, step)
-                    train_writer.add_run_metadata(run_metadata, 'step%d' % step)
-                    train_writer.flush()
+                    summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
+                    self.train_writer.add_summary(summary, step)
+                    # self.train_writer.add_run_metadata(run_metadata, 'step%d' % step)
+                    self.train_writer.flush()
 
                     if log_verbose:
                         logging.info('------ Step {:d} ------'.format(step))
@@ -519,7 +525,13 @@ class HistoryCycleGAN(CycleGAN):
         # start = time()
         self.x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
         self.y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
+        # run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        # run_metadata = tf.RunMetadata()
         cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+        # cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()], options=run_options,
+        #                         run_metadata=run_metadata)
+        # self.train_writer.add_run_metadata(run_metadata, 'step-init')
+        # self.train_writer.flush()
         self.prev_real_x = cur_x
         self.prev_real_y = cur_y
         # logging.info('history buffering init: %s', time() - start)

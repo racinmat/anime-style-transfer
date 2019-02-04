@@ -74,16 +74,17 @@ class TFReader:
         self.num_threads = num_threads
         self.normalize = normer
         self.denormalize = denormer
-        with tf.name_scope('tfreader'):
-            print('fetching data from tfrecords_file: {}'.format(tfrecords_file))
-            self.data = tf.data.TFRecordDataset(tfrecords_file)
-            self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)
-            self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
-            self.data = self.data.map(self._reshape_to_even, num_parallel_calls=num_threads)
-            self.data = self.data.shuffle(shuffle_buffer_size)
-            self.data = self.data.repeat()
-            self.data = self.data.batch(self.batch_size)
-            self.iterator = self.data.make_one_shot_iterator()
+        with tf.device('/cpu:0'):
+            with tf.name_scope('tfreader'):
+                print('fetching data from tfrecords_file: {}'.format(tfrecords_file))
+                self.data = tf.data.TFRecordDataset(tfrecords_file)
+                self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)
+                self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
+                self.data = self.data.map(self._reshape_to_even, num_parallel_calls=num_threads)
+                self.data = self.data.shuffle(shuffle_buffer_size)
+                self.data = self.data.repeat()
+                self.data = self.data.batch(self.batch_size)
+                self.iterator = self.data.make_one_shot_iterator()
         self.feeder = self.iterator.get_next()
 
     def feed(self):
