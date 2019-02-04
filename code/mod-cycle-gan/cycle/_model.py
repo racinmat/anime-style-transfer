@@ -54,6 +54,8 @@ class CycleGAN:
         else:
             self.graph = graph
 
+        self.cur_x = None
+        self.cur_y = None
         with self.graph.as_default():
             self.build_placeholders()
 
@@ -63,9 +65,9 @@ class CycleGAN:
         self.create_name(checkpoints_dir, load_model)
 
         logging.info('Cycle GAN instantiated.\n'
-                     '%s_shape=' + str(XtoY.in_shape) + '\t%s_shape=' + str(YtoX.in_shape) + '\n'
-                                                                                             'cycle_lambda=%f\n'
-                                                                                             'learning_rate=%f\tbeta1=%f\tsteps=%d\tdecay_from=%d',
+                     '%s_shape=' + str(XtoY.in_shape) + '\t%s_shape=' + str(YtoX.in_shape) + '\n' +
+                     'cycle_lambda=%f\n'
+                     'learning_rate=%f\tbeta1=%f\tsteps=%d\tdecay_from=%d',
                      X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
 
     def build_placeholders(self):
@@ -74,7 +76,8 @@ class CycleGAN:
 
     def get_model(self):
         with self.graph.as_default():
-            cycle_loss = self._cycle_loss(self.cur_x, self.cur_y, self.cycle_lambda)
+            with tf.name_scope('cycle-loss'):
+                cycle_loss = self._cycle_loss(self.cur_x, self.cur_y, self.cycle_lambda)
 
             fake_y = self.XtoY.gen(self.cur_x)
             fake_x = self.YtoX.gen(self.cur_y)
@@ -155,10 +158,11 @@ class CycleGAN:
 
             logging.info('Created CycleGAN model')
 
-            return {'train': {
-                'gen': train_gen,
-                'dis': train_dis
-            },
+            return {
+                'train': {
+                    'gen': train_gen,
+                    'dis': train_dis
+                },
                 'losses': {
                     'cycle': cycle_loss,
                     '{}-{}_gen_full'.format(self.X_name, self.Y_name): xy_gen_full_loss,
@@ -166,7 +170,8 @@ class CycleGAN:
                     '{}_dis_full'.format(self.X_name): x_dis_full_loss,
                     '{}_dis_full'.format(self.Y_name): y_dis_full_loss,
                 },
-                'fakes': [fake_x, fake_y]}
+                'fakes': [fake_x, fake_y]
+            }
 
     def build_dis_losses(self, fake_x, fake_y):
         x_dis_full_loss = self.YtoX.construct_dis_full_loss(self.cur_x, fake_x, self.X_name)
@@ -187,7 +192,7 @@ class CycleGAN:
             saver = tf.train.Saver()
             saver_long_term = tf.train.Saver(max_to_keep=None)
 
-        config = tf.ConfigProto()
+        config = tf.ConfigProto(log_device_placement=True)
         config.gpu_options.allow_growth = True
         with tf.Session(graph=self.graph, config=config) as sess:
             if self.load_from_ckpt is not None:
@@ -220,8 +225,16 @@ class CycleGAN:
 
                 # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
                 if step % 250 == 0:
-                    summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
+                    # full tracing for tensorboard debugging
+                    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                    run_metadata = tf.RunMetadata()
+                    summary, losses, _ = sess.run([model_ops['summary'], model_ops['losses'], model_ops['train']],
+                                                  feed_dict=feeder_dict, options=run_options,
+                                                  run_metadata=run_metadata)
+
+                    # summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
                     train_writer.add_summary(summary, step)
+                    train_writer.add_run_metadata(run_metadata, 'step%d' % step)
                     train_writer.flush()
 
                     if log_verbose:
