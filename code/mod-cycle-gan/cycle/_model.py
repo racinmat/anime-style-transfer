@@ -483,14 +483,14 @@ class HistoryCycleGAN(CycleGAN):
     def __init__(self, XtoY: GAN, YtoX: GAN, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0, tb_verbose=True,
                  visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5, graph=None,
                  checkpoints_dir='../../checkpoint', load_model=None):
-        super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
-                         learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
         self.prev_fake_x = None
         self.prev_fake_y = None
         self.prev_real_x = None
         self.prev_real_y = None
         self.x_pool = None
         self.y_pool = None
+        super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
+                         learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
 
     def build_placeholders(self):
         self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_{}'.format(self.X_name))
