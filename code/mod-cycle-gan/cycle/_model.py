@@ -22,7 +22,7 @@ class CycleGAN:
     OUTPUT_NODES = SAVE_NODES[1:]
 
     def __init__(self, XtoY: GAN, YtoX: GAN, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0, tb_verbose=True,
-                 visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5, history=True, graph=None,
+                 visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5, graph=None,
                  checkpoints_dir='../../checkpoint', load_model=None):
 
         self.XtoY = XtoY
@@ -48,7 +48,6 @@ class CycleGAN:
         self.beta1 = beta1
         self.steps = steps
         self.decay_from = decay_from
-        self.history = history
 
         if graph is None:
             self.graph = tf.get_default_graph()
@@ -56,13 +55,7 @@ class CycleGAN:
             self.graph = graph
 
         with self.graph.as_default():
-            if history:
-                self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape,
-                                                  name='prev_fake_{}'.format(self.X_name))
-                self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape,
-                                                  name='prev_fake_{}'.format(self.Y_name))
-            self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
-            self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
+            self.build_placeholders()
 
         self.name = None
         self.load_from_ckpt = False
@@ -74,6 +67,10 @@ class CycleGAN:
                                                                                              'cycle_lambda=%f\n'
                                                                                              'learning_rate=%f\tbeta1=%f\tsteps=%d\tdecay_from=%d',
                      X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
+
+    def build_placeholders(self):
+        self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
+        self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
 
     def get_model(self):
         with self.graph.as_default():
@@ -98,12 +95,7 @@ class CycleGAN:
                 xy_selfreg_loss = self.XtoY.selfreg_loss(self.cur_x, fake_y)
                 xy_gen_full_loss = xy_gen_loss + xy_gen_weight_loss + cycle_loss + xy_selfreg_loss
 
-            if self.history:
-                x_dis_full_loss = self.YtoX.construct_dis_full_loss(self.cur_x, self.prev_fake_x, self.X_name)
-                y_dis_full_loss = self.XtoY.construct_dis_full_loss(self.cur_y, self.prev_fake_y, self.Y_name)
-            else:
-                x_dis_full_loss = self.YtoX.construct_dis_full_loss(self.cur_x, fake_x, self.X_name)
-                y_dis_full_loss = self.XtoY.construct_dis_full_loss(self.cur_y, fake_y, self.Y_name)
+            x_dis_full_loss, y_dis_full_loss = self.build_dis_losses(fake_x, fake_y)
 
             if self.tb_verbose:
                 tf.summary.histogram('D_{}/real'.format(self.X_name), X_dis_real)
@@ -176,6 +168,11 @@ class CycleGAN:
                 },
                 'fakes': [fake_x, fake_y]}
 
+    def build_dis_losses(self, fake_x, fake_y):
+        x_dis_full_loss = self.YtoX.construct_dis_full_loss(self.cur_x, fake_x, self.X_name)
+        y_dis_full_loss = self.XtoY.construct_dis_full_loss(self.cur_y, fake_y, self.Y_name)
+        return x_dis_full_loss, y_dis_full_loss
+
     def train(self, gen_train=1, dis_train=1, pool_size=50, log_verbose=True, param_string=None, export_final=True):
         os.makedirs(self.full_checkpoints_dir, exist_ok=True)
 
@@ -209,40 +206,10 @@ class CycleGAN:
                 for k, v in varsize_dict.items():
                     logging.info('\t{}:\t{}'.format(k, v))
 
-            # from time import time
-            # start = time()
-
-            if self.history:
-                x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
-                y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
-                cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-
-            # logging.info('history buffering init: %s', time() - start)
+            self.init_training(pool_size, sess)
 
             while step < self.steps:
-                if self.history:
-                    # start = time()
-                    fx, fy = sess.run(model_ops['fakes'], feed_dict={
-                        self.cur_x: cur_x,
-                        self.cur_y: cur_y,
-                    })
-                    # logging.info('history buffering fakes: %s', time() - start)
-
-                # start = time()
-                cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-                # logging.info('feeding data: %s', time() - start)
-                if self.history:
-                    feeder_dict = {
-                        self.cur_x: cur_x,
-                        self.cur_y: cur_y,
-                        self.prev_fake_x: x_pool.query(fx, step),
-                        self.prev_fake_y: y_pool.query(fy, step),
-                    }
-                else:
-                    feeder_dict = {
-                        self.cur_x: cur_x,
-                        self.cur_y: cur_y,
-                    }
+                feeder_dict = self.prepare_feeder_dict(model_ops, sess, step)
 
                 # start = time()
                 for _ in range(dis_train):
@@ -282,6 +249,19 @@ class CycleGAN:
                 logging.info('Model saved in file: %s', save_path)
             if export_final:
                 self.export(sess, self.full_checkpoints_dir)
+
+    def prepare_feeder_dict(self, model_ops, sess, step):
+        # start = time()
+        cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+        # logging.info('feeding data: %s', time() - start)
+        feeder_dict = {
+            self.cur_x: cur_x,
+            self.cur_y: cur_y,
+        }
+        return feeder_dict
+
+    def init_training(self, pool_size, sess):
+        pass
 
     @staticmethod
     def load_saved_model(full_checkpoints_dir, sess):
@@ -497,3 +477,50 @@ class CycleGAN:
             full_checkpoints_dir = osp.join(checkpoints_dir, self.name)
             self.load_from_ckpt = False
         self.full_checkpoints_dir = full_checkpoints_dir
+
+
+class HistoryCycleGAN(CycleGAN):
+    def __init__(self, XtoY: GAN, YtoX: GAN, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0, tb_verbose=True,
+                 visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5, graph=None,
+                 checkpoints_dir='../../checkpoint', load_model=None):
+        super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
+                         learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
+        self.prev_fake_x = None
+        self.prev_fake_y = None
+        self.prev_real_x = None
+        self.prev_real_y = None
+        self.x_pool = None
+        self.y_pool = None
+
+    def build_placeholders(self):
+        self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_{}'.format(self.X_name))
+        self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_{}'.format(self.Y_name))
+
+        super().build_placeholders()
+
+    def build_dis_losses(self, fake_x, fake_y):
+        return super().build_dis_losses(self.prev_fake_x, self.prev_fake_y)
+
+    def init_training(self, pool_size, sess):
+        # from time import time
+        # start = time()
+        self.x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
+        self.y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
+        cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+        self.prev_real_x = cur_x
+        self.prev_real_y = cur_y
+        # logging.info('history buffering init: %s', time() - start)
+
+    def prepare_feeder_dict(self, model_ops, sess, step):
+        fx, fy = sess.run(model_ops['fakes'], feed_dict={
+            self.cur_x: self.prev_real_x,
+            self.cur_y: self.prev_real_y,
+        })
+        cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+        feeder_dict = {
+            self.cur_x: cur_x,
+            self.cur_y: cur_y,
+            self.prev_fake_x: self.x_pool.query(fx, step),
+            self.prev_fake_y: self.y_pool.query(fy, step),
+        }
+        return feeder_dict

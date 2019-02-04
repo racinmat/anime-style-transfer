@@ -99,10 +99,16 @@ def main(_):
 
 def create_cyclegan():
     modellib, xfeed, xy, yfeed, yx = initialize_networks()
-    cygan = cycle.CycleGAN(
-        xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose,
-        modellib.visualize if FLAGS.visualize else None, FLAGS.lr, FLAGS.beta1, FLAGS.steps,
-        int(FLAGS.decayfrom * FLAGS.steps), history=FLAGS.history, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
+    if FLAGS.history:
+        cygan = cycle.HistoryCycleGAN(
+            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose,
+            modellib.visualize if FLAGS.visualize else None, FLAGS.lr, FLAGS.beta1, FLAGS.steps,
+            int(FLAGS.decayfrom * FLAGS.steps), checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
+    else:
+        cygan = cycle.CycleGAN(
+            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose,
+            modellib.visualize if FLAGS.visualize else None, FLAGS.lr, FLAGS.beta1, FLAGS.steps,
+            int(FLAGS.decayfrom * FLAGS.steps), checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
     return cygan
 
 
