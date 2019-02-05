@@ -20,6 +20,7 @@ původní graf vs. input cache v BaseNetworku
 formát dat NHWC vs. NCHW
 současné načítání dat vs. fronty
 upgrade tensorflow až bude 1.13 stable + XLA kompilace
+kouknout na http://on-demand.gputechconf.com/gtc-eu/2017/presentation/23363-chris-fregly-optimizing-profiling-and-deploying-tensorflow-ai-models-in-production-with-gpus.pdf
 
 1.
 2019-02-05--00-27-0 - input cache pro BaseNetwork
