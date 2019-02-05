@@ -23,4 +23,3 @@ upgrade tensorflow až bude 1.13 stable + XLA kompilace
 
 1.
 2019-02-05--00-27-0 - input cache pro BaseNetwork
-2019-02-05--00-27-0 - bez input cache pro BaseNetwork
