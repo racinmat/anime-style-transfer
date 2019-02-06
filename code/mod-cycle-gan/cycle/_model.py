@@ -58,12 +58,8 @@ class CycleGAN:
         self.cur_x = None
         self.cur_y = None
 
-        # for queues
-        self.cur_x_queue = None
-        self.cur_y_queue = None
-
         with self.graph.as_default():
-            self.build_placeholders()
+            self.build_inputs()
 
         self.name = None
         self.load_from_ckpt = False
@@ -78,11 +74,9 @@ class CycleGAN:
                      'learning_rate=%f\tbeta1=%f\tsteps=%d\tdecay_from=%d',
                      X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
 
-    def build_placeholders(self):
-        self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
-        self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
-        self.cur_x_queue = self._feed_to_queue(self.X_feed.feed())
-        self.cur_y_queue = self._feed_to_queue(self.Y_feed.feed())
+    def build_inputs(self):
+        self.cur_x = tf.identity(self.X_feed.feed(), name='gt_{}'.format(self.X_name))
+        self.cur_y = tf.identity(self.Y_feed.feed(), name='gt_{}'.format(self.Y_name))
 
     @staticmethod
     def _feed_to_queue(feeder):
@@ -99,10 +93,6 @@ class CycleGAN:
 
             fake_y = self.XtoY.gen(self.cur_x)
             fake_x = self.YtoX.gen(self.cur_y)
-
-            # with queues
-            fake_y_queued = self.XtoY.gen(self.cur_x_queue)
-            fake_x_queued = self.YtoX.gen(self.cur_y_queue)
 
             X_dis_fake = self.YtoX.dis(fake_x)
             X_dis_real = self.YtoX.dis(self.cur_x)
@@ -194,10 +184,6 @@ class CycleGAN:
                     '{}_dis_full'.format(self.X_name): x_dis_full_loss,
                     '{}_dis_full'.format(self.Y_name): y_dis_full_loss,
                 },
-                # without queues
-                # 'fakes': [fake_x, fake_y],
-                # with queues
-                'fakes': [fake_x_queued, fake_y_queued],
             }
 
     def build_dis_losses(self, fake_x, fake_y):
@@ -247,7 +233,6 @@ class CycleGAN:
             # todo: try nhwc to nchw migration and benchmark it. It might be faster.
             #  (see https://www.tensorflow.org/guide/performance/overview)
             while step < self.steps:
-                feeder_dict = self.prepare_feeder_dict(model_ops, sess, step)
 
                 # start = time()
                 for _ in range(dis_train):
@@ -548,35 +533,18 @@ class HistoryCycleGAN(CycleGAN):
         super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
                          learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
 
-    def build_placeholders(self):
-        self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_{}'.format(self.X_name))
-        self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_{}'.format(self.Y_name))
+    def build_inputs(self):
+        self.cur_x = tf.identity(self.X_feed.feed(), name='gt_{}'.format(self.X_name))
+        self.cur_y = tf.identity(self.Y_feed.feed(), name='gt_{}'.format(self.Y_name))
 
-        super().build_placeholders()
+        super().build_inputs()
 
     def build_dis_losses(self, fake_x, fake_y):
         return super().build_dis_losses(self.prev_fake_x, self.prev_fake_y)
 
     def init_training(self, pool_size, sess, model_ops):
-        q = tf.FIFOQueue(capacity=1, dtypes=tf.float32)  # enqueue 5 batches
-        enqueue_op = q.enqueue(model_ops['fakes'])
-        numberOfThreads = 1
-        qr = tf.train.QueueRunner(q, [enqueue_op] * numberOfThreads)
-        tf.train.add_queue_runner(qr)
-        queue_feed = q.dequeue()
-        self.prev_queue = queue_feed
-
-        # from time import time
-        # start = time()
-        self.x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
-        self.y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
-        # without queues
-        # cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-        # with queues
-        cur_x, cur_y = sess.run([self.cur_x_queue, self.cur_y_queue])
-        self.prev_real_x = cur_x
-        self.prev_real_y = cur_y
-        # logging.info('history buffering init: %s', time() - start)
+        self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_{}'.format(self.X_name))
+        self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_{}'.format(self.Y_name))
 
     def prepare_feeder_dict(self, model_ops, sess, step):
         # without queue
@@ -600,7 +568,4 @@ class HistoryCycleGAN(CycleGAN):
             self.prev_fake_y: self.y_pool.query(fy, step),
         }
         return feeder_dict
-
-    def build_input_queues(self, model_ops):
-        super().build_input_queues(model_ops)
 
