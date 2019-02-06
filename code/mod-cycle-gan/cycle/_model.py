@@ -179,7 +179,7 @@ class CycleGAN:
                 'train': {
                     'gen': train_gen,
                     'dis': train_dis,
-                    'global_step': global_step_op,
+                    'global_step': global_step_op,  # manual global step allows me to use multiple sess.run per step
                 },
                 'losses': {
                     'cycle': cycle_loss,
