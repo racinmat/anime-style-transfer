@@ -504,8 +504,6 @@ class HistoryCycleGAN(CycleGAN):
                  checkpoints_dir='../../checkpoint', load_model=None):
         self.prev_fake_x = None
         self.prev_fake_y = None
-        self.prev_real_x = None
-        self.prev_real_y = None
         self.x_pool = None
         self.y_pool = None
         super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
@@ -525,23 +523,13 @@ class HistoryCycleGAN(CycleGAN):
         # start = time()
         self.x_pool = utils.DataBuffer(pool_size, self.X_feed.batch_size)
         self.y_pool = utils.DataBuffer(pool_size, self.Y_feed.batch_size)
-        # run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        # run_metadata = tf.RunMetadata()
-        cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-        # cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()], options=run_options,
-        #                         run_metadata=run_metadata)
-        # self.train_writer.add_run_metadata(run_metadata, 'step-init')
-        # self.train_writer.flush()
-        self.prev_real_x = cur_x
-        self.prev_real_y = cur_y
-        # logging.info('history buffering init: %s', time() - start)
 
     def prepare_feeder_dict(self, model_ops, sess, step):
-        fx, fy = sess.run(model_ops['fakes'], feed_dict={
-            self.cur_x: self.prev_real_x,
-            self.cur_y: self.prev_real_y,
-        })
         cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
+        fx, fy = sess.run(model_ops['fakes'], feed_dict={
+            self.cur_x: cur_x,
+            self.cur_y: cur_y,
+        })
         feeder_dict = {
             self.cur_x: cur_x,
             self.cur_y: cur_y,

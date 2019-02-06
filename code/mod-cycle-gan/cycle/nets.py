@@ -44,8 +44,8 @@ class BaseNet(object):
 
     def __call__(self, data):
         # some computational graph optimization
-        # if data in self.inputs_cache:
-        #     return self.inputs_cache[data]
+        if data in self.inputs_cache:
+            return self.inputs_cache[data]
 
         with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
             result = self.transform(data)

@@ -32,7 +32,6 @@ class DataBuffer:
         if self.pool_size == -1:
             self.last_data = data
         elif self.batch_size == 1:
-            # todo: probably refactor this
             # special case, support for dynamic shapes, duplicate code, but so far without ideas for refactoring
             if len(self.data) < self.pool_size:
                 self.data.append(data[0].copy())
