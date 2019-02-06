@@ -14,7 +14,8 @@ def _identity(x, name=None):
 
 
 class DataBuffer:
-    def __init__(self, pool_size, batch_size, old_prob=0.5):
+    def __init__(self, pool_size, batch_size, old_prob=0.5, name=None):
+        self.name = name
         self.pool_size = pool_size
         self.batch_size = batch_size
         assert self.pool_size >= self.batch_size or self.pool_size == -1
@@ -84,6 +85,7 @@ class TFReader:
                 self.data = self.data.shuffle(shuffle_buffer_size)
                 self.data = self.data.repeat()
                 self.data = self.data.batch(self.batch_size)
+                self.data = self.data.prefetch(4)
                 self.iterator = self.data.make_one_shot_iterator()
         self.feeder = self.iterator.get_next()
 

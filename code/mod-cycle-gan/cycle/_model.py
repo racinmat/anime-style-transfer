@@ -5,6 +5,7 @@ import os.path as osp
 import logging
 import time
 from datetime import datetime
+from functools import partial
 
 import progressbar
 import tensorflow as tf
@@ -99,6 +100,8 @@ class CycleGAN:
             Y_dis_fake = self.XtoY.dis(fake_y)
             Y_dis_real = self.XtoY.dis(self.cur_y)
 
+            self.build_fake_pool(fake_x, fake_y)
+
             with tf.name_scope('cycle-loss'):
                 cycle_loss = self._cycle_loss(self.cur_x, self.cur_y, self.cycle_lambda)
             with tf.name_scope('{}-{}-gen-loss'.format(self.Y_name, self.X_name)):
@@ -175,7 +178,7 @@ class CycleGAN:
             return {
                 'train': {
                     'gen': train_gen,
-                    'dis': train_dis
+                    'dis': train_dis,
                 },
                 'losses': {
                     'cycle': cycle_loss,
@@ -184,6 +187,10 @@ class CycleGAN:
                     '{}_dis_full'.format(self.X_name): x_dis_full_loss,
                     '{}_dis_full'.format(self.Y_name): y_dis_full_loss,
                 },
+                'fakes': {
+                    'x': fake_x,
+                    'y': fake_y,
+                },
             }
 
     def build_dis_losses(self, fake_x, fake_y):
@@ -191,7 +198,7 @@ class CycleGAN:
         y_dis_full_loss = self.XtoY.construct_dis_full_loss(self.cur_y, fake_y, self.Y_name)
         return x_dis_full_loss, y_dis_full_loss
 
-    def train(self, gen_train=1, dis_train=1, pool_size=50, log_verbose=True, param_string=None, export_final=True):
+    def train(self, gen_train=1, dis_train=1, log_verbose=True, param_string=None, export_final=True):
         os.makedirs(self.full_checkpoints_dir, exist_ok=True)
 
         if param_string is not None:
@@ -228,11 +235,10 @@ class CycleGAN:
                 for k, v in varsize_dict.items():
                     logging.info('\t{}:\t{}'.format(k, v))
 
-            self.init_training(pool_size, sess, model_ops)
-
             # todo: try nhwc to nchw migration and benchmark it. It might be faster.
             #  (see https://www.tensorflow.org/guide/performance/overview)
             while step < self.steps:
+                feeder_dict = self.prepare_feeder_dict(model_ops, sess, step)
 
                 # start = time()
                 for _ in range(dis_train):
@@ -288,11 +294,7 @@ class CycleGAN:
                 self.export(sess, self.full_checkpoints_dir)
 
     def prepare_feeder_dict(self, model_ops, sess, step):
-        # start = time()
-        # without queue
-        # cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-        # with queue
-        cur_x, cur_y = sess.run([self.cur_x_queue, self.cur_y_queue])
+        cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
         # logging.info('feeding data: %s', time() - start)
         feeder_dict = {
             self.cur_x: cur_x,
@@ -300,7 +302,7 @@ class CycleGAN:
         }
         return feeder_dict
 
-    def init_training(self, pool_size, sess, model_ops):
+    def build_fake_pool(self, fake_x, fake_y):
         pass
 
     @staticmethod
@@ -522,7 +524,7 @@ class CycleGAN:
 class HistoryCycleGAN(CycleGAN):
     def __init__(self, XtoY: GAN, YtoX: GAN, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0, tb_verbose=True,
                  visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5, graph=None,
-                 checkpoints_dir='../../checkpoint', load_model=None):
+                 checkpoints_dir='../../checkpoint', load_model=None, pool_size=50):
         self.prev_fake_x = None
         self.prev_fake_y = None
         self.prev_real_x = None
@@ -530,42 +532,29 @@ class HistoryCycleGAN(CycleGAN):
         self.x_pool = None
         self.y_pool = None
         self.prev_queue = None
+        self.pool_size = pool_size
         super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
                          learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
 
     def build_inputs(self):
         self.cur_x = tf.identity(self.X_feed.feed(), name='gt_{}'.format(self.X_name))
         self.cur_y = tf.identity(self.Y_feed.feed(), name='gt_{}'.format(self.Y_name))
-
         super().build_inputs()
 
     def build_dis_losses(self, fake_x, fake_y):
         return super().build_dis_losses(self.prev_fake_x, self.prev_fake_y)
 
-    def init_training(self, pool_size, sess, model_ops):
-        self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_{}'.format(self.X_name))
-        self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_{}'.format(self.Y_name))
+    def build_fake_pool(self, fake_x, fake_y):
+        def queue(fake_img, step, pool):
+            return pool.query(fake_img, step)
 
-    def prepare_feeder_dict(self, model_ops, sess, step):
-        # without queue
-        # fx, fy = sess.run(model_ops['fakes'], feed_dict={
-        #     self.cur_x: self.prev_real_x,
-        #     self.cur_y: self.prev_real_y,
-        # })
-        # with queue
-        fx, fy, cur_x, cur_y = sess.run([self.prev_queue, self.cur_x_queue, self.cur_y_queue], feed_dict={
-            self.cur_x: self.prev_real_x,
-            self.cur_y: self.prev_real_y,
-        })
-        # without queue
-        # cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-        # with queue
-        # cur_x, cur_y = sess.run([self.cur_x_queue, self.cur_y_queue])
-        feeder_dict = {
-            self.cur_x: cur_x,
-            self.cur_y: cur_y,
-            self.prev_fake_x: self.x_pool.query(fx, step),
-            self.prev_fake_y: self.y_pool.query(fy, step),
-        }
-        return feeder_dict
+        self.x_pool = utils.DataBuffer(self.pool_size, self.X_feed.batch_size, name=self.X_name)
+        self.y_pool = utils.DataBuffer(self.pool_size, self.Y_feed.batch_size, name=self.Y_name)
 
+        x_queue = partial(queue, pool=self.x_pool)
+        y_queue = partial(queue, pool=self.y_pool)
+        global_step = tf.train.get_or_create_global_step()
+        self.prev_fake_x = tf.py_func(x_queue, [fake_x, global_step], tf.float32,
+                                      name='prev_fake_{}'.format(self.X_name))
+        self.prev_fake_y = tf.py_func(y_queue, [fake_y, global_step], tf.float32,
+                                      name='prev_fake_{}'.format(self.Y_name))

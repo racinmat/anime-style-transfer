@@ -74,7 +74,7 @@ def main(_):
     logger.setLevel(logging.INFO)
     logging.basicConfig()
     hdlr = logger.handlers[0]
-    formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s","%Y-%m-%d %H:%M")
+    formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s", "%Y-%m-%d %H:%M")
     hdlr.setFormatter(formatter)
 
     flagstr = '\n'.join(tf.flags.flag_dict_to_args(dict((k, getattr(FLAGS, k)) for k in dir(FLAGS) if keep_flag(k))))
@@ -94,21 +94,22 @@ def main(_):
 
     cygan = create_cyclegan()
 
-    cygan.train(FLAGS.gtsteps, FLAGS.dtsteps, FLAGS.poolsize, FLAGS.verbose, flagstr)
+    cygan.train(FLAGS.gtsteps, FLAGS.dtsteps, FLAGS.verbose, flagstr)
 
 
 def create_cyclegan():
     modellib, xfeed, xy, yfeed, yx = initialize_networks()
+    visualize = modellib.visualize if FLAGS.visualize else None
+    decay_start = int(FLAGS.decayfrom * FLAGS.steps)
     if FLAGS.history:
         cygan = cycle.HistoryCycleGAN(
-            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose,
-            modellib.visualize if FLAGS.visualize else None, FLAGS.lr, FLAGS.beta1, FLAGS.steps,
-            int(FLAGS.decayfrom * FLAGS.steps), checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
+            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose, visualize, FLAGS.lr,
+            FLAGS.beta1, FLAGS.steps, decay_start, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir,
+            pool_size=FLAGS.poolsize)
     else:
         cygan = cycle.CycleGAN(
-            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose,
-            modellib.visualize if FLAGS.visualize else None, FLAGS.lr, FLAGS.beta1, FLAGS.steps,
-            int(FLAGS.decayfrom * FLAGS.steps), checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
+            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose, visualize, FLAGS.lr,
+            FLAGS.beta1, FLAGS.steps, decay_start, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
     return cygan
 
 
