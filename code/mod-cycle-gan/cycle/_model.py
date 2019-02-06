@@ -149,7 +149,7 @@ class CycleGAN:
 
             with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
                 with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
-                    global_step = tf.train.get_or_create_global_step()
+                    global_step = tf.get_variable('global_step', shape=(), initializer=tf.zeros_initializer)
                 yx_gen_opt = self._optimizer(yx_gen_full_loss,
                                              self.YtoX.gen.variables,
                                              global_step,
@@ -172,13 +172,14 @@ class CycleGAN:
                     train_gen = tf.no_op('optimizers_gen')
                 with tf.control_dependencies([x_dis_opt, y_dis_opt]):
                     train_dis = tf.no_op('optimizers_dis')
-
+                global_step_op = tf.assign_add(global_step, 1)
             logging.info('Created CycleGAN model')
 
             return {
                 'train': {
                     'gen': train_gen,
                     'dis': train_dis,
+                    'global_step': global_step_op,
                 },
                 'losses': {
                     'cycle': cycle_loss,
@@ -294,8 +295,7 @@ class CycleGAN:
                 self.export(sess, self.full_checkpoints_dir)
 
     def prepare_feeder_dict(self, model_ops, sess, step):
-        cur_x, cur_y = sess.run([self.X_feed.feed(), self.Y_feed.feed()])
-        # logging.info('feeding data: %s', time() - start)
+        cur_x, cur_y, _ = sess.run([self.X_feed.feed(), self.Y_feed.feed(), model_ops['train']['global_step']])
         feeder_dict = {
             self.cur_x: cur_x,
             self.cur_y: cur_y,
