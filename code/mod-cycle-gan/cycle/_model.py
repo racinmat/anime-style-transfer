@@ -76,12 +76,11 @@ class CycleGAN:
                      X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
 
     def build_inputs(self):
-        self.cur_x = tf.identity(self.X_feed.feed(), name='gt_{}'.format(self.X_name))
-        self.cur_y = tf.identity(self.Y_feed.feed(), name='gt_{}'.format(self.Y_name))
+        self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
+        self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
 
     def get_model(self):
         with self.graph.as_default():
-
             fake_y = self.XtoY.gen(self.cur_x)
             fake_x = self.YtoX.gen(self.cur_y)
 
@@ -93,7 +92,7 @@ class CycleGAN:
             with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
                 global_step = tf.get_variable('global_step', shape=(), initializer=tf.zeros_initializer)
 
-            self.build_fake_pool(fake_x, fake_y, global_step)
+            self.build_fake_pool(global_step)
 
             with tf.name_scope('cycle-loss'):
                 cycle_loss = self._cycle_loss(self.cur_x, self.cur_y, self.cycle_lambda)
@@ -278,7 +277,7 @@ class CycleGAN:
         }
         return feeder_dict
 
-    def build_fake_pool(self, fake_x, fake_y, global_step):
+    def build_fake_pool(self, global_step):
         pass
 
     @staticmethod
@@ -505,28 +504,37 @@ class HistoryCycleGAN(CycleGAN):
                  checkpoints_dir='../../checkpoint', load_model=None, pool_size=50):
         self.prev_fake_x = None
         self.prev_fake_y = None
-        self.prev_real_x = None
-        self.prev_real_y = None
         self.x_pool = None
         self.y_pool = None
         self.prev_queue = None
         self.pool_size = pool_size
+        self.fake_x_feed = None
+        self.fake_y_feed = None
         super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
                          learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
+
+    def build_inputs(self):
+        self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_{}'.format(self.X_name))
+        self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_{}'.format(self.Y_name))
+        super().build_inputs()
 
     def build_dis_losses(self, fake_x, fake_y):
         return super().build_dis_losses(self.prev_fake_x, self.prev_fake_y)
 
-    def build_fake_pool(self, fake_x, fake_y, global_step):
-        def queue(fake_img, step, pool):
-            return pool.query(fake_img, step)
-
+    def build_fake_pool(self, global_step):
         self.x_pool = utils.DataBuffer(self.pool_size, self.X_feed.batch_size, name=self.X_name)
         self.y_pool = utils.DataBuffer(self.pool_size, self.Y_feed.batch_size, name=self.Y_name)
 
-        x_queue = partial(queue, pool=self.x_pool)
-        y_queue = partial(queue, pool=self.y_pool)
-        self.prev_fake_x = tf.py_func(x_queue, [fake_x, global_step], tf.float32,
-                                      name='prev_fake_{}'.format(self.X_name))
-        self.prev_fake_y = tf.py_func(y_queue, [fake_y, global_step], tf.float32,
-                                      name='prev_fake_{}'.format(self.Y_name))
+        self.fake_x_feed = self.XtoY.gen(self.X_feed.feed())
+        self.fake_y_feed = self.YtoX.gen(self.Y_feed.feed())
+
+    def prepare_feeder_dict(self, model_ops, sess, step):
+        fx, fy, cur_x, cur_y, _ = sess.run([self.fake_x_feed, self.fake_y_feed, self.X_feed.feed(), self.Y_feed.feed(),
+                                            model_ops['train']['global_step']])
+        feeder_dict = {
+            self.cur_x: cur_x,
+            self.cur_y: cur_y,
+            self.prev_fake_x: self.x_pool.query(fx, step),
+            self.prev_fake_y: self.y_pool.query(fy, step),
+        }
+        return feeder_dict

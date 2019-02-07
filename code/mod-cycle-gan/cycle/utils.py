@@ -82,11 +82,10 @@ class TFReader:
                 self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)
                 self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
                 self.data = self.data.map(self._reshape_to_even, num_parallel_calls=num_threads)
-                self.data = self.data.shuffle(shuffle_buffer_size)
-                self.data = self.data.repeat()
+                self.data = self.data.apply(tf.contrib.data.shuffle_and_repeat(shuffle_buffer_size))
                 self.data = self.data.batch(self.batch_size)
-                self.data = self.data.prefetch(4)
-                self.iterator = self.data.make_one_shot_iterator()
+                self.data_prefetched = self.data.prefetch(4)
+                self.iterator = self.data_prefetched.make_one_shot_iterator()
         self.feeder = self.iterator.get_next()
 
     def feed(self):
