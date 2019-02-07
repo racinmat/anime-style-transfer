@@ -19,8 +19,10 @@ todo: udělat benchmarky:
 původní graf vs. input cache v BaseNetworku DONE
 spojený training
 formát dat NHWC vs. NCHW
-současné načítání dat vs. fronty
+současné načítání dat vs. dataset API DONE
 upgrade tensorflow až bude 1.13 stable + XLA kompilace
+použít gradient checkpointing https://github.com/openai/gradient-checkpointing
+
 kouknout na http://on-demand.gputechconf.com/gtc-eu/2017/presentation/23363-chris-fregly-optimizing-profiling-and-deploying-tensorflow-ai-models-in-production-with-gpus.pdf
 
 1.
@@ -30,3 +32,4 @@ s input cache o 27% rychlejší
 2019-02-06--23-40-0 - s optimalizovanou input pipeline, sice feed_dict, ale history pooling v grafu <- 2x méně global_step, protože každá neinkrementuji global_step v train ops 
 2019-02-07--08-11-0 - jako předtím, ale fixnuté control_ops, a snad fixnutý i global step
 2019-02-07--08-29-0 - jako předtím, ale opravdu fixlý global step
+bez dataset api je o 13% pomalejší (queues branch)
