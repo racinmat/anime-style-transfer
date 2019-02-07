@@ -79,16 +79,6 @@ class CycleGAN:
         self.cur_x = tf.identity(self.X_feed.feed(), name='gt_{}'.format(self.X_name))
         self.cur_y = tf.identity(self.Y_feed.feed(), name='gt_{}'.format(self.Y_name))
 
-    @staticmethod
-    def _feed_to_queue(feeder):
-        q = tf.FIFOQueue(capacity=3, dtypes=tf.float32)  # enqueue 5 batches
-        enqueue_op = q.enqueue(feeder)
-        numberOfThreads = 2
-        qr = tf.train.QueueRunner(q, [enqueue_op] * numberOfThreads)
-        tf.train.add_queue_runner(qr)
-        queue_feed = q.dequeue()
-        return queue_feed
-
     def get_model(self):
         with self.graph.as_default():
 
@@ -209,9 +199,6 @@ class CycleGAN:
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         with tf.Session(graph=self.graph, config=config) as sess:
-            # for queues
-            coord = tf.train.Coordinator()
-            threads = tf.train.start_queue_runners(coord=coord)
 
             if self.load_from_ckpt is not None:
                 step = self.load_saved_model(self.full_checkpoints_dir, sess)
@@ -275,10 +262,6 @@ class CycleGAN:
                     logging.info('Long term model saved in file: %s', save_path)
 
                 step += 1
-
-            # for queues
-            coord.request_stop()
-            coord.join(threads)
 
             logging.info('Stopping after %d iterations', self.steps)
             save_path = saver.save(sess, osp.join(self.full_checkpoints_dir, 'model.ckpt'), global_step=step)
