@@ -486,7 +486,9 @@ class CycleGAN:
                     tf.summary.histogram("gradients/%s" % var_name, grad_values)
                     tf.summary.scalar("gradient_norm/%s" % var_name, clip_ops.global_norm([grad_values]))
 
-            learning_step = adam.apply_gradients(gradients, global_step=global_step)
+            # I increment global step myself because applying gradiesnts is done in multiple session run
+            # Interesting note: global step was incremented once per each optimizer, so 5 times faster
+            learning_step = adam.apply_gradients(gradients)
 
             return learning_step
 
