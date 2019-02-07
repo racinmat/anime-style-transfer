@@ -29,4 +29,4 @@ kouknout na http://on-demand.gputechconf.com/gtc-eu/2017/presentation/23363-chri
 s input cache o 27% rychlejší
 2019-02-06--23-40-0 - s optimalizovanou input pipeline, sice feed_dict, ale history pooling v grafu <- 2x méně global_step, protože každá neinkrementuji global_step v train ops 
 2019-02-07--08-11-0 - jako předtím, ale fixnuté control_ops, a snad fixnutý i global step
-29 - 
+2019-02-07--08-29-0 - jako předtím, ale opravdu fixlý global step
