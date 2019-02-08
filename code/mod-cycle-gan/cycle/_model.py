@@ -5,7 +5,6 @@ import os.path as osp
 import logging
 import time
 from datetime import datetime
-from functools import partial
 
 import progressbar
 import tensorflow as tf
@@ -60,7 +59,7 @@ class CycleGAN:
         self.cur_y = None
 
         with self.graph.as_default():
-            self.build_inputs()
+            self.build_placeholders()
 
         self.name = None
         self.load_from_ckpt = False
@@ -75,12 +74,13 @@ class CycleGAN:
                      'learning_rate=%f\tbeta1=%f\tsteps=%d\tdecay_from=%d',
                      X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
 
-    def build_inputs(self):
+    def build_placeholders(self):
         self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
         self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
 
     def get_model(self):
         with self.graph.as_default():
+
             fake_y = self.XtoY.gen(self.cur_x)
             fake_x = self.YtoX.gen(self.cur_y)
 
@@ -506,30 +506,27 @@ class HistoryCycleGAN(CycleGAN):
         self.prev_fake_y = None
         self.x_pool = None
         self.y_pool = None
-        self.prev_queue = None
         self.pool_size = pool_size
-        self.fake_x_feed = None
-        self.fake_y_feed = None
         super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
                          learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
 
-    def build_inputs(self):
+    def build_placeholders(self):
         self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_{}'.format(self.X_name))
         self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_{}'.format(self.Y_name))
-        super().build_inputs()
+
+        super().build_placeholders()
 
     def build_dis_losses(self, fake_x, fake_y):
         return super().build_dis_losses(self.prev_fake_x, self.prev_fake_y)
 
     def build_fake_pool(self, global_step):
-        self.x_pool = utils.DataBuffer(self.pool_size, self.X_feed.batch_size, name=self.X_name)
-        self.y_pool = utils.DataBuffer(self.pool_size, self.Y_feed.batch_size, name=self.Y_name)
-
-        self.fake_x_feed = self.XtoY.gen(self.X_feed.feed())
-        self.fake_y_feed = self.YtoX.gen(self.Y_feed.feed())
+        # from time import time
+        # start = time()
+        self.x_pool = utils.DataBuffer(self.pool_size, self.X_feed.batch_size)
+        self.y_pool = utils.DataBuffer(self.pool_size, self.Y_feed.batch_size)
 
     def prepare_feeder_dict(self, model_ops, sess, step):
-        fx, fy, cur_x, cur_y, _ = sess.run([self.fake_x_feed, self.fake_y_feed, self.X_feed.feed(), self.Y_feed.feed(),
+        fx, fy, cur_x, cur_y, _ = sess.run([model_ops['fakes']['x'], model_ops['fakes']['y'], self.X_feed.feed(), self.Y_feed.feed(),
                                             model_ops['train']['global_step']])
         feeder_dict = {
             self.cur_x: cur_x,
