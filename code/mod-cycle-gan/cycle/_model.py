@@ -215,8 +215,6 @@ class CycleGAN:
                 for k, v in varsize_dict.items():
                     logging.info('\t{}:\t{}'.format(k, v))
 
-            # todo: try nhwc to nchw migration and benchmark it. It might be faster.
-            #  (see https://www.tensorflow.org/guide/performance/overview)
             while step < self.steps:
                 feeder_dict = self.prepare_feeder_dict(model_ops, sess, step)
 
@@ -526,8 +524,11 @@ class HistoryCycleGAN(CycleGAN):
         self.y_pool = utils.DataBuffer(self.pool_size, self.Y_feed.batch_size)
 
     def prepare_feeder_dict(self, model_ops, sess, step):
-        fx, fy, cur_x, cur_y, _ = sess.run([model_ops['fakes']['x'], model_ops['fakes']['y'], self.X_feed.feed(), self.Y_feed.feed(),
-                                            model_ops['train']['global_step']])
+        cur_x, cur_y, _ = sess.run([self.X_feed.feed(), self.Y_feed.feed(), model_ops['train']['global_step']])
+        fx, fy = sess.run([model_ops['fakes']['x'], model_ops['fakes']['y']], feed_dict={
+            self.cur_x: cur_x,
+            self.cur_y: cur_y,
+        })
         feeder_dict = {
             self.cur_x: cur_x,
             self.cur_y: cur_y,
