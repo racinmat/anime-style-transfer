@@ -39,3 +39,5 @@ s input cache o 27% rychlejší
 bez dataset api je o 13% pomalejší (queues branch)
 2019-02-08--00-05-0 - dataset api, ale načítání prev fake data zvlášť - bez py_func
 todo: zkusit s těmi samými strukturními úpravami (+ prefetchem) i původní kód
+
+todo: fixnout špatný metge do jiné mranche z masta
