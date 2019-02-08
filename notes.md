@@ -20,7 +20,11 @@ původní graf vs. input cache v BaseNetworku DONE
 spojený training
 formát dat NHWC vs. NCHW
 současné načítání dat vs. dataset API DONE
-upgrade tensorflow až bude 1.13 stable + XLA kompilace
+současné načítání dat vs. dataset API bez py_func
+upgrade tensorflow 1.12
+tensorflow 1.12 + XLA kompilace
+vyzkoušet poladit control_ops, mezi sítěmi, aby odpovídaly průtoku informace
+
 použít gradient checkpointing https://github.com/openai/gradient-checkpointing
 
 kouknout na http://on-demand.gputechconf.com/gtc-eu/2017/presentation/23363-chris-fregly-optimizing-profiling-and-deploying-tensorflow-ai-models-in-production-with-gpus.pdf
@@ -33,3 +37,5 @@ s input cache o 27% rychlejší
 2019-02-07--08-11-0 - jako předtím, ale fixnuté control_ops, a snad fixnutý i global step
 2019-02-07--08-29-0 - jako předtím, ale opravdu fixlý global step
 bez dataset api je o 13% pomalejší (queues branch)
+2019-02-08--00-05-0 - dataset api, ale načítání prev fake data zvlášť - bez py_func
+todo: zkusit s těmi samými strukturními úpravami (+ prefetchem) i původní kód
