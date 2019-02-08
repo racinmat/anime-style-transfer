@@ -526,7 +526,7 @@ class HistoryCycleGAN(CycleGAN):
     def prepare_feeder_dict(self, model_ops, sess, step):
         cur_x, cur_y, _ = sess.run(
             [self.X_feed.feed(), self.Y_feed.feed(), model_ops['train']['global_step']])
-        fx, fy, cur_x, cur_y, _ = sess.run(
+        fx, fy = sess.run(
             [model_ops['fakes']['x'], model_ops['fakes']['y']], feed_dict={
                 self.cur_x: cur_x,
                 self.cur_y: cur_y,
