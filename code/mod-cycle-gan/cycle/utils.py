@@ -81,7 +81,7 @@ class TFReader:
                 self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)
                 self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
                 self.data = self.data.map(self._reshape_to_even, num_parallel_calls=num_threads)
-                self.data = self.data.apply(tf.contrib.data.shuffle_and_repeat(shuffle_buffer_size))
+                self.data = self.data.apply(tf.data.experimental.shuffle_and_repeat(shuffle_buffer_size))
                 self.data = self.data.batch(self.batch_size)
                 self.data = self.data.prefetch(4)
                 self.iterator = self.data.make_one_shot_iterator()
@@ -144,3 +144,49 @@ class TFWriter:
                 logging.warning('Opening %s failed', f)
                 logging.warning(e)
         writer.close()
+
+
+# both functions are for visualizing tensorflow graph in tensor-board like way without actually starting tensorboard
+# copied from https://github.com/yaroslavvb/stuff/blob/master/simple_rewiring.ipynb
+def strip_consts(graph_def, max_const_size=32):
+    """Strip large constant values from graph_def."""
+    strip_def = tf.GraphDef()
+    for n0 in graph_def.node:
+        n = strip_def.node.add()
+        n.MergeFrom(n0)
+        if n.op == 'Const':
+            tensor = n.attr['value'].tensor
+            size = len(tensor.tensor_content)
+            if size > max_const_size:
+                tensor.tensor_content = "<stripped %d bytes>" % size
+    return strip_def
+
+
+def show_graph(graph_def=None, max_const_size=32, ungroup_gradients=False):
+    if not graph_def:
+        graph_def = tf.get_default_graph().as_graph_def()
+
+    """Visualize TensorFlow graph."""
+    if hasattr(graph_def, 'as_graph_def'):
+        graph_def = graph_def.as_graph_def()
+    strip_def = strip_consts(graph_def, max_const_size=max_const_size)
+    data = str(strip_def)
+    if ungroup_gradients:
+        data = data.replace('"gradients/', '"b_')
+        # print(data)
+    code = """
+    <html>
+        <script>
+          function load() {{
+            document.getElementById("{id}").pbtxt = {data};
+          }}
+        </script>
+        <link rel="import" href="https://tensorboard.appspot.com/tf-graph-basic.build.html" onload=load()>
+        <div>
+          <tf-graph-basic id="{id}"></tf-graph-basic>
+        </div>
+    </html>
+    """.format(data=repr(data), id='graph' + str(np.random.rand()))
+
+    with open('graph.html', mode='w+') as f:
+        f.write(code)

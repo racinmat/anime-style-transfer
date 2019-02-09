@@ -12,9 +12,9 @@ from tensorflow import graph_util as gu
 import numpy as np
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import clip_ops
-
+import linearize
 from cycle.nets import GAN
-from cycle.utils import TFReader
+from cycle.utils import TFReader, show_graph
 from . import utils, nets
 
 
@@ -109,6 +109,27 @@ class CycleGAN:
 
             x_dis_full_loss, y_dis_full_loss = self.build_dis_losses(fake_x, fake_y)
 
+            # update ops are from batch normalization
+            with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+                yx_gen_opt = self._optimizer(yx_gen_full_loss, self.YtoX.gen.variables, global_step,
+                                             'Adam/{}-{}_gen'.format(self.Y_name, self.X_name))
+                xy_gen_opt = self._optimizer(xy_gen_full_loss, self.XtoY.gen.variables, global_step,
+                                             'Adam/{}-{}_gen'.format(self.X_name, self.Y_name))
+                x_dis_opt = self._optimizer(x_dis_full_loss, self.YtoX.dis.variables, global_step,
+                                            'Adam/{}_dis'.format(self.X_name))
+                y_dis_opt = self._optimizer(y_dis_full_loss, self.XtoY.dis.variables, global_step,
+                                            'Adam/{}_dis'.format(self.Y_name))
+
+            with tf.control_dependencies([xy_gen_opt, yx_gen_opt]):
+                train_gen = tf.no_op('optimizers_gen')
+            with tf.control_dependencies([x_dis_opt, y_dis_opt]):
+                train_dis = tf.no_op('optimizers_dis')
+
+            # linearize.linearize([train_gen, train_dis])   # does not work
+
+            tf.summary.scalar('global_step', global_step)
+            global_step_op = tf.assign_add(global_step, 1)
+
             if self.tb_verbose:
                 tf.summary.histogram('D_{}/real'.format(self.X_name), X_dis_real)
                 tf.summary.histogram('D_{}/fake'.format(self.X_name), X_dis_fake)
@@ -138,22 +159,6 @@ class CycleGAN:
                     # this is mine, showing one by one
                     self.visualizer(self.cur_x, fake_y, self.YtoX.gen(fake_y), self.X_name, self.Y_name)
                     self.visualizer(self.cur_y, fake_x, self.XtoY.gen(fake_x), self.Y_name, self.X_name)
-
-            yx_gen_opt = self._optimizer(yx_gen_full_loss, self.YtoX.gen.variables, global_step,
-                                         'Adam/{}-{}_gen'.format(self.Y_name, self.X_name))
-            xy_gen_opt = self._optimizer(xy_gen_full_loss, self.XtoY.gen.variables, global_step,
-                                         'Adam/{}-{}_gen'.format(self.X_name, self.Y_name))
-            x_dis_opt = self._optimizer(x_dis_full_loss, self.YtoX.dis.variables, global_step,
-                                        'Adam/{}_dis'.format(self.X_name))
-            y_dis_opt = self._optimizer(y_dis_full_loss, self.XtoY.dis.variables, global_step,
-                                        'Adam/{}_dis'.format(self.Y_name))
-
-            tf.summary.scalar('global_step', global_step)
-            with tf.control_dependencies([xy_gen_opt, yx_gen_opt]):
-                train_gen = tf.no_op('optimizers_gen')
-            with tf.control_dependencies([x_dis_opt, y_dis_opt]):
-                train_dis = tf.no_op('optimizers_dis')
-            global_step_op = tf.assign_add(global_step, 1)
 
             logging.info('Created CycleGAN model')
 
@@ -230,15 +235,15 @@ class CycleGAN:
                     # full tracing for tensorboard debugging
                     # on windows, path to some dll is missing, you can fix it by
                     # https://github.com/tensorflow/tensorflow/issues/6235
-                    # run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-                    # run_metadata = tf.RunMetadata()
-                    # summary, losses, _ = sess.run([model_ops['summary'], model_ops['losses'], model_ops['train']],
-                    #                               feed_dict=feeder_dict, options=run_options,
-                    #                               run_metadata=run_metadata)
+                    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                    run_metadata = tf.RunMetadata()
+                    summary, losses, _ = sess.run([model_ops['summary'], model_ops['losses'], model_ops['train']],
+                                                  feed_dict=feeder_dict, options=run_options,
+                                                  run_metadata=run_metadata)
 
-                    summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
+                    # summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
                     self.train_writer.add_summary(summary, step)
-                    # self.train_writer.add_run_metadata(run_metadata, 'step%d' % step)
+                    self.train_writer.add_run_metadata(run_metadata, 'step%d' % step)
                     self.train_writer.flush()
 
                     if log_verbose:
@@ -433,14 +438,169 @@ class CycleGAN:
         np.savez_compressed(outfile, **kwarg_map)
         logging.info('Saved file %s', outfile)
 
+    def compute_adam_gradients(self, adam: tf.train.Optimizer, loss, variables):
+        from tensorflow.python.training.optimizer import Optimizer
+        from tensorflow.python.eager import context
+        from tensorflow.python.framework import dtypes
+        from tensorflow.python.ops import control_flow_ops
+        from tensorflow.python.ops import variable_scope
+        from tensorflow.python.training import distribute as distribute_lib
+        from tensorflow.python.training import distribution_strategy_context
+        from tensorflow.python.util import nest
+        def compute_gradients(optimizer, loss, var_list=None,
+                              gate_gradients=Optimizer.GATE_OP,
+                              aggregation_method=None,
+                              colocate_gradients_with_ops=False,
+                              grad_loss=None):
+            """Compute gradients of `loss` for the variables in `var_list`.
+
+            This is the first part of `minimize()`.  It returns a list
+            of (gradient, variable) pairs where "gradient" is the gradient
+            for "variable".  Note that "gradient" can be a `Tensor`, an
+            `IndexedSlices`, or `None` if there is no gradient for the
+            given variable.
+
+            Args:
+              loss: A Tensor containing the value to minimize or a callable taking
+                no arguments which returns the value to minimize. When eager execution
+                is enabled it must be a callable.
+              var_list: Optional list or tuple of `tf.Variable` to update to minimize
+                `loss`.  Defaults to the list of variables collected in the graph
+                under the key `GraphKeys.TRAINABLE_VARIABLES`.
+              gate_gradients: How to gate the computation of gradients.  Can be
+                `GATE_NONE`, `GATE_OP`, or `GATE_GRAPH`.
+              aggregation_method: Specifies the method used to combine gradient terms.
+                Valid values are defined in the class `AggregationMethod`.
+              colocate_gradients_with_ops: If True, try colocating gradients with
+                the corresponding op.
+              grad_loss: Optional. A `Tensor` holding the gradient computed for `loss`.
+
+            Returns:
+              A list of (gradient, variable) pairs. Variable is always present, but
+              gradient can be `None`.
+
+            Raises:
+              TypeError: If `var_list` contains anything else than `Variable` objects.
+              ValueError: If some arguments are invalid.
+              RuntimeError: If called with eager execution enabled and `loss` is
+                not callable.
+
+            @compatibility(eager)
+            When eager execution is enabled, `gate_gradients`, `aggregation_method`,
+            and `colocate_gradients_with_ops` are ignored.
+            @end_compatibility
+            """
+            if callable(loss):
+                from tensorflow.python.eager import backprop
+                with backprop.GradientTape() as tape:
+                    if var_list is not None:
+                        tape.watch(var_list)
+                    loss_value = loss()
+
+                    # Scale loss if using a "mean" loss reduction and multiple towers.
+                    # Have to be careful to call distribute_lib.get_loss_reduction()
+                    # *after* loss() is evaluated, so we know what loss reduction it uses.
+                    # TODO(josh11b): Test that we handle weight decay in a reasonable way.
+                    if (distribute_lib.get_loss_reduction() ==
+                            variable_scope.VariableAggregation.MEAN):
+                        num_towers = distribution_strategy_context.get_distribution_strategy(
+                        ).num_towers
+                        if num_towers > 1:
+                            loss_value *= (1. / num_towers)
+
+                if var_list is None:
+                    var_list = tape.watched_variables()
+                # TODO(jhseu): Figure out why GradientTape's gradients don't require loss
+                # to be executed.
+                with ops.control_dependencies([loss_value]):
+                    grads = tape.gradient(loss_value, var_list, grad_loss)
+                return list(zip(grads, var_list))
+
+            # Non-callable/Tensor loss case
+            if context.executing_eagerly():
+                raise RuntimeError(
+                    "`loss` passed to Optimizer.compute_gradients should "
+                    "be a function when eager execution is enabled.")
+
+            # Scale loss if using a "mean" loss reduction and multiple towers.
+            if (distribute_lib.get_loss_reduction() ==
+                    variable_scope.VariableAggregation.MEAN):
+                num_towers = distribution_strategy_context.get_distribution_strategy(
+                ).num_towers
+                if num_towers > 1:
+                    loss *= (1. / num_towers)
+
+            if gate_gradients not in [Optimizer.GATE_NONE, Optimizer.GATE_OP,
+                                      Optimizer.GATE_GRAPH]:
+                raise ValueError("gate_gradients must be one of: Optimizer.GATE_NONE, "
+                                 "Optimizer.GATE_OP, Optimizer.GATE_GRAPH.  Not %s" %
+                                 gate_gradients)
+            optimizer._assert_valid_dtypes([loss])
+            if grad_loss is not None:
+                optimizer._assert_valid_dtypes([grad_loss])
+            if var_list is None:
+                var_list = (
+                        variables.trainable_variables() +
+                        ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+            else:
+                var_list = nest.flatten(var_list)
+            # pylint: disable=protected-access
+            var_list += ops.get_collection(ops.GraphKeys._STREAMING_MODEL_PORTS)
+            # pylint: enable=protected-access
+            from tensorflow.python.training.optimizer import _get_processor
+            processors = [_get_processor(v) for v in var_list]
+            if not var_list:
+                raise ValueError("No variables to optimize.")
+            var_refs = [p.target() for p in processors]
+            # original gradients computation
+            # grads = tf.gradients(
+            #     loss, var_refs, grad_ys=grad_loss,
+            #     gate_gradients=(gate_gradients == Optimizer.GATE_OP),
+            #     aggregation_method=aggregation_method,
+            #     colocate_gradients_with_ops=colocate_gradients_with_ops)
+            # using gradient checkpointing
+            from memory_saving_gradients import gradients
+            # setting outputs of different networks
+            tensors_to_checkpoint = self.get_tensors_to_checkpoint()
+
+            # just specifying memory as parameter fails
+            grads = gradients(
+                loss, var_refs, grad_ys=grad_loss,
+                gate_gradients=(gate_gradients == Optimizer.GATE_OP),
+                aggregation_method=aggregation_method,
+                colocate_gradients_with_ops=colocate_gradients_with_ops,
+                checkpoints=tensors_to_checkpoint)
+
+            if gate_gradients == Optimizer.GATE_GRAPH:
+                grads = control_flow_ops.tuple(grads)
+            grads_and_vars = list(zip(grads, var_list))
+            optimizer._assert_valid_dtypes(
+                [v for g, v in grads_and_vars
+                 if g is not None and v.dtype != dtypes.resource])
+            return grads_and_vars
+
+        # just copied so I can change gradients
+        computed_gradients = compute_gradients(adam, loss, var_list=variables)
+
+        # computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
+        return computed_gradients
+
+    def get_tensors_to_checkpoint(self):
+        tensors_to_checkpoint = [
+            self.XtoY.gen(self.cur_x), self.YtoX.gen(self.cur_y),
+            self.XtoY.gen(self.YtoX.gen(self.cur_y)), self.YtoX.gen(self.XtoY.gen(self.cur_x)),
+            self.XtoY.dis(self.XtoY.gen(self.cur_x)), self.YtoX.dis(self.YtoX.gen(self.cur_x)),
+            self.XtoY.dis(self.cur_y), self.YtoX.dis(self.cur_x),
+        ]
+        return tensors_to_checkpoint
+
     def _optimizer(self, loss, variables, global_step, name):
         with tf.variable_scope(name):
-            learning_rate = tf.where(tf.greater_equal(global_step, self.decay_from),
-                                     tf.train.polynomial_decay(self.learning_rate,
-                                                               global_step - self.decay_from,
-                                                               decay_steps=self.steps - self.decay_from,
-                                                               end_learning_rate=0, power=1.0),
-                                     self.learning_rate)
+            learning_rate = tf.where(
+                tf.greater_equal(global_step, self.decay_from),
+                tf.train.polynomial_decay(self.learning_rate, global_step - self.decay_from,
+                                          decay_steps=self.steps - self.decay_from, end_learning_rate=0, power=1.0),
+                self.learning_rate)
 
             if self.tb_verbose:
                 tf.summary.scalar('learning_rate', learning_rate)
@@ -449,8 +609,7 @@ class CycleGAN:
 
             # this part is basically copied from tensorflow.python.training.optimizer.Optimizer#minimize
             # to access gradients
-            gradients = adam.compute_gradients(loss, var_list=variables)
-
+            gradients = self.compute_adam_gradients(adam, loss, variables)
             tf.summary.scalar("gradient_norm/global", clip_ops.global_norm(list(zip(*gradients))[0]))
 
             # Add histograms for variables, gradients and gradient norms
@@ -518,10 +677,15 @@ class HistoryCycleGAN(CycleGAN):
         return super().build_dis_losses(self.prev_fake_x, self.prev_fake_y)
 
     def build_fake_pool(self, global_step):
-        # from time import time
-        # start = time()
         self.x_pool = utils.DataBuffer(self.pool_size, self.X_feed.batch_size)
         self.y_pool = utils.DataBuffer(self.pool_size, self.Y_feed.batch_size)
+
+    def get_tensors_to_checkpoint(self):
+        tensors_to_checkpoint = super().get_tensors_to_checkpoint()
+        tensors_to_checkpoint += [
+            self.XtoY.dis(self.prev_fake_y), self.YtoX.dis(self.prev_fake_x),
+        ]
+        return tensors_to_checkpoint
 
     def prepare_feeder_dict(self, model_ops, sess, step):
         cur_x, cur_y, _ = sess.run([self.X_feed.feed(), self.Y_feed.feed(), model_ops['train']['global_step']])

@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+from tensorflow.contrib import layers
 
 def to_num(s):
     n = float(s)
@@ -12,7 +12,7 @@ def safe_log(x, eps=1e-12):
 
 def weights(name, shape):
     return tf.get_variable(name, shape,
-                           initializer=tf.contrib.layers.xavier_initializer())
+                           initializer=layers.xavier_initializer())
 
 
 def biases(name, shape, constant=0.0):
@@ -23,11 +23,11 @@ def norm(data, is_training, normtype):
     if normtype is None:
         return data
     if normtype.casefold() == 'instance'.casefold():
-        return tf.contrib.layers.instance_norm(data)
+        return layers.instance_norm(data)
     if normtype.casefold() == 'batch'.casefold():
-        return tf.contrib.layers.batch_norm(data, is_training=is_training, decay=0.9)
+        return layers.batch_norm(data, is_training=is_training, decay=0.9)
     if normtype.casefold() == 'layer'.casefold():
-        return tf.contrib.layers.layer_norm(data)
+        return layers.layer_norm(data)
     return data
 
 

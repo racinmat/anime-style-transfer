@@ -90,7 +90,7 @@ class BaseNet(object):
 
 
 class GAN(object):
-    def __init__(self, gen, dis, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda, selfreg_lambda,
+    def __init__(self, gen: BaseNet, dis: BaseNet, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda, selfreg_lambda,
                  selfreg_transform=None):
         assert isinstance(gen, BaseNet) and isinstance(dis, BaseNet)
         self.gen = gen
@@ -157,7 +157,7 @@ class LSGAN(GAN):
 
 
 class WGAN(GAN):
-    def __init__(self, gen, dis, in_shape, out_shape, tb_verbose,
+    def __init__(self, gen: BaseNet, dis: BaseNet, in_shape, out_shape, tb_verbose,
                  gen_lambda, dis_lambda, grad_lambda, selfreg_lambda, selfreg_transform=None):
         super().__init__(gen, dis, in_shape, out_shape, tb_verbose,
                          gen_lambda, dis_lambda, selfreg_lambda, selfreg_transform)
