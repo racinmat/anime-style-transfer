@@ -14,8 +14,6 @@ _layer_map = {'c': ops.conv_block,
               'r': ops.reconv_block,
               'f': ops.fc}
 
-REAL_LABEL = 0.9
-
 
 # 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc' - generator
 # 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;' - discriminator
@@ -150,10 +148,10 @@ class GAN(object):
 
 class LSGAN(GAN):
     def _gen_loss(self, data):
-        return tf.reduce_mean(tf.squared_difference(data, REAL_LABEL))
+        return tf.reduce_mean(tf.squared_difference(data, self.real_label))
 
     def _dis_loss(self, real, fake):
-        real_l = tf.reduce_mean(tf.squared_difference(self.dis(real), REAL_LABEL))
+        real_l = tf.reduce_mean(tf.squared_difference(self.dis(real), self.real_label))
         fake_l = tf.reduce_mean(tf.square(self.dis(fake)))
         return (real_l + fake_l) / 2
 

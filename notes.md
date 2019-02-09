@@ -28,6 +28,10 @@ vyzkoušet poladit control_ops, mezi sítěmi, aby odpovídaly průtoku informac
 
 vyzkoušet lepší cycle loss a vůbec věci v tomhle paperu https://ssnl.github.io/better_cycles/report.pdf
 
+možná zkusit discogan
+omrknout https://www.cs.ru.nl/bachelors-theses/2018/Robin_Elbers___4225678___On_the_replication_of_CycleGAN.pdf
+možná zkusit historical averaging
+
 1.
 2019-02-05--00-27-0 - input cache pro BaseNetwork
 2019-02-05--23-36-0 - bez input cache pro BaseNetwork
