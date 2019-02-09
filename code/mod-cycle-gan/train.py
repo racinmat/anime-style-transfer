@@ -65,7 +65,7 @@ tf.flags.DEFINE_float('beta1', 0.5, 'Beta for optimizers.')
 tf.flags.DEFINE_bool('history', True, 'Whether to keep history of generated images and sometimes swap them.')
 tf.flags.DEFINE_integer('poolsize', 50, 'How large a history buffer will be. Valid only if history set to True.')
 tf.flags.DEFINE_float('ls', 0.0, 'Label smoothing - Which portion will be assigned to other labels.')
-tf.flags.DEFINE_float('onesided_ls', True, 'One sided label smoothing - only real (1) will be smoothed, fake (0) not.')
+tf.flags.DEFINE_boolean('onesided_ls', True, 'One sided label smoothing - only real (1) will be smoothed, fake (0) not.')
 
 
 def keep_flag(k): return k != 'h' and 'help' not in k and getattr(FLAGS, k) is not None

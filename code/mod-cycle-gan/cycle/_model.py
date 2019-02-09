@@ -12,7 +12,6 @@ from tensorflow import graph_util as gu
 import numpy as np
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import clip_ops
-import linearize
 from cycle.nets import GAN
 from cycle.utils import TFReader, show_graph
 from . import utils, nets
@@ -581,9 +580,9 @@ class CycleGAN:
             return grads_and_vars
 
         # just copied so I can change gradients
-        # computed_gradients = compute_gradients(adam, loss, var_list=variables)
+        computed_gradients = compute_gradients(adam, loss, var_list=variables)
 
-        computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
+        # computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
         return computed_gradients
 
     def get_tensors_to_checkpoint(self):
