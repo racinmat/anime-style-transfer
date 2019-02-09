@@ -559,10 +559,10 @@ class CycleGAN:
             #     gate_gradients=(gate_gradients == Optimizer.GATE_OP),
             #     aggregation_method=aggregation_method,
             #     colocate_gradients_with_ops=colocate_gradients_with_ops)
-            # using gradient checkpointing
+            # using gradient check-pointing
             from memory_saving_gradients import gradients
             # setting outputs of different networks
-            tensors_to_checkpoint = self.get_tensors_to_checkpoint()
+            # tensors_to_checkpoint = self.get_tensors_to_checkpoint()
 
             # just specifying memory as parameter fails
             grads = gradients(
@@ -570,7 +570,7 @@ class CycleGAN:
                 gate_gradients=(gate_gradients == Optimizer.GATE_OP),
                 aggregation_method=aggregation_method,
                 colocate_gradients_with_ops=colocate_gradients_with_ops,
-                checkpoints=tensors_to_checkpoint)
+                checkpoints='speed')
 
             if gate_gradients == Optimizer.GATE_GRAPH:
                 grads = control_flow_ops.tuple(grads)
@@ -581,9 +581,9 @@ class CycleGAN:
             return grads_and_vars
 
         # just copied so I can change gradients
-        computed_gradients = compute_gradients(adam, loss, var_list=variables)
+        # computed_gradients = compute_gradients(adam, loss, var_list=variables)
 
-        # computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
+        computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
         return computed_gradients
 
     def get_tensors_to_checkpoint(self):

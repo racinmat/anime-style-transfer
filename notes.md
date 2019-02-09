@@ -21,8 +21,9 @@ spojený training - ne
 formát dat NHWC vs. NCHW
 současné načítání dat vs. dataset API DONE
 současné načítání dat vs. dataset API bez py_func DONE
-upgrade tensorflow 1.12 DONE - nic
+upgrade tensorflow 1.12 DONE - bez zrychlení
 tensorflow 1.12 + XLA kompilace - XLA kompilace není pro windows
+gradient checkpointing - bez zrychlení
 vyzkoušet poladit control_ops, mezi sítěmi, aby odpovídaly průtoku informace
 
 použít gradient checkpointing https://github.com/openai/gradient-checkpointing
@@ -37,7 +38,9 @@ s input cache o 27% rychlejší
 2019-02-07--08-29-0 - jako předtím, ale opravdu fixlý global step
 bez dataset api je o 13% pomalejší (queues branch)
 2019-02-08--00-05-0 - dataset api, ale načítání prev fake data zvlášť - bez py_func
-todo: zkusit s těmi samými strukturními úpravami (+ prefetchem) i původní kód
 2019-02-08--08-25-0 - ty původní s prefetchem a původní kód
 2019-02-09--10-24-0 - tensorflow 1.12
-2019-02-09--21-54-0 - tensorflow 1.12 - gradient checkpointing
+2019-02-09--21-54-0 - tensorflow 1.12 - gradient checkpointing na memory
+2019-02-09--22-13-0 - tensorflow 1.12 - gradient checkpointing na memory, bez logování
+2019-02-09--22-31-0 - tensorflow 1.12 - původní
+2019-02-09--22-59-0 - tensorflow 1.12 - gradient checkpointing na speed, bez logování
