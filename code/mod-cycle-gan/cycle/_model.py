@@ -447,6 +447,7 @@ class CycleGAN:
         from tensorflow.python.training import distribute as distribute_lib
         from tensorflow.python.training import distribution_strategy_context
         from tensorflow.python.util import nest
+
         def compute_gradients(optimizer, loss, var_list=None,
                               gate_gradients=Optimizer.GATE_OP,
                               aggregation_method=None,
@@ -580,9 +581,9 @@ class CycleGAN:
             return grads_and_vars
 
         # just copied so I can change gradients
-        computed_gradients = compute_gradients(adam, loss, var_list=variables)
+        # computed_gradients = compute_gradients(adam, loss, var_list=variables)
 
-        # computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
+        computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
         return computed_gradients
 
     def get_tensors_to_checkpoint(self):

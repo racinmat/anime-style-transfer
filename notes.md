@@ -40,4 +40,4 @@ bez dataset api je o 13% pomalejší (queues branch)
 todo: zkusit s těmi samými strukturními úpravami (+ prefetchem) i původní kód
 2019-02-08--08-25-0 - ty původní s prefetchem a původní kód
 2019-02-09--10-24-0 - tensorflow 1.12
-2019-02-09--10-24-0 - tensorflow 1.12 - gradient checkpointing
+2019-02-09--21-54-0 - tensorflow 1.12 - gradient checkpointing
