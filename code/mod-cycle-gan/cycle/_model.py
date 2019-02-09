@@ -220,14 +220,7 @@ class CycleGAN:
                     logging.info('\t{}:\t{}'.format(k, v))
 
             while step < self.steps:
-                feeder_dict = self.prepare_feeder_dict(model_ops, sess, step)
-
-                # start = time()
-                for _ in range(dis_train):
-                    sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
-                for _ in range(gen_train):
-                    sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
-                # logging.info('train ops: %s', time() - start)
+                feeder_dict = self.base_train_iteration(dis_train, gen_train, model_ops, sess, step)
 
                 # michal nastaveni: každých 2500 logovat trénovací, každých 25000 validační a ukládat model
                 if step % 250 == 0:
@@ -271,12 +264,17 @@ class CycleGAN:
             if export_final:
                 self.export(sess, self.full_checkpoints_dir)
 
-    def prepare_feeder_dict(self, model_ops, sess, step):
+    def base_train_iteration(self, dis_train, gen_train, model_ops, sess, step):
         cur_x, cur_y, _ = sess.run([self.X_feed.feed(), self.Y_feed.feed(), model_ops['train']['global_step']])
         feeder_dict = {
             self.cur_x: cur_x,
             self.cur_y: cur_y,
         }
+
+        for _ in range(gen_train):
+            sess.run(model_ops['train']['gen'], feed_dict=feeder_dict)
+        for _ in range(dis_train):
+            sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
         return feeder_dict
 
     def build_fake_pool(self, global_step):
@@ -561,7 +559,7 @@ class CycleGAN:
             # using gradient check-pointing
             from memory_saving_gradients import gradients
             # setting outputs of different networks
-            # tensors_to_checkpoint = self.get_tensors_to_checkpoint()
+            tensors_to_checkpoint = self.get_tensors_to_checkpoint()
 
             # just specifying memory as parameter fails
             grads = gradients(
@@ -580,9 +578,9 @@ class CycleGAN:
             return grads_and_vars
 
         # just copied so I can change gradients
-        computed_gradients = compute_gradients(adam, loss, var_list=variables)
+        # computed_gradients = compute_gradients(adam, loss, var_list=variables)
 
-        # computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
+        computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
         return computed_gradients
 
     def get_tensors_to_checkpoint(self):
@@ -687,16 +685,22 @@ class HistoryCycleGAN(CycleGAN):
         ]
         return tensors_to_checkpoint
 
-    def prepare_feeder_dict(self, model_ops, sess, step):
+    def base_train_iteration(self, dis_train, gen_train, model_ops, sess, step):
         cur_x, cur_y, _ = sess.run([self.X_feed.feed(), self.Y_feed.feed(), model_ops['train']['global_step']])
-        fx, fy = sess.run([model_ops['fakes']['x'], model_ops['fakes']['y']], feed_dict={
-            self.cur_x: cur_x,
-            self.cur_y: cur_y,
-        })
+
         feeder_dict = {
             self.cur_x: cur_x,
             self.cur_y: cur_y,
-            self.prev_fake_x: self.x_pool.query(fx, step),
-            self.prev_fake_y: self.y_pool.query(fy, step),
         }
+        for _ in range(gen_train):
+            _, fakes = sess.run([model_ops['train']['gen'], model_ops['fakes']], feed_dict=feeder_dict)
+            fx, fy = fakes['x'], fakes['y']
+            feeder_dict = {
+                self.cur_x: cur_x,
+                self.cur_y: cur_y,
+                self.prev_fake_x: self.x_pool.query(fx, step),
+                self.prev_fake_y: self.y_pool.query(fy, step),
+            }
+        for _ in range(dis_train):
+            sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
         return feeder_dict

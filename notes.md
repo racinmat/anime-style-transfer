@@ -1,5 +1,5 @@
 ## todo:
-kusit vyhodit weight los, nechat self-regularizaci
+zkusit vyhodit weight los, nechat self-regularizaci
 obohatit ade20k animefest videi? 
 zkusit pouze animefest videa?
 zkusit pouze cosplay videa?
@@ -26,9 +26,7 @@ tensorflow 1.12 + XLA kompilace - XLA kompilace není pro windows
 gradient checkpointing - bez zrychlení
 vyzkoušet poladit control_ops, mezi sítěmi, aby odpovídaly průtoku informace
 
-použít gradient checkpointing https://github.com/openai/gradient-checkpointing
-
-kouknout na http://on-demand.gputechconf.com/gtc-eu/2017/presentation/23363-chris-fregly-optimizing-profiling-and-deploying-tensorflow-ai-models-in-production-with-gpus.pdf
+vyzkoušet lepší cycle loss a vůbec věci v tomhle paperu https://ssnl.github.io/better_cycles/report.pdf
 
 1.
 2019-02-05--00-27-0 - input cache pro BaseNetwork
@@ -43,4 +41,4 @@ bez dataset api je o 13% pomalejší (queues branch)
 2019-02-09--21-54-0 - tensorflow 1.12 - gradient checkpointing na memory
 2019-02-09--22-13-0 - tensorflow 1.12 - gradient checkpointing na memory, bez logování
 2019-02-09--22-31-0 - tensorflow 1.12 - původní
-2019-02-09--22-59-0 - tensorflow 1.12 - gradient checkpointing na speed, bez logování
+2019-02-10--00-01-0 - tensorflow 1.12 - gradient checkpointing na speed, bez logování
