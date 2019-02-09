@@ -235,15 +235,15 @@ class CycleGAN:
                     # full tracing for tensorboard debugging
                     # on windows, path to some dll is missing, you can fix it by
                     # https://github.com/tensorflow/tensorflow/issues/6235
-                    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-                    run_metadata = tf.RunMetadata()
-                    summary, losses, _ = sess.run([model_ops['summary'], model_ops['losses'], model_ops['train']],
-                                                  feed_dict=feeder_dict, options=run_options,
-                                                  run_metadata=run_metadata)
+                    # run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                    # run_metadata = tf.RunMetadata()
+                    # summary, losses, _ = sess.run([model_ops['summary'], model_ops['losses'], model_ops['train']],
+                    #                               feed_dict=feeder_dict, options=run_options,
+                    #                               run_metadata=run_metadata)
 
-                    # summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
+                    summary, losses = sess.run([model_ops['summary'], model_ops['losses']], feed_dict=feeder_dict)
                     self.train_writer.add_summary(summary, step)
-                    self.train_writer.add_run_metadata(run_metadata, 'step%d' % step)
+                    # self.train_writer.add_run_metadata(run_metadata, 'step%d' % step)
                     self.train_writer.flush()
 
                     if log_verbose:
@@ -581,9 +581,9 @@ class CycleGAN:
             return grads_and_vars
 
         # just copied so I can change gradients
-        # computed_gradients = compute_gradients(adam, loss, var_list=variables)
+        computed_gradients = compute_gradients(adam, loss, var_list=variables)
 
-        computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
+        # computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
         return computed_gradients
 
     def get_tensors_to_checkpoint(self):
