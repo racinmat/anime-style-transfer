@@ -9,7 +9,6 @@ from itertools import groupby
 import cv2
 import progressbar
 import tensorflow as tf
-import glob
 import os
 import os.path as osp
 

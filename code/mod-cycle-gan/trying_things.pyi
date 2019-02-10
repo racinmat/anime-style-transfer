@@ -77,7 +77,7 @@ def queue(fake_img, step):
 pooled_data = tf.py_func(queue, [generator, tf.train.get_or_create_global_step()], tf.int32)
 
 #%%
-vals = sess.run({
+values = sess.run({
     'feed': feed,
     'generator': generator,
     'pooled_data': pooled_data,

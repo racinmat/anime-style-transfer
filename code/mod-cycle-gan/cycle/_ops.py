@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib import layers
 
+
 def to_num(s):
     n = float(s)
     return int(n) if int(n) == n else n

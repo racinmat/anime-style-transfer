@@ -11,7 +11,8 @@ from object_detection.data_decoders import tf_example_decoder
 
 class MyTestCase(unittest.TestCase):
 
-    def create_tfrecord_array(self, outfile, infiles):
+    @staticmethod
+    def create_tfrecord_array(outfile, infiles):
         writer = tf.python_io.TFRecordWriter(outfile)
 
         for i, f in enumerate(infiles):
@@ -21,7 +22,8 @@ class MyTestCase(unittest.TestCase):
             writer.write(ex.SerializeToString())
         writer.close()
 
-    def create_tfrecord_encoded(self, outfile, infiles):
+    @staticmethod
+    def create_tfrecord_encoded(outfile, infiles):
         writer = tf.python_io.TFRecordWriter(outfile)
 
         for i, f in enumerate(infiles):
@@ -47,7 +49,8 @@ class MyTestCase(unittest.TestCase):
                 images.append(sess.run(feeder))
         return images
 
-    def parse_example_array(self, serialized_example):
+    @staticmethod
+    def parse_example_array(serialized_example):
         shape = (1080, 1920, 3)
         features = tf.parse_single_example(serialized_example, {'image': tf.FixedLenFeature(shape, tf.float32)})
         return features['image']
@@ -65,7 +68,8 @@ class MyTestCase(unittest.TestCase):
                 images.append(sess.run(feeder))
         return images
 
-    def parse_example_encoded(self, serialized_example):
+    @staticmethod
+    def parse_example_encoded(serialized_example):
         example_decoder = tf_example_decoder.TfExampleDecoder()
         features = example_decoder.decode(tf.convert_to_tensor(serialized_example))
         return features['image']

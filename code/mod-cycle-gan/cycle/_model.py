@@ -3,7 +3,6 @@
 import os
 import os.path as osp
 import logging
-import time
 from datetime import datetime
 
 import progressbar
@@ -12,8 +11,8 @@ from tensorflow import graph_util as gu
 import numpy as np
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import clip_ops
-from cycle.nets import GAN
-from cycle.utils import TFReader, show_graph
+from cycle.nets import GAN, BaseNet
+from cycle.utils import TFReader
 from . import utils, nets
 
 
@@ -74,19 +73,22 @@ class CycleGAN:
                      X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
 
     def build_placeholders(self):
-        self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
-        self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
+        # self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
+        # self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
+        # for simple debugging, so I have data
+        self.cur_x = self.X_feed.feed()
+        self.cur_y = self.Y_feed.feed()
 
     def get_model(self):
         with self.graph.as_default():
 
-            fake_y = self.XtoY.gen(self.cur_x)
-            fake_x = self.YtoX.gen(self.cur_y)
+            fake_y = self.XtoY.gen.build(self.cur_x)
+            fake_x = self.YtoX.gen.build(self.cur_y)
 
-            X_dis_fake = self.YtoX.dis(fake_x)
-            X_dis_real = self.YtoX.dis(self.cur_x)
-            Y_dis_fake = self.XtoY.dis(fake_y)
-            Y_dis_real = self.XtoY.dis(self.cur_y)
+            X_dis_fake = self.YtoX.dis.build(fake_x)
+            X_dis_real = self.YtoX.dis.build(self.cur_x)
+            Y_dis_fake = self.XtoY.dis.build(fake_y)
+            Y_dis_real = self.XtoY.dis.build(self.cur_y)
 
             with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
                 global_step = tf.get_variable('global_step', shape=(), initializer=tf.zeros_initializer)
@@ -156,8 +158,8 @@ class CycleGAN:
 
                 if self.visualizer:
                     # this is mine, showing one by one
-                    self.visualizer(self.cur_x, fake_y, self.YtoX.gen(fake_y), self.X_name, self.Y_name)
-                    self.visualizer(self.cur_y, fake_x, self.XtoY.gen(fake_x), self.Y_name, self.X_name)
+                    self.visualizer(self.cur_x, fake_y, self.YtoX.gen.build(fake_y), self.X_name, self.Y_name)
+                    self.visualizer(self.cur_y, fake_x, self.XtoY.gen.build(fake_x), self.Y_name, self.X_name)
 
             logging.info('Created CycleGAN model')
 
@@ -290,8 +292,13 @@ class CycleGAN:
             meta_graph_path = checkpoint.model_checkpoint_path + '.meta'
             restore = tf.train.import_meta_graph(meta_graph_path)
             restore.restore(sess, tf.train.latest_checkpoint(full_checkpoints_dir))
-            step = int(osp.basename(meta_graph_path).split('-')[1].split('.')[0])
+            step = int(CycleGAN.meta_path_to_step(meta_graph_path))
         return step
+
+    @staticmethod
+    def meta_path_to_step(meta_graph_path):
+        name_ext = osp.basename(meta_graph_path).split('-')[1]  # type: str
+        return name_ext.split('.')[0]
 
     def export(self, sess, export_dir):
         is_training = self.XtoY.gen.is_training
@@ -309,9 +316,9 @@ class CycleGAN:
             data_in = tf.expand_dims(normer(tf.placeholder(tf.float32,
                                                            shape=self.XtoY.in_shape if XtoY else self.YtoX.out_shape,
                                                            name='input')), 0)
-            out = self.XtoY.gen(data_in) if XtoY else self.YtoX.gen(data_in)
-            d_in = self.XtoY.dis(data_in) if XtoY else self.YtoX.dis(data_in)
-            d_out = self.YtoX.dis(out) if XtoY else self.XtoY.dis(out)
+            out = self.XtoY.gen.build(data_in) if XtoY else self.YtoX.gen.build(data_in)
+            d_in = self.XtoY.dis.build(data_in) if XtoY else self.YtoX.dis.build(data_in)
+            d_out = self.YtoX.dis.build(out) if XtoY else self.XtoY.dis.build(out)
             denormer(tf.squeeze(out, axis=0), name='output')
             tf.reduce_mean(d_in, name='d_input')
             tf.reduce_mean(d_out, name='d_output')
@@ -340,10 +347,8 @@ class CycleGAN:
         return step_1
 
     @staticmethod
-    def _export_cp_one_part(gen,
-                            out_dis, in_dis, normer, denormer,
-                            in_shape,
-                            cp_dir, export_dir, model_name):
+    def _export_cp_one_part(gen: BaseNet, out_dis: BaseNet, in_dis: BaseNet, normer, denormer, in_shape, cp_dir,
+                            export_dir, model_name):
         graph = tf.Graph()
         with graph.as_default():
             # data_in = tf.expand_dims(normer(tf.placeholder(tf.float32,
@@ -353,9 +358,9 @@ class CycleGAN:
             data_in = normer(tf.placeholder(tf.float32,
                                             shape=[None] + list(in_shape),
                                             name='input'))
-            out = gen(data_in)
-            d_in = in_dis(data_in)
-            d_out = out_dis(out)
+            out = gen.build(data_in)
+            d_in = in_dis.build(data_in)
+            d_out = out_dis.build(out)
             # denormer(tf.squeeze(out, axis=0), name='output')
             # above is for one image per batch, this is for any size batch
             denormer(out, name='output')
@@ -379,7 +384,7 @@ class CycleGAN:
 
             # just getting the current step
             meta_graph_path = cp + '.meta'
-            step = str(osp.basename(meta_graph_path).split('-')[1].split('.')[0])
+            step = str(CycleGAN.meta_path_to_step(meta_graph_path))
 
             tf.train.write_graph(output_graph_def, osp.join(export_dir, step), model_name, as_text=False)
         return step
@@ -450,44 +455,6 @@ class CycleGAN:
                               aggregation_method=None,
                               colocate_gradients_with_ops=False,
                               grad_loss=None):
-            """Compute gradients of `loss` for the variables in `var_list`.
-
-            This is the first part of `minimize()`.  It returns a list
-            of (gradient, variable) pairs where "gradient" is the gradient
-            for "variable".  Note that "gradient" can be a `Tensor`, an
-            `IndexedSlices`, or `None` if there is no gradient for the
-            given variable.
-
-            Args:
-              loss: A Tensor containing the value to minimize or a callable taking
-                no arguments which returns the value to minimize. When eager execution
-                is enabled it must be a callable.
-              var_list: Optional list or tuple of `tf.Variable` to update to minimize
-                `loss`.  Defaults to the list of variables collected in the graph
-                under the key `GraphKeys.TRAINABLE_VARIABLES`.
-              gate_gradients: How to gate the computation of gradients.  Can be
-                `GATE_NONE`, `GATE_OP`, or `GATE_GRAPH`.
-              aggregation_method: Specifies the method used to combine gradient terms.
-                Valid values are defined in the class `AggregationMethod`.
-              colocate_gradients_with_ops: If True, try colocating gradients with
-                the corresponding op.
-              grad_loss: Optional. A `Tensor` holding the gradient computed for `loss`.
-
-            Returns:
-              A list of (gradient, variable) pairs. Variable is always present, but
-              gradient can be `None`.
-
-            Raises:
-              TypeError: If `var_list` contains anything else than `Variable` objects.
-              ValueError: If some arguments are invalid.
-              RuntimeError: If called with eager execution enabled and `loss` is
-                not callable.
-
-            @compatibility(eager)
-            When eager execution is enabled, `gate_gradients`, `aggregation_method`,
-            and `colocate_gradients_with_ops` are ignored.
-            @end_compatibility
-            """
             if callable(loss):
                 from tensorflow.python.eager import backprop
                 with backprop.GradientTape() as tape:
@@ -580,15 +547,15 @@ class CycleGAN:
         # just copied so I can change gradients
         # computed_gradients = compute_gradients(adam, loss, var_list=variables)
 
-        computed_gradients = adam.compute_gradients(loss, var_list=variables)    # original gradient
+        computed_gradients = adam.compute_gradients(loss, var_list=variables)  # original gradient
         return computed_gradients
 
     def get_tensors_to_checkpoint(self):
         tensors_to_checkpoint = [
-            self.XtoY.gen(self.cur_x), self.YtoX.gen(self.cur_y),
-            self.XtoY.gen(self.YtoX.gen(self.cur_y)), self.YtoX.gen(self.XtoY.gen(self.cur_x)),
-            self.XtoY.dis(self.XtoY.gen(self.cur_x)), self.YtoX.dis(self.YtoX.gen(self.cur_x)),
-            self.XtoY.dis(self.cur_y), self.YtoX.dis(self.cur_x),
+            self.XtoY.gen.build(self.cur_x), self.YtoX.gen.build(self.cur_y),
+            self.XtoY.gen.build(self.YtoX.gen.build(self.cur_y)), self.YtoX.gen.build(self.XtoY.gen.build(self.cur_x)),
+            self.XtoY.dis.build(self.XtoY.gen.build(self.cur_x)), self.YtoX.dis.build(self.YtoX.gen.build(self.cur_x)),
+            self.XtoY.dis.build(self.cur_y), self.YtoX.dis.build(self.cur_x),
         ]
         return tensors_to_checkpoint
 
@@ -630,8 +597,8 @@ class CycleGAN:
             return learning_step
 
     def _cycle_loss(self, x, y, cycle_lambda):
-        y_to_y_diff = tf.abs(self.XtoY.gen(self.YtoX.gen(y)) - y)
-        x_to_x_diff = tf.abs(self.YtoX.gen(self.XtoY.gen(x)) - x)
+        y_to_y_diff = tf.abs(self.XtoY.gen.build(self.YtoX.gen.build(y)) - y)
+        x_to_x_diff = tf.abs(self.YtoX.gen.build(self.XtoY.gen.build(x)) - x)
         return cycle_lambda * (tf.reduce_mean(x_to_x_diff) + tf.reduce_mean(y_to_y_diff))
 
     def create_name(self, checkpoints_dir, load_model):
@@ -681,7 +648,7 @@ class HistoryCycleGAN(CycleGAN):
     def get_tensors_to_checkpoint(self):
         tensors_to_checkpoint = super().get_tensors_to_checkpoint()
         tensors_to_checkpoint += [
-            self.XtoY.dis(self.prev_fake_y), self.YtoX.dis(self.prev_fake_x),
+            self.XtoY.dis.build(self.prev_fake_y), self.YtoX.dis.build(self.prev_fake_x),
         ]
         return tensors_to_checkpoint
 

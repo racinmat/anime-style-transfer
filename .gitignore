@@ -25,7 +25,6 @@
 *.synctex.gz
 *.fdb_latexmk
 *.fls
-*.log
 data
 dataset-sources
 /code/mod-cycle-gan/test_data/temp/

@@ -29,6 +29,7 @@ class BaseNet(object):
         self.names = []
         self.layers_dicts = []  # added for debug
         self.inputs_cache = {}
+        self.penultimate_inputs_cache = {}  # I need node before the last for discriminator bsc of stability (sigmoid)
         for i, n in enumerate(self.network_desc[:-1]):
             newname = n
             while True:
@@ -40,7 +41,7 @@ class BaseNet(object):
                     break
             self.names.append(newname)
 
-    def __call__(self, data):
+    def build(self, data):
         # some computational graph optimization
         if data in self.inputs_cache:
             return self.inputs_cache[data]
@@ -49,7 +50,16 @@ class BaseNet(object):
             result = self.transform(data)
         self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
         self.inputs_cache[data] = result
+        self.penultimate_inputs_cache[data] = result.op.inputs[0]   # penultimate layer (input to last layer)
         return result
+
+    def build_penultimate(self, data):
+        # some computational graph optimization
+        if data in self.penultimate_inputs_cache:
+            return self.penultimate_inputs_cache[data]
+
+        self.build(data)
+        return self.penultimate_inputs_cache[data]
 
     def transform(self, data):
         out = data
@@ -116,13 +126,18 @@ class GAN(object):
         return 0
 
     def gen_loss(self, orig_data):
-        fake_dis_output = self.dis(self.gen(orig_data))
+        fake_dis_output = self.dis.build(self.gen.build(orig_data))
         with tf.name_scope('{}-gen-loss'.format(self.gen.name)):
             return self._gen_loss(fake_dis_output) * self.gen_lambda
 
     def _dis_loss(self, real, fake):
-        real_l = -tf.reduce_mean(ops.safe_log(self.dis(real)))
-        fake_l = -tf.reduce_mean(ops.safe_log(1 - self.dis(fake)))
+        # seem to be better for stability, but check with and without softmax, check sigmoids
+        # -log((1 - label_smoothing) - sigmoid(D(x)))
+        real_l = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=tf.ones_like(self.dis.build(real)) * self.real_label, logits=self.dis.build_penultimate(real)))
+        # -log(- sigmoid(D(G(x))))
+        fake_l = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=tf.ones_like(self.dis.build(fake)) * self.fake_label, logits=self.dis.build_penultimate(fake)))
         return (real_l + fake_l) / 2
 
     def dis_loss(self, real, fake):
@@ -151,8 +166,8 @@ class LSGAN(GAN):
         return tf.reduce_mean(tf.squared_difference(data, self.real_label))
 
     def _dis_loss(self, real, fake):
-        real_l = tf.reduce_mean(tf.squared_difference(self.dis(real), self.real_label))
-        fake_l = tf.reduce_mean(tf.square(self.dis(fake)))
+        real_l = tf.reduce_mean(tf.squared_difference(self.dis.build(real), self.real_label))
+        fake_l = tf.reduce_mean(tf.squared_difference(self.dis.build(fake), self.fake_label))
         return (real_l + fake_l) / 2
 
 
@@ -170,12 +185,12 @@ class WGAN(GAN):
         shape = [real.shape[0].value] + [1 for _ in range(len(real.shape) - 1)]
         rand_eps = tf.random_uniform(shape=shape, minval=0., maxval=1.)
         orig_hat = real * rand_eps + fake * (1 - rand_eps)
-        grads = tf.gradients(ys=self.dis(orig_hat), xy=[orig_hat])
+        grads = tf.gradients(ys=self.dis.build(orig_hat), xy=[orig_hat])
         return self.grad_lambda * tf.square(tf.norm(grads[0], ord=2) - 1.0)
 
     def dis_loss(self, real, fake):
-        real_l = -tf.reduce_mean(self.dis(real))
-        fake_l = tf.reduce_mean(self.dis(fake))
+        real_l = -tf.reduce_mean(self.dis.build(real))
+        fake_l = tf.reduce_mean(self.dis.build(fake))
         return self.dis_lambda * (real_l + fake_l) / 2
 
     def _dis_loss(self, *args):
