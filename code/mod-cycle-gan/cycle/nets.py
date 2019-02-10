@@ -99,7 +99,7 @@ class BaseNet(object):
 
 class GAN(object):
     def __init__(self, gen: BaseNet, dis: BaseNet, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda,
-                 selfreg_lambda, label_smoothing, one_sided_ls, selfreg_transform=None):
+                 selfreg_lambda, label_smoothing, selfreg_transform=None):
         assert isinstance(gen, BaseNet) and isinstance(dis, BaseNet)
         self.gen = gen
         self.dis = dis
@@ -111,7 +111,8 @@ class GAN(object):
         self.selfreg_transform = selfreg_transform
         self.tb_verbose = tb_verbose
         self.real_label = 1 - label_smoothing
-        self.fake_label = 0 if one_sided_ls else label_smoothing
+        self.label_smoothing = label_smoothing
+        self.fake_label = 0
 
     def _gen_loss(self, data):
         return -tf.reduce_mean(ops.safe_log(data))
@@ -173,9 +174,9 @@ class LSGAN(GAN):
 
 class WGAN(GAN):
     def __init__(self, gen: BaseNet, dis: BaseNet, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda, grad_lambda,
-                 selfreg_lambda, label_smoothing, one_sided_ls, selfreg_transform=None):
+                 selfreg_lambda, label_smoothing, selfreg_transform=None):
         super().__init__(gen, dis, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda, selfreg_lambda,
-                         label_smoothing, one_sided_ls, selfreg_transform)
+                         label_smoothing, selfreg_transform)
         self.grad_lambda = grad_lambda
 
     def _gen_loss(self, data):

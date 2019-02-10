@@ -64,8 +64,8 @@ tf.flags.DEFINE_float('lr', 2e-4, 'Initial learning rate for adam optimizer.')
 tf.flags.DEFINE_float('beta1', 0.5, 'Beta for optimizers.')
 tf.flags.DEFINE_bool('history', True, 'Whether to keep history of generated images and sometimes swap them.')
 tf.flags.DEFINE_integer('poolsize', 50, 'How large a history buffer will be. Valid only if history set to True.')
-tf.flags.DEFINE_float('ls', 0.0, 'Label smoothing - Which portion will be assigned to other labels.')
-tf.flags.DEFINE_boolean('onesided_ls', True, 'One sided label smoothing - only real (1) will be smoothed, fake (0) not.')
+tf.flags.DEFINE_float('ls', 0.0, 'Label smoothing - Which portion will be assigned to other labels.'
+                                 'Only one-sided version supported (no reason to smooth fake labels).')
 
 
 def keep_flag(k): return k != 'h' and 'help' not in k and getattr(FLAGS, k) is not None
@@ -165,19 +165,16 @@ def initialize_networks():
     Y_shape = modellib.Y_DATA_SHAPE
     tbverbose = FLAGS.tbverbose
     ls = FLAGS.ls
-    one_sided_ls = FLAGS.onesided_ls
 
     if FLAGS.gantype.casefold() == 'GAN'.casefold():
-        xy = cycle.nets.GAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, XYsrl, ls, one_sided_ls, xy_fmap)
-        yx = cycle.nets.GAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, YXsrl, ls, one_sided_ls, yx_fmap)
+        xy = cycle.nets.GAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, XYsrl, ls, xy_fmap)
+        yx = cycle.nets.GAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, YXsrl, ls, yx_fmap)
     elif FLAGS.gantype.casefold() == 'LSGAN'.casefold():
-        xy = cycle.nets.LSGAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, XYsrl, ls, one_sided_ls, xy_fmap)
-        yx = cycle.nets.LSGAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, YXsrl, ls, one_sided_ls, yx_fmap)
+        xy = cycle.nets.LSGAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, XYsrl, ls, xy_fmap)
+        yx = cycle.nets.LSGAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, YXsrl, ls, yx_fmap)
     elif FLAGS.gantype.casefold() == 'WGAN'.casefold():
-        xy = cycle.nets.WGAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, Ygrl, XYsrl, ls, one_sided_ls,
-                             xy_fmap)
-        yx = cycle.nets.WGAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, Xgrl, YXsrl, ls, one_sided_ls,
-                             yx_fmap)
+        xy = cycle.nets.WGAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, Ygrl, XYsrl, ls, xy_fmap)
+        yx = cycle.nets.WGAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, Xgrl, YXsrl, ls, yx_fmap)
     else:
         raise ValueError('You did not specify any gantype that would be recognizible!')
     return modellib, xfeed, xy, yfeed, yx
