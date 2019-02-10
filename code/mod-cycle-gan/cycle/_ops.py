@@ -12,8 +12,7 @@ def safe_log(x, eps=1e-12):
 
 
 def weights(name, shape):
-    return tf.get_variable(name, shape,
-                           initializer=layers.xavier_initializer())
+    return tf.get_variable(name, shape, initializer=layers.xavier_initializer())
 
 
 def biases(name, shape, constant=0.0):

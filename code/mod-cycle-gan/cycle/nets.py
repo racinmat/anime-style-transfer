@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 from . import _ops as ops
+from tensorflow.contrib.gan.python.losses.python import losses_impl as gan_losses
 
 _act_map = {'r': tf.nn.relu,
             't': tf.nn.tanh,
@@ -16,7 +17,7 @@ _layer_map = {'c': ops.conv_block,
 
 
 # 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc' - generator
-# 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;' - discriminator
+# 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-i;' - discriminator
 
 class BaseNet(object):
     def __init__(self, name, network_desc, is_training, weight_lambda=0.0, norm='instance'):
@@ -50,7 +51,7 @@ class BaseNet(object):
             result = self.transform(data)
         self.variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
         self.inputs_cache[data] = result
-        self.penultimate_inputs_cache[data] = result.op.inputs[0]   # penultimate layer (input to last layer)
+        self.penultimate_inputs_cache[data] = result.op.inputs[0]  # penultimate layer (input to last layer)
         return result
 
     def build_penultimate(self, data):
@@ -115,7 +116,7 @@ class GAN(object):
         self.fake_label = 0
 
     def _gen_loss(self, data):
-        return -tf.reduce_mean(ops.safe_log(data))
+        return gan_losses.modified_generator_loss(discriminator_gen_outputs=data, add_summaries=self.tb_verbose)
 
     def selfreg_loss(self, orig, conv):
         if self.selfreg_lambda > 0:
@@ -132,14 +133,9 @@ class GAN(object):
             return self._gen_loss(fake_dis_output) * self.gen_lambda
 
     def _dis_loss(self, real, fake):
-        # seem to be better for stability, but check with and without softmax, check sigmoids
-        # -log((1 - label_smoothing) - sigmoid(D(x)))
-        real_l = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=tf.ones_like(self.dis.build(real)) * self.real_label, logits=self.dis.build_penultimate(real)))
-        # -log(- sigmoid(D(G(x))))
-        fake_l = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=tf.ones_like(self.dis.build(fake)) * self.fake_label, logits=self.dis.build_penultimate(fake)))
-        return (real_l + fake_l) / 2
+        return gan_losses.modified_discriminator_loss(
+            discriminator_real_outputs=self.dis.build(real), discriminator_gen_outputs=self.dis.build(fake),
+            label_smoothing=self.label_smoothing, add_summaries=self.tb_verbose)
 
     def dis_loss(self, real, fake):
         return self._dis_loss(real, fake) * self.dis_lambda
@@ -164,35 +160,40 @@ class GAN(object):
 
 class LSGAN(GAN):
     def _gen_loss(self, data):
-        return tf.reduce_mean(tf.squared_difference(data, self.real_label))
+        return gan_losses.least_squares_generator_loss(
+            discriminator_gen_outputs=data, real_label=self.real_label, add_summaries=self.tb_verbose)
 
     def _dis_loss(self, real, fake):
-        real_l = tf.reduce_mean(tf.squared_difference(self.dis.build(real), self.real_label))
-        fake_l = tf.reduce_mean(tf.squared_difference(self.dis.build(fake), self.fake_label))
-        return (real_l + fake_l) / 2
+        return gan_losses.least_squares_discriminator_loss(
+            discriminator_gen_outputs=self.dis.build(fake), discriminator_real_outputs=self.dis.build(real),
+            real_label=self.real_label, fake_label=self.fake_label, add_summaries=self.tb_verbose)
 
 
 class WGAN(GAN):
     def __init__(self, gen: BaseNet, dis: BaseNet, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda, grad_lambda,
-                 selfreg_lambda, label_smoothing, selfreg_transform=None):
+                 selfreg_lambda, label_smoothing, selfreg_transform=None, one_sided=False):
         super().__init__(gen, dis, in_shape, out_shape, tb_verbose, gen_lambda, dis_lambda, selfreg_lambda,
                          label_smoothing, selfreg_transform)
         self.grad_lambda = grad_lambda
+        self.one_sided = one_sided
 
     def _gen_loss(self, data):
-        return -tf.reduce_mean(data)
+        return gan_losses.wasserstein_generator_loss(discriminator_gen_outputs=data, add_summaries=self.tb_verbose)
 
     def grad_loss(self, real, fake):
-        shape = [real.shape[0].value] + [1 for _ in range(len(real.shape) - 1)]
-        rand_eps = tf.random_uniform(shape=shape, minval=0., maxval=1.)
-        orig_hat = real * rand_eps + fake * (1 - rand_eps)
-        grads = tf.gradients(ys=self.dis.build(orig_hat), xy=[orig_hat])
-        return self.grad_lambda * tf.square(tf.norm(grads[0], ord=2) - 1.0)
+        def tfgan_dis(gen_data, not_used):
+            return self.dis.build(gen_data)
+        loss = gan_losses.wasserstein_gradient_penalty(
+            real_data=real, generated_data=fake, generator_inputs=real, discriminator_fn=tfgan_dis,
+            discriminator_scope=self.dis.name, one_sided=self.one_sided, add_summaries=self.tb_verbose)
+        return self.grad_lambda * loss
 
     def dis_loss(self, real, fake):
-        real_l = -tf.reduce_mean(self.dis.build(real))
-        fake_l = tf.reduce_mean(self.dis.build(fake))
-        return self.dis_lambda * (real_l + fake_l) / 2
+        gan_losses.generator
+        loss = gan_losses.wasserstein_discriminator_loss(
+            discriminator_real_outputs=real, discriminator_gen_outputs=fake, real_weights=self.real_label,
+            generated_weights=self.fake_label, add_summaries=self.tb_verbose)
+        return self.dis_lambda * loss
 
     def _dis_loss(self, *args):
         raise NotImplementedError('WGAN is called differently, mate!')

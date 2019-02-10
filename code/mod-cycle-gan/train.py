@@ -20,20 +20,24 @@ FLAGS = tf.flags.FLAGS
 
 # Flags for train
 tf.flags.DEFINE_string('model', 'anime',
-                       'Model dir to use. Can choose from %s.\nNeeds to export {X,Y}_{normer,denormer} and functions, {X,Y}_DATA_SHAPE and classes {XY,YX}_{Generator,Discriminator}.' % str(
+                       'Model dir to use. Can choose from %s.\nNeeds to export {X,Y}_{normer,denormer} and functions, '
+                       '{X,Y}_DATA_SHAPE and classes {XY,YX}_{Generator,Discriminator}.' % str(
                            _valid_names(cycle.models)))
 tf.flags.DEFINE_list('Xtfr', '../../datasets/real/ade20k.tfrecord',
                      'tfrecords files for X dataset (can be 1 or more files)')
 tf.flags.DEFINE_list('Ytfr', '../../datasets/anime/no-game-no-life.tfrecord',
                      'tfrecords files for Y dataset (can be 1 or more files)')
 tf.flags.DEFINE_enum('gantype', 'LSGAN', ['GAN', 'LSGAN', 'WGAN'],
-                     'Type of GAN to use within CycleGAN. Can choose from GAN/LSGAN/WGAN.\nWhile it is theoretically possible to use different GAN type for each part of training, it is generally not advised.')
+                     'Type of GAN to use within CycleGAN. Can choose from GAN/LSGAN/WGAN.\n'
+                     'While it is theoretically possible to use different GAN type for each part of training, '
+                     'it is generally not advised.')
 tf.flags.DEFINE_string('XYgenstr', 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc',
                        'Param string for XY generator')
 tf.flags.DEFINE_string('YXgenstr', 'c-7-1-64-r;c-5-2-128-r;b-3-3-r;r-5-1-64-2-r;c-7-1-3-t;sc',
                        'Param string for YX generator')
-tf.flags.DEFINE_string('Xdisstr', 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;', 'Param string for X discriminator')
-tf.flags.DEFINE_string('Ydisstr', 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-s;', 'Param string for Y discriminator')
+tf.flags.DEFINE_string('Xdisstr', 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-i;', 'Param string for X discriminator')
+tf.flags.DEFINE_string('Ydisstr', 'c-5-2-64-l;c-5-2-128-l;c-5-2-256-l;c-5-2-1-i;', 'Param string for Y discriminator')
+
 tf.flags.DEFINE_float('XYgll', 2, 'Lambda for XY Generator loss')
 tf.flags.DEFINE_float('YXgll', 2, 'Lambda for YX Generator loss')
 tf.flags.DEFINE_float('XYsrl', 0, 'Lambda for XY Generator self regularization loss')
@@ -47,12 +51,20 @@ tf.flags.DEFINE_float('Ydwl', 2, 'Lambda for Y Discriminator weight loss')
 tf.flags.DEFINE_float('cll', 2, 'Cycle loss lambda')
 tf.flags.DEFINE_float('Ygrl', 2, 'Lambda for gradient loss for Y discriminator (applicable only if gantype is WGAN)')
 tf.flags.DEFINE_float('Xgrl', 2, 'Lambda for gradient loss for X discriminator (applicable only if gantype is WGAN)')
+tf.flags.DEFINE_bool('Ygr_os', False, 'If penalty on Y discriminator will be onesided or not '
+                                      '(applicable only if gantype is WGAN)')
+tf.flags.DEFINE_bool('Xgr_os', False, 'If penalty on Y discriminator will be onesided or not '
+                                      '(applicable only if gantype is WGAN)')
+
 tf.flags.DEFINE_bool('visualize', True,
-                     'Whether to visualize during training in tensorboard. model then must have function visualize. Only valid if tbverbose.')
+                     'Whether to visualize during training in tensorboard. model then must have function visualize. '
+                     'Only valid if tbverbose.')
 tf.flags.DEFINE_bool('tbverbose', True, 'Whether to export tensorboard data for visualization using Tensorboard.')
 tf.flags.DEFINE_bool('verbose', True, 'Verbose mode.')
 tf.flags.DEFINE_bool('selftransform', False,
-                     'Whether to use specific feature map transform for self regularization loss. If set to True, it will use function feature_map from model, otherwise it will be an identity. Not used if self regularization lossess\' lambdas set to 0.')
+                     'Whether to use specific feature map transform for self regularization loss. If set to True, '
+                     'it will use function feature_map from model, otherwise it will be an identity. '
+                     'Not used if self regularization lossess\' lambdas set to 0.')
 tf.flags.DEFINE_integer('dtsteps', 1, 'How many times will be trained discriminator during one step.')
 tf.flags.DEFINE_integer('gtsteps', 1, 'How many times will be trained generator during one step.')
 tf.flags.DEFINE_integer('batchsize', 1, 'Batch size')
@@ -173,8 +185,10 @@ def initialize_networks():
         xy = cycle.nets.LSGAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, XYsrl, ls, xy_fmap)
         yx = cycle.nets.LSGAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, YXsrl, ls, yx_fmap)
     elif FLAGS.gantype.casefold() == 'WGAN'.casefold():
-        xy = cycle.nets.WGAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, Ygrl, XYsrl, ls, xy_fmap)
-        yx = cycle.nets.WGAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, Xgrl, YXsrl, ls, yx_fmap)
+        xy = cycle.nets.WGAN(xygen, ydis, X_shape, Y_shape, tbverbose, XYgll, Ydll, Ygrl, XYsrl, ls, xy_fmap,
+                             FLAGS.Ygr_os)
+        yx = cycle.nets.WGAN(yxgen, xdis, Y_shape, X_shape, tbverbose, YXgll, Xdll, Xgrl, YXsrl, ls, yx_fmap,
+                             FLAGS.Xgr_os)
     else:
         raise ValueError('You did not specify any gantype that would be recognizible!')
     return modellib, xfeed, xy, yfeed, yx

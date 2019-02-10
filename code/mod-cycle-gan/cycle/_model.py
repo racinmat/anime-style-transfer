@@ -73,11 +73,11 @@ class CycleGAN:
                      X_name, Y_name, cycle_lambda, learning_rate, beta1, steps, decay_from)
 
     def build_placeholders(self):
-        # self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
-        # self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
+        self.cur_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='gt_{}'.format(self.X_name))
+        self.cur_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='gt_{}'.format(self.Y_name))
         # for simple debugging, so I have data
-        self.cur_x = self.X_feed.feed()
-        self.cur_y = self.Y_feed.feed()
+        # self.cur_x = self.X_feed.feed()
+        # self.cur_y = self.Y_feed.feed()
 
     def get_model(self):
         with self.graph.as_default():
