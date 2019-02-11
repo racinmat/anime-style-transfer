@@ -189,7 +189,6 @@ class WGAN(GAN):
         return self.grad_lambda * loss
 
     def dis_loss(self, real, fake):
-        gan_losses.generator
         loss = gan_losses.wasserstein_discriminator_loss(
             discriminator_real_outputs=real, discriminator_gen_outputs=fake, real_weights=self.real_label,
             generated_weights=self.fake_label, add_summaries=self.tb_verbose)

@@ -13,36 +13,17 @@ a i ten původní neural style paper
 
 až do konce ledna 2019 jsou všechny běhy se špatným global stepem, a tedy bez learning rate decay 
 
-todo: fixnout to, že global_step je inkrementuje pro každou train operaci, takže min. 2x rychlejší
+zrefactorovat history pooling z https://github.com/tensorflow/tensorflow/blob/c985bd0dce0f8a7ccf334c9782d051c81ad00f1d/tensorflow/contrib/gan/python/features/python/random_tensor_pool_impl.py#L50
+a benchmarknout
 
-todo: udělat benchmarky:
-původní graf vs. input cache v BaseNetworku DONE
-spojený training - ne
-formát dat NHWC vs. NCHW
-současné načítání dat vs. dataset API DONE
-současné načítání dat vs. dataset API bez py_func DONE
-upgrade tensorflow 1.12 DONE - bez zrychlení
-tensorflow 1.12 + XLA kompilace - XLA kompilace není pro windows
-gradient checkpointing - bez zrychlení
-vyzkoušet poladit control_ops, mezi sítěmi, aby odpovídaly průtoku informace
+historical averaging, ale nikde to není implementované - musel bych si pamatovat hodnoty vah pro X modelů - k ničemu
 
 vyzkoušet lepší cycle loss a vůbec věci v tomhle paperu https://ssnl.github.io/better_cycles/report.pdf
 
+vyzkoušet architekturu z https://colab.research.google.com/drive/1Enc-pKlP4Q3cimEBfcQv0B_6hUvjVL3o?sandboxMode=true#scrollTo=5oONZ70XXq7D
+
+
 možná zkusit discogan
 omrknout https://www.cs.ru.nl/bachelors-theses/2018/Robin_Elbers___4225678___On_the_replication_of_CycleGAN.pdf
-možná zkusit historical averaging
 
-1.
-2019-02-05--00-27-0 - input cache pro BaseNetwork
-2019-02-05--23-36-0 - bez input cache pro BaseNetwork
-s input cache o 27% rychlejší
-2019-02-06--23-40-0 - s optimalizovanou input pipeline, sice feed_dict, ale history pooling v grafu <- 2x méně global_step, protože každá neinkrementuji global_step v train ops 
-2019-02-07--08-29-0 - jako předtím, ale opravdu fixlý global step
-bez dataset api je o 13% pomalejší (queues branch)
-2019-02-08--00-05-0 - dataset api, ale načítání prev fake data zvlášť - bez py_func
-2019-02-08--08-25-0 - ty původní s prefetchem a původní kód
-2019-02-09--10-24-0 - tensorflow 1.12
-2019-02-09--21-54-0 - tensorflow 1.12 - gradient checkpointing na memory
-2019-02-09--22-13-0 - tensorflow 1.12 - gradient checkpointing na memory, bez logování
-2019-02-09--22-31-0 - tensorflow 1.12 - původní
-2019-02-10--00-01-0 - tensorflow 1.12 - gradient checkpointing na speed, bez logování
+možná zkusit historical averaging
