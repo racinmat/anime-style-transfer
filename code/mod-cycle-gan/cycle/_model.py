@@ -9,6 +9,7 @@ import progressbar
 import tensorflow as tf
 from tensorflow import graph_util as gu
 import numpy as np
+from tensorflow.contrib.gan.python.features import tensor_pool
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import clip_ops
 from cycle.nets import GAN, BaseNet
@@ -21,8 +22,8 @@ class CycleGAN:
     OUTPUT_NODES = SAVE_NODES[1:]
 
     def __init__(self, XtoY: GAN, YtoX: GAN, X_feed: TFReader, Y_feed: TFReader, X_name='X', Y_name='Y',
-                 cycle_lambda=10.0, tb_verbose=True, visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5,
-                 decay_from=1e5, graph=None, checkpoints_dir='../../checkpoint', load_model=None):
+                 cycle_lambda=10.0, cycle_lambda_end=10.0, tb_verbose=True, visualizer=None, learning_rate=2e-4,
+                 beta1=0.5, steps=2e5, decay_from=1e5, graph=None, checkpoints_dir='../../checkpoint', load_model=None):
 
         self.XtoY = XtoY
         self.YtoX = YtoX
@@ -40,6 +41,8 @@ class CycleGAN:
         self.Y_feed = Y_feed
 
         self.cycle_lambda = cycle_lambda
+        self.cycle_lambda_end = cycle_lambda_end
+
         self.tb_verbose = tb_verbose
         self.visualizer = visualizer
 
@@ -93,10 +96,10 @@ class CycleGAN:
             with tf.variable_scope('training', reuse=tf.AUTO_REUSE):
                 global_step = tf.get_variable('global_step', shape=(), initializer=tf.zeros_initializer)
 
-            self.build_fake_pool(global_step)
+            self.build_fake_pool(global_step, fake_x, fake_y)
 
             with tf.name_scope('cycle-loss'):
-                cycle_loss = self._cycle_loss(self.cur_x, self.cur_y, self.cycle_lambda)
+                cycle_loss = self._cycle_loss(self.cur_x, self.cur_y, global_step)
             with tf.name_scope('{}-{}-gen-loss'.format(self.Y_name, self.X_name)):
                 yx_gen_loss = self.YtoX.gen_loss(self.cur_y)
                 yx_gen_weight_loss = self.YtoX.gen.weight_loss()
@@ -279,7 +282,7 @@ class CycleGAN:
             sess.run(model_ops['train']['dis'], feed_dict=feeder_dict)
         return feeder_dict
 
-    def build_fake_pool(self, global_step):
+    def build_fake_pool(self, global_step, fake_x, fake_y):
         pass
 
     @staticmethod
@@ -596,10 +599,14 @@ class CycleGAN:
 
             return learning_step
 
-    def _cycle_loss(self, x, y, cycle_lambda):
+    def _cycle_loss(self, x, y, global_step):
         y_to_y_diff = tf.abs(self.XtoY.gen.build(self.YtoX.gen.build(y)) - y)
         x_to_x_diff = tf.abs(self.YtoX.gen.build(self.XtoY.gen.build(x)) - x)
-        return cycle_lambda * (tf.reduce_mean(x_to_x_diff) + tf.reduce_mean(y_to_y_diff))
+
+        curr_lambda = tf.train.polynomial_decay(
+            self.cycle_lambda, global_step, decay_steps=self.steps, end_learning_rate=self.cycle_lambda_end, power=1.0)
+
+        return curr_lambda * (tf.reduce_mean(x_to_x_diff) + tf.reduce_mean(y_to_y_diff))
 
     def create_name(self, checkpoints_dir, load_model):
         if load_model is not None:
@@ -621,27 +628,30 @@ class CycleGAN:
 
 
 class HistoryCycleGAN(CycleGAN):
-    def __init__(self, XtoY: GAN, YtoX: GAN, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0, tb_verbose=True,
-                 visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5, decay_from=1e5, graph=None,
-                 checkpoints_dir='../../checkpoint', load_model=None, pool_size=50):
+    def __init__(self, XtoY: GAN, YtoX: GAN, X_feed, Y_feed, X_name='X', Y_name='Y', cycle_lambda=10.0,
+                 cycle_lambda_end=10.0, tb_verbose=True, visualizer=None, learning_rate=2e-4, beta1=0.5, steps=2e5,
+                 decay_from=1e5, graph=None, checkpoints_dir='../../checkpoint', load_model=None, pool_size=50):
         self.prev_fake_x = None
         self.prev_fake_y = None
         self.x_pool = None
         self.y_pool = None
         self.pool_size = pool_size
-        super().__init__(XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, tb_verbose, visualizer,
-                         learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
+        super().__init__(
+            XtoY, YtoX, X_feed, Y_feed, X_name, Y_name, cycle_lambda, cycle_lambda_end, tb_verbose, visualizer,
+            learning_rate, beta1, steps, decay_from, graph, checkpoints_dir, load_model)
 
     def build_placeholders(self):
-        self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name='prev_fake_{}'.format(self.X_name))
-        self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name='prev_fake_{}'.format(self.Y_name))
-
+        # old way
+        name = 'prev_fake_{}'
+        self.prev_fake_x = tf.placeholder(tf.float32, shape=self.xybatch_shape, name=name.format(self.X_name))
+        self.prev_fake_y = tf.placeholder(tf.float32, shape=self.yxbatch_shape, name=name.format(self.Y_name))
         super().build_placeholders()
 
     def build_dis_losses(self, fake_x, fake_y):
         return super().build_dis_losses(self.prev_fake_x, self.prev_fake_y)
 
-    def build_fake_pool(self, global_step):
+    def build_fake_pool(self, global_step, fake_x, fake_y):
+        # tried the tensor_pool in tfgan contrib, but it's slower
         self.x_pool = utils.DataBuffer(self.pool_size, self.X_feed.batch_size)
         self.y_pool = utils.DataBuffer(self.pool_size, self.Y_feed.batch_size)
 

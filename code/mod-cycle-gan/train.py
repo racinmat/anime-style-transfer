@@ -49,6 +49,8 @@ tf.flags.DEFINE_float('YXgwl', 2, 'Lambda for YX Generator weight loss')
 tf.flags.DEFINE_float('Xdwl', 2, 'Lambda for X Discriminator weight loss')
 tf.flags.DEFINE_float('Ydwl', 2, 'Lambda for Y Discriminator weight loss')
 tf.flags.DEFINE_float('cll', 2, 'Cycle loss lambda')
+tf.flags.DEFINE_float('cll_end', 2, 'Cycle loss lambda end '
+                                    '(if different from cll, linear lambda decay will be performed)')
 tf.flags.DEFINE_float('Ygrl', 2, 'Lambda for gradient loss for Y discriminator (applicable only if gantype is WGAN)')
 tf.flags.DEFINE_float('Xgrl', 2, 'Lambda for gradient loss for X discriminator (applicable only if gantype is WGAN)')
 tf.flags.DEFINE_bool('Ygr_os', False, 'If penalty on Y discriminator will be onesided or not '
@@ -117,13 +119,13 @@ def create_cyclegan():
     decay_start = int(FLAGS.decayfrom * FLAGS.steps)
     if FLAGS.history:
         cygan = cycle.HistoryCycleGAN(
-            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose, visualize, FLAGS.lr,
-            FLAGS.beta1, FLAGS.steps, decay_start, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir,
+            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.cll_end, FLAGS.tbverbose, visualize,
+            FLAGS.lr, FLAGS.beta1, FLAGS.steps, decay_start, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir,
             pool_size=FLAGS.poolsize)
     else:
         cygan = cycle.CycleGAN(
-            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.tbverbose, visualize, FLAGS.lr,
-            FLAGS.beta1, FLAGS.steps, decay_start, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
+            xy, yx, xfeed, yfeed, FLAGS.Xname, FLAGS.Yname, FLAGS.cll, FLAGS.cll_end, FLAGS.tbverbose, visualize,
+            FLAGS.lr, FLAGS.beta1, FLAGS.steps, decay_start, checkpoints_dir=FLAGS.cpdir, load_model=FLAGS.rundir)
     return cygan
 
 
