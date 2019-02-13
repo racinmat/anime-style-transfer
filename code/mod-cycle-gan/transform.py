@@ -91,13 +91,6 @@ def save_image(shapes, images, out_dir, suffix, in_filenames):
 def transform_files(im_paths):
     print('will transform {} images: '.format(len(im_paths)))
 
-    def is_valid_image(filename):
-        try:
-            Image.open(filename)
-            return True
-        except IOError:
-            return False
-
     def load_image(filename):
         image_string = tf.read_file(filename)
         image = tf.image.decode_png(image_string)

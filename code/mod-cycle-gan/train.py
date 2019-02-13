@@ -154,10 +154,7 @@ def import_model():
 
 def initialize_networks():
     modellib = import_model()
-    xfeed = cycle.utils.TFReader(FLAGS.Xtfr, normer=modellib.X_normer, denormer=modellib.X_denormer,
-                                 batch_size=FLAGS.batchsize)
-    yfeed = cycle.utils.TFReader(FLAGS.Ytfr, normer=modellib.Y_normer, denormer=modellib.Y_denormer,
-                                 batch_size=FLAGS.batchsize)
+    xfeed, yfeed = initialize_readers(modellib)
     xygen = modellib.XY_Generator(FLAGS.Xname + '-' + FLAGS.Yname + '-gen', FLAGS.XYgenstr, True, FLAGS.XYgwl,
                                   FLAGS.norm)
     yxgen = modellib.YX_Generator(FLAGS.Yname + '-' + FLAGS.Xname + '-gen', FLAGS.YXgenstr, True, FLAGS.YXgwl,
@@ -194,6 +191,14 @@ def initialize_networks():
     else:
         raise ValueError('You did not specify any gantype that would be recognizible!')
     return modellib, xfeed, xy, yfeed, yx
+
+
+def initialize_readers(modellib):
+    xfeed = cycle.utils.TFReader(FLAGS.Xtfr, normer=modellib.X_normer, denormer=modellib.X_denormer,
+                                 batch_size=FLAGS.batchsize)
+    yfeed = cycle.utils.TFReader(FLAGS.Ytfr, normer=modellib.Y_normer, denormer=modellib.Y_denormer,
+                                 batch_size=FLAGS.batchsize)
+    return xfeed, yfeed
 
 
 if __name__ == '__main__':

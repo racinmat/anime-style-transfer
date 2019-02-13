@@ -19,4 +19,6 @@ a benchmarknout
 - generally, try architectures from different papers and implementations
 
 ### todo:
-- cycle loss lambda decay
+- add the hyper-parameter tuning and orchestration
+- use https://github.com/automl/ConfigSpace and SMAC
+- integrate TFGAN's inception score and FID

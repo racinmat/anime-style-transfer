@@ -395,7 +395,7 @@ class CycleGAN:
     @staticmethod
     def test_one_part(pb_model, dataset, data_size, batch_size, postprocessing=lambda a, b, c: a):
         graph = tf.get_default_graph()
-        d_input, d_output, input_var, output = CycleGAN.get_graph_outputs(graph, dataset[0], pb_model)
+        d_input, d_output, output = CycleGAN.get_graph_outputs(graph, dataset[0], pb_model)
         iteration_num = tf.placeholder(tf.int32)
         postprocess = postprocessing(output, dataset[1], dataset[2])
 
@@ -428,7 +428,7 @@ class CycleGAN:
                     tf.import_graph_def(graph_def,
                                         input_map={'input': input_var},
                                         return_elements=CycleGAN.OUTPUT_NODES)))
-        return d_input, d_output, input_var, output
+        return d_input, d_output, output
 
     @staticmethod
     def save_output(all_data, d_inputs, d_outputs, include_input, outfile, outputs):
