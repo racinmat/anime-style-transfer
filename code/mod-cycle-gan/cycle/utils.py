@@ -69,7 +69,7 @@ class DataBuffer:
 
 class TFReader:
     def __init__(self, tfrecords_file, shuffle_buffer_size=100, normer=_identity, denormer=_identity,
-                 batch_size=1, num_threads=8):
+                 batch_size=1, num_threads=8, infinite=True):
         self.batch_size = batch_size
         self.num_threads = num_threads
         self.normalize = normer
@@ -81,7 +81,10 @@ class TFReader:
                 self.data = self.data.map(self._parse_example_encoded, num_parallel_calls=num_threads)
                 self.data = self.data.map(self.normalize, num_parallel_calls=num_threads)
                 self.data = self.data.map(self._reshape_to_even, num_parallel_calls=num_threads)
-                self.data = self.data.apply(tf.data.experimental.shuffle_and_repeat(shuffle_buffer_size))
+                if infinite:
+                    self.data = self.data.apply(tf.data.experimental.shuffle_and_repeat(shuffle_buffer_size))
+                else:
+                    self.data = self.data.shuffle(shuffle_buffer_size)  # shuffling to obtain comparable FIDs
                 self.data = self.data.batch(self.batch_size)
                 self.data = self.data.prefetch(4)
                 self.iterator = self.data.make_one_shot_iterator()

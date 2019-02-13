@@ -11,6 +11,7 @@ import cycle
 from common_params import IMAGE_HEIGHT, IMAGE_WIDTH
 import train
 from cycle import CycleGAN
+from cycle.models.anime._utils import normer
 
 FLAGS = tf.flags.FLAGS
 
@@ -21,12 +22,22 @@ def get_base_name(name):
 
 def main(_):
     logging.getLogger().setLevel(logging.INFO)
-    FLAGS.batchsize = 64
+    FLAGS.batchsize = 16
 
     pb_dir = osp.join(FLAGS.cpdir, '..', 'export', FLAGS.rundir)
 
     modellib = train.import_model()
-    x_feed, y_feed = train.initialize_readers(modellib)
+    # reshaping to static size so I can batch it
+
+    def norm_and_resize(data):
+        data = normer(data)
+        data = tf.image.resize_image_with_crop_or_pad(data, 480, 480)
+        return data
+
+    modellib.X_normer = norm_and_resize
+    modellib.Y_normer = norm_and_resize
+
+    x_feed, y_feed = train.initialize_readers(modellib, infinite=False)
 
     step = str(max([int(d) for d in os.listdir(pb_dir) if osp.isdir(osp.join(pb_dir, d))]))
 
@@ -58,6 +69,7 @@ def main(_):
                 # pbar.update(i * batch_size)
                 # i += 1
                 fid_x_val, fid_y_val, = sess.run([fid_x, fid_y])
+                print('fid_x_val:', fid_x_val, 'fid_y_val:', fid_y_val)
             except tf.errors.OutOfRangeError:
                 break
     print('done')
