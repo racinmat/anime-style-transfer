@@ -46,7 +46,7 @@ def main(_):
     pb_model_y_to_x = osp.join(pb_dir, step, '{}2{}.pb'.format(FLAGS.Yname, FLAGS.Xname))
     _, _, output_y = CycleGAN.get_graph_outputs(graph, x_feed.feed(), pb_model_x_to_y)
     _, _, output_x = CycleGAN.get_graph_outputs(graph, y_feed.feed(), pb_model_y_to_x)
-
+    # todo: možná exportovat jen generátory (větší batch size pro inferenci?)
     num_inception_images = train.FLAGS.batchsize
     fid_y = get_frechet_inception_distance(
         real_images=y_feed.feed(), generated_images=output_y, batch_size=train.FLAGS.batchsize,
@@ -68,7 +68,8 @@ def main(_):
             try:
                 # pbar.update(i * batch_size)
                 # i += 1
-                fid_x_val, fid_y_val, = sess.run([fid_x, fid_y])
+                # fid_x_val, fid_y_val, = sess.run([fid_x, fid_y])
+                fid_x_val, fid_y_val, = sess.run([output_x, output_y])
                 print('fid_x_val:', fid_x_val, 'fid_y_val:', fid_y_val)
             except tf.errors.OutOfRangeError:
                 break
