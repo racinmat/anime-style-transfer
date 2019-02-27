@@ -22,3 +22,6 @@ a benchmarknout
 - add the hyper-parameter tuning and orchestration
 - use https://github.com/automl/ConfigSpace and SMAC
 - integrate TFGAN's inception score and FID
+- create original neural style transfer - should work and learn more quickly
+- compare PCA, autoencoder and variational autoencoder for individual animes
+- compare random sampling style image from anime with selecting components from dimension reduction as style image
