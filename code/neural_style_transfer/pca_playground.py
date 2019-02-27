@@ -33,7 +33,7 @@ def show_data(data, name):
     tiled = data.reshape(tile_width, nw, h, w).swapaxes(1, 2).reshape(tile_width * h, nw * w)
 
     plt.imshow(tiled, cmap="gray")
-    plt.show()
+    plt.draw()
 
 
 def main(_):
@@ -60,6 +60,7 @@ def main(_):
 
     show_data(r_pca_train, 'x_train_reconst')
     show_data(r_pca_test, 'x_test_reconst')
+    plt.show()
     # tensorflow pca
     tf.enable_eager_execution()
     x_tf = x_train.copy()
