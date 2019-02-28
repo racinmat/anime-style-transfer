@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 import sys
+import matplotlib as mpl
+mpl.use('module://backend_interagg')
 import matplotlib.pyplot as plt
 from keras.datasets import mnist
 from keras.models import Sequential, Model
@@ -20,7 +22,7 @@ def denormalize(x, means):
 
 
 def show_data(data, name):
-    plt.figure()
+    # plt.figure()
     plt.title(name)
     size = data.shape[0]
     tile_width = int(round(np.sqrt(size)))
@@ -33,7 +35,8 @@ def show_data(data, name):
     tiled = data.reshape(tile_width, nw, h, w).swapaxes(1, 2).reshape(tile_width * h, nw * w)
 
     plt.imshow(tiled, cmap="gray")
-    plt.draw()
+    # plt.draw()
+    plt.show()
 
 
 def main(_):
@@ -47,6 +50,8 @@ def main(_):
     u, s, v = np.linalg.svd(x_train_normed, full_matrices=False)
     z_pca_train = np.dot(x_train_normed, v.transpose())
     z_pca_test = np.dot(x_test_normed, v.transpose())
+    x_pca_train = np.dot(u, x_train_normed)
+    x_pca_test = np.dot(u, x_test_normed)
 
     r_pca_train = denormalize(np.dot(z_pca_train[:, :2], v[:2, :]), mu_train)  # reconstruction
     r_pca_test = denormalize(np.dot(z_pca_test[:, :2], v[:2, :]), mu_test)  # reconstruction
@@ -55,12 +60,16 @@ def main(_):
     print('PCA train reconstruction error with 2 PCs: ' + str(round(err_train, 3)))
     print('PCA test reconstruction error with 2 PCs: ' + str(round(err_test, 3)))
 
+    plt.imshow(v.reshape(-1, 28, 28)[0])
+    plt.show()
+    plt.imshow(v.reshape(-1, 28, 28)[1])
+    plt.show()
     show_data(x_train, 'x_train_orig')
     show_data(x_test, 'x_test_orig')
 
     show_data(r_pca_train, 'x_train_reconst')
     show_data(r_pca_test, 'x_test_reconst')
-    plt.show()
+    # plt.show()
     # tensorflow pca
     tf.enable_eager_execution()
     x_tf = x_train.copy()
