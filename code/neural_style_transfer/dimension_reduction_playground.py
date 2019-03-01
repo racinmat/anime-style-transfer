@@ -172,8 +172,8 @@ def main(_):
     decoder = extract_decoder(m)
     z_pca_train = encoder.predict(x_train_normed)  # bottleneck representation
     z_pca_test = encoder.predict(x_test_normed)  # bottleneck representation
-    r_pca_train = denormalize(m.predict(x_train), mu_train)
-    r_pca_test = denormalize(m.predict(x_test), mu_test)
+    r_pca_train = denormalize(m.predict(x_test_normed), mu_train)
+    r_pca_test = denormalize(m.predict(x_test_normed), mu_test)
 
     show_factors(decoder, z_size)
 
