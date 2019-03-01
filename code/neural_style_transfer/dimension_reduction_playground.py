@@ -93,6 +93,19 @@ def show_factors(decoder, z_size):
         plt.show()
 
 
+def train_eval_network(m, mu_train, mu_test, x_train, x_test):
+    print(m.summary())
+    history = m.fit(x_train, x_train, batch_size=256, epochs=10, verbose=1,
+                    validation_data=(x_test, x_test))
+    encoder = Model(m.input, m.get_layer('bottleneck').output)
+    decoder = extract_decoder(m)
+    z_pca_train = encoder.predict(x_train)  # bottleneck representation
+    z_pca_test = encoder.predict(x_test)  # bottleneck representation
+    r_pca_train = denormalize(m.predict(x_test), mu_train)
+    r_pca_test = denormalize(m.predict(x_test), mu_test)
+    return decoder, history, r_pca_train,  r_pca_test, z_pca_train, z_pca_test
+
+
 def main(_):
     z_size = 2
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -165,15 +178,8 @@ def main(_):
     m.add(Dense(z_size, activation='linear', input_shape=(784,), name='bottleneck'))
     m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
-    print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=10, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed))
-    encoder = Model(m.input, m.get_layer('bottleneck').output)
-    decoder = extract_decoder(m)
-    z_pca_train = encoder.predict(x_train_normed)  # bottleneck representation
-    z_pca_test = encoder.predict(x_test_normed)  # bottleneck representation
-    r_pca_train = denormalize(m.predict(x_test_normed), mu_train)
-    r_pca_test = denormalize(m.predict(x_test_normed), mu_test)
+    decoder, history, r_pca_train,  r_pca_test, z_pca_train, z_pca_test = train_eval_network(
+        m, mu_train, mu_test, x_train_normed, x_test_normed)
 
     show_factors(decoder, z_size)
 
@@ -196,15 +202,8 @@ def main(_):
     m.add(Dense(784, activation='sigmoid', name='decoder'))
     # m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
-    print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=30, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed))
-    encoder = Model(m.input, m.get_layer('bottleneck').output)
-    decoder = extract_decoder(m)
-    z_pca_train = encoder.predict(x_train_normed)  # bottleneck representation
-    z_pca_test = encoder.predict(x_test_normed)  # bottleneck representation
-    r_pca_train = denormalize(m.predict(x_train_normed), mu_train)
-    r_pca_test = denormalize(m.predict(x_test_normed), mu_test)
+    decoder, history, r_pca_train,  r_pca_test, z_pca_train, z_pca_test = train_eval_network(
+        m, mu_train, mu_test, x_train_normed, x_test_normed)
 
     show_factors(decoder, z_size)
 
