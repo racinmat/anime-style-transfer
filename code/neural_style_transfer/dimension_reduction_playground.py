@@ -11,6 +11,7 @@ from keras.datasets import mnist
 from keras.models import Sequential, Model
 from keras.layers import Dense, Input
 from keras.optimizers import Adam
+from keras import backend as K
 from sklearn.decomposition import PCA, IncrementalPCA
 
 
@@ -38,7 +39,7 @@ def visualize_data(x_orig, y_orig, x_reconst, z, suffix, ims_limit=1000):
     sc = plt.scatter(x=z[:, 0], y=z[:, 1], s=10, c=y_orig, cmap='tab10', vmin=y_orig.min() - 0.5,
                      vmax=y_orig.max() + 0.5)
     plt.colorbar(sc, ticks=np.arange(y_orig.min(), y_orig.max() + 1))
-    plt.savefig(f'z_{suffix}.png')
+    plt.savefig(f'figures/z_{suffix}.png')
     plt.show()
 
     # sns.jointplot(x=z_pca_train[:, 0], y=z_pca_train[:, 1])
@@ -61,7 +62,7 @@ def show_data(data, name):
     tiled = data.reshape(tile_width, nw, h, w).swapaxes(1, 2).reshape(tile_width * h, nw * w)
 
     plt.imshow(tiled, cmap="gray")
-    plt.savefig(f'{name}.png')
+    plt.savefig(f'figures/{name}.png')
     plt.show()
 
 
@@ -93,7 +94,8 @@ def show_factors(decoder, z_size, suffix):
         latent_vector = np.zeros((1, z_size))
         latent_vector[:, i] = 1
         plt.imshow(decoder.predict(latent_vector).reshape(28, 28), cmap="gray")
-        plt.savefig(f'figures/factor-{i}-{suffix}.png')
+        plt.axis('off')
+        plt.savefig(f'figures/factor-{suffix}-{i}.png')
         plt.show()
 
 
@@ -107,11 +109,10 @@ def eval_show_network(m, mu_train, mu_test, x_train, x_test, y_train, y_test, hi
 
     show_factors(decoder, m.get_layer('bottleneck').units, suffix)
 
-    visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train_'+suffix)
-    visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_+suffix'+suffix)
+    visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train_' + suffix)
+    visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_' + suffix)
 
     plot_network_history(history, suffix)
-
 
 
 def main(_):
@@ -187,13 +188,14 @@ def main(_):
     m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
     print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=5, verbose=1,
+    history = m.fit(x_train_normed, x_train_normed, batch_size=512, epochs=5, verbose=1,
                     validation_data=(x_test_normed, x_test_normed))
     eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_pca')
+    K.clear_session()
 
-    # keras autoencoder with sigmoid, centered
-    x_train_normed, mu_train = normalize(x_train)
-    x_test_normed, mu_test = normalize(x_test)
+    # keras autoencoder with tanh, not centered, but normalize to [-1, 1]
+    x_train_normed, mu_train = normalize(x_train, use_mean=False)
+    x_test_normed, mu_test = normalize(x_test, use_mean=False)
 
     m = Sequential()
     m.add(Dense(512, activation='elu', input_shape=(784,)))
@@ -201,13 +203,13 @@ def main(_):
     m.add(Dense(z_size, activation='linear', name='bottleneck'))
     m.add(Dense(128, activation='elu'))
     m.add(Dense(512, activation='elu'))
-    m.add(Dense(784, activation='sigmoid', name='decoder'))
-    # m.add(Dense(784, activation='linear', name='decoder'))
+    m.add(Dense(784, activation='tanh', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
     print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=40, verbose=1,
+    history = m.fit(x_train_normed, x_train_normed, batch_size=512, epochs=40, verbose=1,
                     validation_data=(x_test_normed, x_test_normed))
     eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_sigmoid')
+    K.clear_session()
 
     # keras autoencoder, centered
     x_train_normed, mu_train = normalize(x_train)
@@ -219,15 +221,15 @@ def main(_):
     m.add(Dense(z_size, activation='linear', name='bottleneck'))
     m.add(Dense(128, activation='elu'))
     m.add(Dense(512, activation='elu'))
-    # m.add(Dense(784, activation='sigmoid', name='decoder'))
     m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
     print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=40, verbose=1,
+    history = m.fit(x_train_normed, x_train_normed, batch_size=512, epochs=40, verbose=1,
                     validation_data=(x_test_normed, x_test_normed))
     eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae')
+    K.clear_session()
 
-    # keras autoencoder, not centered
+    # keras autoencoder, not centered, but normalize to [-1, 1]
     x_train_normed, mu_train = normalize(x_train, use_mean=False)
     x_test_normed, mu_test = normalize(x_test, use_mean=False)
 
@@ -237,13 +239,13 @@ def main(_):
     m.add(Dense(z_size, activation='linear', name='bottleneck'))
     m.add(Dense(128, activation='elu'))
     m.add(Dense(512, activation='elu'))
-    # m.add(Dense(784, activation='sigmoid', name='decoder'))
     m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
     print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=40, verbose=1,
+    history = m.fit(x_train_normed, x_train_normed, batch_size=512, epochs=40, verbose=1,
                     validation_data=(x_test_normed, x_test_normed))
     eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean')
+    K.clear_session()
 
     print('done')
 
