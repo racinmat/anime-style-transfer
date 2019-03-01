@@ -3,6 +3,8 @@ import tensorflow as tf
 import pandas as pd
 import sys
 import matplotlib as mpl
+from keras.callbacks import TensorBoard
+from keras.regularizers import l1
 
 mpl.use('module://backend_interagg')
 import matplotlib.pyplot as plt
@@ -183,17 +185,19 @@ def main(_):
     # visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test')
 
     # keras pca using autoencoder
+    batch_size = 4096
     m = Sequential()
     m.add(Dense(z_size, activation='linear', input_shape=(784,), name='bottleneck'))
     m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
     print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=512, epochs=5, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed))
+    tensorboard = TensorBoard(log_dir='logs/ae_pca', histogram_freq=1)
+    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=5, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
     eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_pca')
     K.clear_session()
 
-    # keras autoencoder with tanh, not centered, but normalize to [-1, 1]
+    # keras autoencoder with tanh, not centered, but normalized to [-1, 1]
     x_train_normed, mu_train = normalize(x_train, use_mean=False)
     x_test_normed, mu_test = normalize(x_test, use_mean=False)
 
@@ -205,10 +209,11 @@ def main(_):
     m.add(Dense(512, activation='elu'))
     m.add(Dense(784, activation='tanh', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
+    tensorboard = TensorBoard(log_dir='logs/ae_tanh_no_mean', histogram_freq=1)
     print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=512, epochs=40, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed))
-    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_sigmoid')
+    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_tanh_no_mean')
     K.clear_session()
 
     # keras autoencoder, centered
@@ -223,13 +228,14 @@ def main(_):
     m.add(Dense(512, activation='elu'))
     m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
+    tensorboard = TensorBoard(log_dir='logs/ae', histogram_freq=1)
     print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=512, epochs=40, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed))
+    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
     eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae')
     K.clear_session()
 
-    # keras autoencoder, not centered, but normalize to [-1, 1]
+    # keras autoencoder, not centered, but normalized to [-1, 1]
     x_train_normed, mu_train = normalize(x_train, use_mean=False)
     x_test_normed, mu_test = normalize(x_test, use_mean=False)
 
@@ -241,10 +247,31 @@ def main(_):
     m.add(Dense(512, activation='elu'))
     m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
+    tensorboard = TensorBoard(log_dir='logs/ae_no_mean', histogram_freq=1)
     print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=512, epochs=40, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed))
+    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
     eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean')
+    K.clear_session()
+
+    # keras autoencoder, not centered, but normalized to [-1, 1]
+    x_train_normed, mu_train = normalize(x_train, use_mean=False)
+    x_test_normed, mu_test = normalize(x_test, use_mean=False)
+
+    regul_const = 10e-6
+    m = Sequential()
+    m.add(Dense(512, activation='elu', input_shape=(784,), activity_regularizer=l1(regul_const)))
+    m.add(Dense(128, activation='elu', activity_regularizer=l1(regul_const)))
+    m.add(Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const)))
+    m.add(Dense(128, activation='elu', activity_regularizer=l1(regul_const)))
+    m.add(Dense(512, activation='elu', activity_regularizer=l1(regul_const)))
+    m.add(Dense(784, activation='linear', name='decoder', activity_regularizer=l1(regul_const)))
+    m.compile(loss='mean_squared_error', optimizer=Adam())
+    tensorboard = TensorBoard(log_dir='logs/ae_no_mean_reg', histogram_freq=1)
+    print(m.summary())
+    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean_reg')
     K.clear_session()
 
     print('done')
