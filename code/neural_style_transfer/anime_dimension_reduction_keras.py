@@ -44,7 +44,7 @@ def main(_):
 
     z_size = 2
     regul_const = 10e-7
-    input_tensor = Input(iterator.get_next())
+    input_tensor = Input(tensor=iterator.get_next())
     out = Conv2D(8, (3, 3), activation='elu', border_mode='valid', batch_input_shape=(batch_size, 432, 768, 3))(input_tensor)
     out = Conv2D(16, (3, 3), activation='elu', border_mode='valid')(out)
     out = Conv2D(32, (3, 3), activation='elu', border_mode='valid', name='bottleneck')(out)
