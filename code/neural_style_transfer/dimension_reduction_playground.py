@@ -8,8 +8,7 @@ from keras.regularizers import l1
 
 mpl.use('module://backend_interagg')
 import matplotlib.pyplot as plt
-import seaborn as sns
-from keras.datasets import mnist
+from keras.datasets import mnist, cifar100
 from keras.models import Sequential, Model
 from keras.layers import Dense, Input
 from keras.optimizers import Adam
@@ -37,7 +36,7 @@ def visualize_data(x_orig, y_orig, x_reconst, z, suffix, ims_limit=1000):
     show_data(x_reconst[:ims_limit, :], 'x_reconst_' + suffix)
 
     plt.title('z_' + suffix)
-    plt.axis('off')
+    # plt.axis('off')   # I want to see the scale
     sc = plt.scatter(x=z[:, 0], y=z[:, 1], s=10, c=y_orig, cmap='tab10', vmin=y_orig.min() - 0.5,
                      vmax=y_orig.max() + 0.5)
     plt.colorbar(sc, ticks=np.arange(y_orig.min(), y_orig.max() + 1))
@@ -91,17 +90,17 @@ def extract_decoder(model: Model, latent_space_name='bottleneck'):
     return Model(in_layer, out_layer)
 
 
-def show_factors(decoder, z_size, suffix):
+def show_factors(decoder, z_size, suffix, shape=(28, 28)):
     for i in range(z_size):
         latent_vector = np.zeros((1, z_size))
         latent_vector[:, i] = 1
-        plt.imshow(decoder.predict(latent_vector).reshape(28, 28), cmap="gray")
+        plt.imshow(decoder.predict(latent_vector).reshape(shape[0], shape[1]), cmap="gray")
         plt.axis('off')
         plt.savefig(f'figures/factor-{suffix}-{i}.png')
         plt.show()
 
 
-def eval_show_network(m, mu_train, mu_test, x_train, x_test, y_train, y_test, history, suffix):
+def eval_show_network(m, mu_train, mu_test, x_train, x_test, y_train, y_test, history, suffix, shape=(28, 28)):
     encoder = Model(m.input, m.get_layer('bottleneck').output)
     decoder = extract_decoder(m)
     z_pca_train = encoder.predict(x_train)  # bottleneck representation
@@ -109,7 +108,7 @@ def eval_show_network(m, mu_train, mu_test, x_train, x_test, y_train, y_test, hi
     r_pca_train = denormalize(m.predict(x_test), mu_train)
     r_pca_test = denormalize(m.predict(x_test), mu_test)
 
-    show_factors(decoder, m.get_layer('bottleneck').units, suffix)
+    show_factors(decoder, m.get_layer('bottleneck').units, suffix, shape)
 
     visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train_' + suffix)
     visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_' + suffix)
@@ -120,12 +119,12 @@ def eval_show_network(m, mu_train, mu_test, x_train, x_test, y_train, y_test, hi
 def main(_):
     z_size = 2
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    x_train = x_train.reshape(-1, 784)
+    x_train = x_train.reshape(-1, 28**2)
     y_train = y_train
-    x_test = x_test.reshape(-1, 784)
+    x_test = x_test.reshape(-1, 28**2)
     x_train_normed, mu_train = normalize(x_train)
     x_test_normed, mu_test = normalize(x_test)
-    batch_size = 2048
+    batch_size = 4096
 
     # numpy pure pca
     #####################################################################
@@ -150,22 +149,22 @@ def main(_):
     visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_pca')
 
     # # scikit-learn pca
-    # pca = PCA(n_components=z_size)
-    # z_pca_train = pca.fit_transform(x_train)
-    # z_pca_test = pca.transform(x_test)
-    # r_pca_train = pca.inverse_transform(z_pca_train)
-    # r_pca_test = pca.inverse_transform(z_pca_test)
-    # err_train = np.sum((x_train - r_pca_train).astype(np.int64) ** 2) / r_pca_train.size
-    # err_test = np.sum((x_test - r_pca_test).astype(np.int64) ** 2) / r_pca_test.size
-    # print('scikit-learn PCA train reconstruction error with 2 PCs: ' + str(round(err_train, 3)))
-    # print('scikit-learn PCA test reconstruction error with 2 PCs: ' + str(round(err_test, 3)))
-    #
-    # for i in range(z_size):
-    #     plt.imshow(pca.components_.reshape(-1, 28, 28)[i], cmap="gray")
-    #     plt.show()
-    #
-    # visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train_sklearn_pca')
-    # visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_sklearn_pca')
+    pca = PCA(n_components=z_size)
+    z_pca_train = pca.fit_transform(x_train)
+    z_pca_test = pca.transform(x_test)
+    r_pca_train = pca.inverse_transform(z_pca_train)
+    r_pca_test = pca.inverse_transform(z_pca_test)
+    err_train = np.sum((x_train - r_pca_train).astype(np.int64) ** 2) / r_pca_train.size
+    err_test = np.sum((x_test - r_pca_test).astype(np.int64) ** 2) / r_pca_test.size
+    print('scikit-learn PCA train reconstruction error with 2 PCs: ' + str(round(err_train, 3)))
+    print('scikit-learn PCA test reconstruction error with 2 PCs: ' + str(round(err_test, 3)))
+
+    for i in range(z_size):
+        plt.imshow(pca.components_.reshape(-1, 28, 28)[i], cmap="gray")
+        plt.show()
+
+    visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train_sklearn_pca')
+    visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_sklearn_pca')
 
     # # scikit-learn incremental pca
     # pca = IncrementalPCA(n_components=z_size, batch_size=100)
@@ -185,114 +184,159 @@ def main(_):
     # visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train')
     # visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test')
 
-    # keras pca using autoencoder
-    m = Sequential()
-    m.add(Dense(z_size, activation='linear', input_shape=(784,), name='bottleneck'))
-    m.add(Dense(784, activation='linear', name='decoder'))
-    m.compile(loss='mean_squared_error', optimizer=Adam())
-    print(m.summary())
-    tensorboard = TensorBoard(log_dir='logs/ae_pca', histogram_freq=5)
-    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=10, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
-    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_pca')
-    K.clear_session()
+    # # keras pca using autoencoder
+    # m = Sequential()
+    # m.add(Dense(z_size, activation='linear', input_shape=(784,), name='bottleneck'))
+    # m.add(Dense(784, activation='linear', name='decoder'))
+    # m.compile(loss='mean_squared_error', optimizer=Adam())
+    # print(m.summary())
+    # tensorboard = TensorBoard(log_dir='logs/ae_pca', histogram_freq=5)
+    # history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=10, verbose=1,
+    #                 validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    # eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_pca')
+    # K.clear_session()
+    #
+    # # keras autoencoder with tanh, not centered, but normalized to [-1, 1]
+    # x_train_normed, mu_train = normalize(x_train, use_mean=False)
+    # x_test_normed, mu_test = normalize(x_test, use_mean=False)
+    #
+    # m = Sequential()
+    # m.add(Dense(512, activation='elu', input_shape=(784,)))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(z_size, activation='linear', name='bottleneck'))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(512, activation='elu'))
+    # m.add(Dense(784, activation='tanh', name='decoder'))
+    # m.compile(loss='mean_squared_error', optimizer=Adam())
+    # tensorboard = TensorBoard(log_dir='logs/ae_tanh_no_mean', histogram_freq=5)
+    # print(m.summary())
+    # history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+    #                 validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    # eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_tanh_no_mean')
+    # K.clear_session()
+    #
+    # # keras autoencoder, centered
+    # x_train_normed, mu_train = normalize(x_train)
+    # x_test_normed, mu_test = normalize(x_test)
+    #
+    # m = Sequential()
+    # m.add(Dense(512, activation='elu', input_shape=(784,)))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(z_size, activation='linear', name='bottleneck'))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(512, activation='elu'))
+    # m.add(Dense(784, activation='linear', name='decoder'))
+    # m.compile(loss='mean_squared_error', optimizer=Adam())
+    # tensorboard = TensorBoard(log_dir='logs/ae', histogram_freq=5)
+    # print(m.summary())
+    # history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+    #                 validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    # eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae')
+    # K.clear_session()
+    #
+    # # keras autoencoder, not centered, but normalized to [-1, 1]
+    # x_train_normed, mu_train = normalize(x_train, use_mean=False)
+    # x_test_normed, mu_test = normalize(x_test, use_mean=False)
+    #
+    # m = Sequential()
+    # m.add(Dense(512, activation='elu', input_shape=(784,)))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(z_size, activation='linear', name='bottleneck'))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(512, activation='elu'))
+    # m.add(Dense(784, activation='linear', name='decoder'))
+    # m.compile(loss='mean_squared_error', optimizer=Adam())
+    # tensorboard = TensorBoard(log_dir='logs/ae_no_mean', histogram_freq=5)
+    # print(m.summary())
+    # history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+    #                 validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    # eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean')
+    # K.clear_session()
+    #
+    # # keras autoencoder, not centered, but normalized to [-1, 1]
+    # x_train_normed, mu_train = normalize(x_train, use_mean=False)
+    # x_test_normed, mu_test = normalize(x_test, use_mean=False)
+    #
+    # regul_const = 10e-9
+    # m = Sequential()
+    # m.add(Dense(512, activation='elu', input_shape=(784,), activity_regularizer=l1(regul_const)))
+    # m.add(Dense(128, activation='elu', activity_regularizer=l1(regul_const)))
+    # m.add(Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const)))
+    # m.add(Dense(128, activation='elu', activity_regularizer=l1(regul_const)))
+    # m.add(Dense(512, activation='elu', activity_regularizer=l1(regul_const)))
+    # m.add(Dense(784, activation='linear', name='decoder', activity_regularizer=l1(regul_const)))
+    # m.compile(loss='mean_squared_error', optimizer=Adam())
+    # tensorboard = TensorBoard(log_dir='logs/ae_no_mean_reg', histogram_freq=5)
+    # print(m.summary())
+    # history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+    #                 validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    # eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean_reg')
+    # K.clear_session()
+    #
+    # # keras autoencoder, regularizing only latent space
+    # x_train_normed, mu_train = normalize(x_train, use_mean=False)
+    # x_test_normed, mu_test = normalize(x_test, use_mean=False)
+    #
+    # regul_const = 10e-6
+    # m = Sequential()
+    # m.add(Dense(512, activation='elu', input_shape=(784,)))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const)))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(512, activation='elu'))
+    # m.add(Dense(784, activation='linear', name='decoder'))
+    # m.compile(loss='mean_squared_error', optimizer=Adam())
+    # tensorboard = TensorBoard(log_dir='logs/ae_no_mean_reg_lat_e6', histogram_freq=5)
+    # print(m.summary())
+    # history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+    #                 validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    # eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean_reg_lat_e6')
+    # K.clear_session()
 
-    # keras autoencoder with tanh, not centered, but normalized to [-1, 1]
+    # x_train_normed, mu_train = normalize(x_train, use_mean=False)
+    # x_test_normed, mu_test = normalize(x_test, use_mean=False)
+    #
+    # regul_const = 10e-7
+    # m = Sequential()
+    # m.add(Dense(512, activation='elu', input_shape=(784,)))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const)))
+    # m.add(Dense(128, activation='elu'))
+    # m.add(Dense(512, activation='elu'))
+    # m.add(Dense(784, activation='linear', name='decoder'))
+    # m.compile(loss='mean_squared_error', optimizer=Adam())
+    # tensorboard = TensorBoard(log_dir='logs/ae_no_mean_reg_lat_e7', histogram_freq=5)
+    # print(m.summary())
+    # history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
+    #                 validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
+    # eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean_reg_lat_e7')
+    # K.clear_session()
+
+    # trying on cifar 100
+    z_size = 2
+    (x_train, y_train), (x_test, y_test) = cifar100.load_data()
+    x_train = x_train.reshape(-1, 32**2)
+    y_train = y_train
+    x_test = x_test.reshape(-1, 32**2)
     x_train_normed, mu_train = normalize(x_train, use_mean=False)
     x_test_normed, mu_test = normalize(x_test, use_mean=False)
 
+    regul_const = 10e-7
     m = Sequential()
-    m.add(Dense(512, activation='elu', input_shape=(784,)))
+    m.add(Dense(512, activation='elu', input_shape=(32**2,)))
     m.add(Dense(128, activation='elu'))
-    m.add(Dense(z_size, activation='linear', name='bottleneck'))
-    m.add(Dense(128, activation='elu'))
-    m.add(Dense(512, activation='elu'))
-    m.add(Dense(784, activation='tanh', name='decoder'))
-    m.compile(loss='mean_squared_error', optimizer=Adam())
-    tensorboard = TensorBoard(log_dir='logs/ae_tanh_no_mean', histogram_freq=5)
-    print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
-    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_tanh_no_mean')
-    K.clear_session()
-
-    # keras autoencoder, centered
-    x_train_normed, mu_train = normalize(x_train)
-    x_test_normed, mu_test = normalize(x_test)
-
-    m = Sequential()
-    m.add(Dense(512, activation='elu', input_shape=(784,)))
-    m.add(Dense(128, activation='elu'))
-    m.add(Dense(z_size, activation='linear', name='bottleneck'))
-    m.add(Dense(128, activation='elu'))
-    m.add(Dense(512, activation='elu'))
-    m.add(Dense(784, activation='linear', name='decoder'))
-    m.compile(loss='mean_squared_error', optimizer=Adam())
-    tensorboard = TensorBoard(log_dir='logs/ae', histogram_freq=5)
-    print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
-    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae')
-    K.clear_session()
-
-    # keras autoencoder, not centered, but normalized to [-1, 1]
-    x_train_normed, mu_train = normalize(x_train, use_mean=False)
-    x_test_normed, mu_test = normalize(x_test, use_mean=False)
-
-    m = Sequential()
-    m.add(Dense(512, activation='elu', input_shape=(784,)))
-    m.add(Dense(128, activation='elu'))
-    m.add(Dense(z_size, activation='linear', name='bottleneck'))
-    m.add(Dense(128, activation='elu'))
-    m.add(Dense(512, activation='elu'))
-    m.add(Dense(784, activation='linear', name='decoder'))
-    m.compile(loss='mean_squared_error', optimizer=Adam())
-    tensorboard = TensorBoard(log_dir='logs/ae_no_mean', histogram_freq=5)
-    print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
-    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean')
-    K.clear_session()
-
-    # keras autoencoder, not centered, but normalized to [-1, 1]
-    x_train_normed, mu_train = normalize(x_train, use_mean=False)
-    x_test_normed, mu_test = normalize(x_test, use_mean=False)
-
-    regul_const = 10e-9
-    m = Sequential()
-    m.add(Dense(512, activation='elu', input_shape=(784,), activity_regularizer=l1(regul_const)))
-    m.add(Dense(128, activation='elu', activity_regularizer=l1(regul_const)))
     m.add(Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const)))
-    m.add(Dense(128, activation='elu', activity_regularizer=l1(regul_const)))
-    m.add(Dense(512, activation='elu', activity_regularizer=l1(regul_const)))
-    m.add(Dense(784, activation='linear', name='decoder', activity_regularizer=l1(regul_const)))
-    m.compile(loss='mean_squared_error', optimizer=Adam())
-    tensorboard = TensorBoard(log_dir='logs/ae_no_mean_reg', histogram_freq=5)
-    print(m.summary())
-    history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
-                    validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
-    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean_reg')
-    K.clear_session()
-
-    # keras autoencoder, regularizing only latent space
-    x_train_normed, mu_train = normalize(x_train, use_mean=False)
-    x_test_normed, mu_test = normalize(x_test, use_mean=False)
-
-    regul_const = 10e-6
-    m = Sequential()
-    m.add(Dense(512, activation='elu', input_shape=(784,)))
-    m.add(Dense(128, activation='elu'))
-    m.add(Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const)))
     m.add(Dense(128, activation='elu'))
     m.add(Dense(512, activation='elu'))
-    m.add(Dense(784, activation='linear', name='decoder'))
+    m.add(Dense(32**2, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
-    tensorboard = TensorBoard(log_dir='logs/ae_no_mean_reg_lat_e6', histogram_freq=5)
+    tensorboard = TensorBoard(log_dir='logs/ae_cifar_100', histogram_freq=5)
     print(m.summary())
     history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
                     validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
-    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean_reg_lat_e6')
+    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_cifar_100', (32, 32))
     K.clear_session()
+
 
     print('done')
 

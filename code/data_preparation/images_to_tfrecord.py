@@ -124,8 +124,8 @@ def run(infiles, outfile):
 
 
 def run_anime():
-    images_root = '../../../dataset-sources/anime/images'
-    tfrecords_root = '../../../datasets/anime'
+    images_root = '../../dataset-sources/anime/images'
+    tfrecords_root = '../../datasets/anime'
     anime_name = FLAGS.name
     anime_root = os.path.join(images_root, anime_name)
     print('processing directory {}'.format(anime_root))
