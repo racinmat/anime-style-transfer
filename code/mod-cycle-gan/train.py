@@ -193,11 +193,11 @@ def initialize_networks():
     return modellib, xfeed, xy, yfeed, yx
 
 
-def initialize_readers(modellib, infinite=True):
+def initialize_readers(modellib, infinite=True, drop_remainder=False):
     xfeed = cycle.utils.TFReader(FLAGS.Xtfr, normer=modellib.X_normer, denormer=modellib.X_denormer,
-                                 batch_size=FLAGS.batchsize, infinite=infinite)
+                                 batch_size=FLAGS.batchsize, infinite=infinite, drop_remainder=drop_remainder)
     yfeed = cycle.utils.TFReader(FLAGS.Ytfr, normer=modellib.Y_normer, denormer=modellib.Y_denormer,
-                                 batch_size=FLAGS.batchsize, infinite=infinite)
+                                 batch_size=FLAGS.batchsize, infinite=infinite, drop_remainder=drop_remainder)
     return xfeed, yfeed
 
 
