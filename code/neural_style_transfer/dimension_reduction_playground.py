@@ -35,9 +35,10 @@ def visualize_data(x_orig, y_orig, x_reconst, z, suffix, ims_limit=1000):
 
     plt.title('z_' + suffix)
     plt.axis('off')
-    sc = plt.scatter(x=z[:, 0], y=z[:, 1], s=10, c=y_orig, cmap=plt.cm.Set1)
-    plt.colorbar(sc)
-    plt.clim(-4, 4)
+    sc = plt.scatter(x=z[:, 0], y=z[:, 1], s=10, c=y_orig, cmap='tab10', vmin=y_orig.min() - 0.5,
+                     vmax=y_orig.max() + 0.5)
+    plt.colorbar(sc, ticks=np.arange(y_orig.min(), y_orig.max() + 1))
+    plt.savefig(f'z_{suffix}.png')
     plt.show()
 
     # sns.jointplot(x=z_pca_train[:, 0], y=z_pca_train[:, 1])
@@ -48,7 +49,7 @@ def visualize_data(x_orig, y_orig, x_reconst, z, suffix, ims_limit=1000):
 def show_data(data, name):
     plt.figure(figsize=(20, 20))
     plt.axis('off')
-    plt.title(name)
+    plt.title(name, fontsize='x-large')
     size = data.shape[0]
     tile_width = int(round(np.sqrt(size)))
     while size % tile_width != 0:
@@ -60,17 +61,19 @@ def show_data(data, name):
     tiled = data.reshape(tile_width, nw, h, w).swapaxes(1, 2).reshape(tile_width * h, nw * w)
 
     plt.imshow(tiled, cmap="gray")
-    # plt.draw()
+    plt.savefig(f'{name}.png')
     plt.show()
 
 
-def plot_network_history(history):
+def plot_network_history(history, suffix):
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
-    plt.title('model train vs validation loss - pca')
+    name = 'model train vs validation loss, ' + suffix
+    plt.title(name)
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(['train', 'validation'], loc='upper right')
+    plt.savefig(f'figures/{name}.png')
     plt.show()
 
 
@@ -85,25 +88,30 @@ def extract_decoder(model: Model, latent_space_name='bottleneck'):
     return Model(in_layer, out_layer)
 
 
-def show_factors(decoder, z_size):
+def show_factors(decoder, z_size, suffix):
     for i in range(z_size):
         latent_vector = np.zeros((1, z_size))
         latent_vector[:, i] = 1
         plt.imshow(decoder.predict(latent_vector).reshape(28, 28), cmap="gray")
+        plt.savefig(f'figures/factor-{i}-{suffix}.png')
         plt.show()
 
 
-def train_eval_network(m, mu_train, mu_test, x_train, x_test):
-    print(m.summary())
-    history = m.fit(x_train, x_train, batch_size=256, epochs=10, verbose=1,
-                    validation_data=(x_test, x_test))
+def eval_show_network(m, mu_train, mu_test, x_train, x_test, y_train, y_test, history, suffix):
     encoder = Model(m.input, m.get_layer('bottleneck').output)
     decoder = extract_decoder(m)
     z_pca_train = encoder.predict(x_train)  # bottleneck representation
     z_pca_test = encoder.predict(x_test)  # bottleneck representation
     r_pca_train = denormalize(m.predict(x_test), mu_train)
     r_pca_test = denormalize(m.predict(x_test), mu_test)
-    return decoder, history, r_pca_train,  r_pca_test, z_pca_train, z_pca_test
+
+    show_factors(decoder, m.get_layer('bottleneck').units, suffix)
+
+    visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train_'+suffix)
+    visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_+suffix'+suffix)
+
+    plot_network_history(history, suffix)
+
 
 
 def main(_):
@@ -178,18 +186,12 @@ def main(_):
     m.add(Dense(z_size, activation='linear', input_shape=(784,), name='bottleneck'))
     m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
-    decoder, history, r_pca_train,  r_pca_test, z_pca_train, z_pca_test = train_eval_network(
-        m, mu_train, mu_test, x_train_normed, x_test_normed)
+    print(m.summary())
+    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=5, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed))
+    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_pca')
 
-    show_factors(decoder, z_size)
-
-    visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train_pca_ae')
-    visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_pca_ae')
-
-    plot_network_history(history)
-
-    # keras different autoencoders
-    # todo: compare with no mean adjusting
+    # keras autoencoder with sigmoid, centered
     x_train_normed, mu_train = normalize(x_train)
     x_test_normed, mu_test = normalize(x_test)
 
@@ -202,15 +204,46 @@ def main(_):
     m.add(Dense(784, activation='sigmoid', name='decoder'))
     # m.add(Dense(784, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
-    decoder, history, r_pca_train,  r_pca_test, z_pca_train, z_pca_test = train_eval_network(
-        m, mu_train, mu_test, x_train_normed, x_test_normed)
+    print(m.summary())
+    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=40, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed))
+    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_sigmoid')
 
-    show_factors(decoder, z_size)
+    # keras autoencoder, centered
+    x_train_normed, mu_train = normalize(x_train)
+    x_test_normed, mu_test = normalize(x_test)
 
-    visualize_data(x_train, y_train, r_pca_train, z_pca_train, 'train_ae')
-    visualize_data(x_test, y_test, r_pca_test, z_pca_test, 'test_ae')
+    m = Sequential()
+    m.add(Dense(512, activation='elu', input_shape=(784,)))
+    m.add(Dense(128, activation='elu'))
+    m.add(Dense(z_size, activation='linear', name='bottleneck'))
+    m.add(Dense(128, activation='elu'))
+    m.add(Dense(512, activation='elu'))
+    # m.add(Dense(784, activation='sigmoid', name='decoder'))
+    m.add(Dense(784, activation='linear', name='decoder'))
+    m.compile(loss='mean_squared_error', optimizer=Adam())
+    print(m.summary())
+    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=40, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed))
+    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae')
 
-    plot_network_history(history)
+    # keras autoencoder, not centered
+    x_train_normed, mu_train = normalize(x_train, use_mean=False)
+    x_test_normed, mu_test = normalize(x_test, use_mean=False)
+
+    m = Sequential()
+    m.add(Dense(512, activation='elu', input_shape=(784,)))
+    m.add(Dense(128, activation='elu'))
+    m.add(Dense(z_size, activation='linear', name='bottleneck'))
+    m.add(Dense(128, activation='elu'))
+    m.add(Dense(512, activation='elu'))
+    # m.add(Dense(784, activation='sigmoid', name='decoder'))
+    m.add(Dense(784, activation='linear', name='decoder'))
+    m.compile(loss='mean_squared_error', optimizer=Adam())
+    print(m.summary())
+    history = m.fit(x_train_normed, x_train_normed, batch_size=256, epochs=40, verbose=1,
+                    validation_data=(x_test_normed, x_test_normed))
+    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_no_mean')
 
     print('done')
 
