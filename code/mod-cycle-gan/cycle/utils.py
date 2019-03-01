@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 from object_detection.data_decoders import tf_example_decoder
 
-from data_preparation.images_to_tfrecord import process_sample_tf
+from images_to_tfrecord import process_sample_tf
 
 
 def _identity(x, name=None):
