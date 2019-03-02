@@ -42,12 +42,18 @@ def tf_data_generator(iterator):
 
 
 def main(_):
-    batch_size = 16
+    batch_size = 4
     data = create_dataset('../../datasets/anime/no-game-no-life-ep-2.tfrecord', batch_size)
     iterator = data.make_one_shot_iterator()
     data_gen = tf_data_generator(iterator)
 
     K.set_image_data_format('channels_last')  # set format
+
+    # fuck it, I must create some validation data and keep it in memory, because fuck you
+    validation_batches = 4
+    validation_data = [next(data_gen) for _ in range(validation_batches)]
+    validation_data = (np.array([i[0] for i in validation_data]).reshape(-1, 432, 768, 3),
+                       np.array([i[1] for i in validation_data]).reshape(-1, 432, 768, 3))
 
     z_size = 2
     regul_const = 10e-7
@@ -72,24 +78,16 @@ def main(_):
     print(m.summary())
     tensorboard = TensorBoard(
         log_dir='logs/anime', histogram_freq=5, write_images=True,
-        # embeddings_freq=5, embeddings_layer_names=['bottleneck'],
-        # embeddings_data=tf_data_generator(iterator), embeddings_metadata='embeddings.tsv'
+        embeddings_freq=5, embeddings_layer_names=['bottleneck'],
+        embeddings_data=validation_data[0]
     )
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     set_session(tf.Session(config=config))
 
-    # fuck it, I must create some validation data and keep it in memory, because fuck you
-    validation_batches = 2
-    validation_data = [next(data_gen) for i in range(validation_batches)]
-    validation_data = (np.array([i[0] for i in validation_data]).reshape(-1, 432, 768, 3),
-                       np.array([i[1] for i in validation_data]).reshape(-1, 432, 768, 3))
-
     history = m.fit_generator(data_gen, steps_per_epoch=100, epochs=50, verbose=1,
-                              validation_data=validation_data,
-                              validation_steps=validation_batches * batch_size,
-                              callbacks=[tensorboard]
-                              )
+                              validation_data=validation_data, validation_steps=validation_batches * batch_size,
+                              callbacks=[tensorboard])
 
     encoder = Model(m.input, m.get_layer('bottleneck').output)
     decoder = extract_decoder(m)
