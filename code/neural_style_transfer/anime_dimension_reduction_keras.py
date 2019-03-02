@@ -70,10 +70,9 @@ class TensorBoardImage(Callback):
         super().__init__()
         self.model = model
         self.data = data
-        self.writer = None
+        self.writer = tf.summary.FileWriter('./logs/anime')
 
     def on_epoch_end(self, epoch, logs={}):
-        self.writer = tf.summary.FileWriter('./logs')
         reconst_images = self.model.predict(self.data)
         for image_orig, image_reconst in zip(self.data, reconst_images):
             summary_orig = tf.Summary(value=[tf.Summary.Value(tag='orig_data', image=make_image(image_orig))])
@@ -81,9 +80,7 @@ class TensorBoardImage(Callback):
                 value=[tf.Summary.Value(tag='reconstructed_data', image=make_image(image_reconst))])
             self.writer.add_summary(summary_orig, epoch)
             self.writer.add_summary(summary_reconst, epoch)
-        self.writer.close()
-
-        return
+            self.writer.flush()
 
 
 def show_data(data, name):
@@ -161,7 +158,7 @@ def main(_):
     out = Conv2DTranspose(32, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
     out = ZeroPadding2D(padding=(0, 2))(out)
     out = Conv2DTranspose(16, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
-    out = Conv2DTranspose(3, kernel_size=(1, 1), activation='elu', padding='same')(out)
+    out = Conv2DTranspose(3, kernel_size=(1, 1), activation='linear', padding='same')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam())
     print(m.summary())
@@ -174,7 +171,7 @@ def main(_):
     config.gpu_options.allow_growth = True
     set_session(tf.Session(config=config))
 
-    history = m.fit_generator(data_gen, steps_per_epoch=20, epochs=1, verbose=1, validation_data=validation_data,
+    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=50, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size, callbacks=[tensorboard, tbi_callback])
 
     model_json = m.to_json()
