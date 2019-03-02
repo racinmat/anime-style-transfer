@@ -190,6 +190,8 @@ def main(_):
 
     z_size = 20
     regul_const = 10e-7
+    lr = 0.001
+    decay=0.
     input_tensor = Input(shape=(432, 768, 3))
     out = Conv2D(8, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(input_tensor)
     out = Conv2D(16, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
@@ -206,11 +208,13 @@ def main(_):
     out = Conv2DTranspose(8, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
     out = Conv2DTranspose(3, kernel_size=(1, 1), activation='linear', padding='same')(out)
     m = Model(inputs=input_tensor, outputs=out)
-    m.compile(loss=mean_squared_error, optimizer=Adam())
+    m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
+                                                      epsilon=None, decay=decay, amsgrad=False))
 
     log_dir = f'logs/anime-{name}'
     os.makedirs(log_dir, exist_ok=True)
     m.summary()
+    # obtaining keras
     with open(f'{log_dir}/model-summary.txt', 'w') as f:
         with redirect_stdout(f):
             m.summary()
@@ -218,14 +222,13 @@ def main(_):
             print('training_config:', json.dumps({
                 'optimizer_config': {
                     'class_name': m.optimizer.__class__.__name__,
-                    'config': m.optimizer.get_config()
+                    # manual config for adam, because otherwise it can not be persisted before training
+                    'config': {
+                        'lr': lr,
+                        'decay': decay,
+                    }
                 },
-                'loss': m.loss,
-                'metrics': m.metrics,
-                'sample_weight_mode': m.sample_weight_mode,
-                'loss_weights': m.loss_weights,
-            }, default=get_json_type).encode('utf8')
-)
+            }, default=get_json_type, indent=2).encode('utf8'))
 
     tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)
 
