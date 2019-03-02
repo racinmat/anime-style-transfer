@@ -48,10 +48,10 @@ def visualize_data(x_orig, y_orig, x_reconst, z, suffix, ims_limit=1000):
     # plt.show()
 
 
-def show_data(data, name):
+def show_data(data, name, shape=(28, 28)):
     plt.figure(figsize=(20, 20))
     plt.axis('off')
-    plt.title(name, fontsize='x-large')
+    plt.title(name, fontsize='50')
     size = data.shape[0]
     tile_width = int(round(np.sqrt(size)))
     while size % tile_width != 0:
@@ -59,7 +59,7 @@ def show_data(data, name):
 
     nw = size // tile_width
     # aligning images to one big
-    h, w = 28, 28
+    h, w = shape
     tiled = data.reshape(tile_width, nw, h, w).swapaxes(1, 2).reshape(tile_width * h, nw * w)
 
     plt.imshow(tiled, cmap="gray")
@@ -119,9 +119,9 @@ def eval_show_network(m, mu_train, mu_test, x_train, x_test, y_train, y_test, hi
 def main(_):
     z_size = 2
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    x_train = x_train.reshape(-1, 28**2)
+    x_train = x_train.reshape(-1, 28 ** 2)
     y_train = y_train
-    x_test = x_test.reshape(-1, 28**2)
+    x_test = x_test.reshape(-1, 28 ** 2)
     x_train_normed, mu_train = normalize(x_train)
     x_test_normed, mu_test = normalize(x_test)
     batch_size = 4096
@@ -315,28 +315,28 @@ def main(_):
     # trying on cifar 100
     z_size = 2
     (x_train, y_train), (x_test, y_test) = cifar100.load_data()
-    x_train = x_train.reshape(-1, 32**2)
+    x_train = x_train.reshape(-1, 32 ** 2)
     y_train = y_train
-    x_test = x_test.reshape(-1, 32**2)
+    x_test = x_test.reshape(-1, 32 ** 2)
     x_train_normed, mu_train = normalize(x_train, use_mean=False)
     x_test_normed, mu_test = normalize(x_test, use_mean=False)
 
     regul_const = 10e-7
     m = Sequential()
-    m.add(Dense(512, activation='elu', input_shape=(32**2,)))
+    m.add(Dense(512, activation='elu', input_shape=(32 ** 2,)))
     m.add(Dense(128, activation='elu'))
     m.add(Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const)))
     m.add(Dense(128, activation='elu'))
     m.add(Dense(512, activation='elu'))
-    m.add(Dense(32**2, activation='linear', name='decoder'))
+    m.add(Dense(32 ** 2, activation='linear', name='decoder'))
     m.compile(loss='mean_squared_error', optimizer=Adam())
     tensorboard = TensorBoard(log_dir='logs/ae_cifar_100', histogram_freq=5)
     print(m.summary())
     history = m.fit(x_train_normed, x_train_normed, batch_size=batch_size, epochs=50, verbose=1,
                     validation_data=(x_test_normed, x_test_normed), callbacks=[tensorboard])
-    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_cifar_100', (32, 32))
+    eval_show_network(m, mu_train, mu_test, x_train_normed, x_test_normed, y_train, y_test, history, 'ae_cifar_100',
+                      (32, 32))
     K.clear_session()
-
 
     print('done')
 
