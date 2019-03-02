@@ -149,7 +149,7 @@ def save_and_eval_model(m: Model, log_dir, validation_data, history, name):
     model_json = m.to_json()
     with open(log_dir + '/model.json', 'w') as json_file:
         json_file.write(model_json)
-    m.save_weights(log_dir + 'model.h5')
+    m.save_weights(log_dir + '/model.h5')
     encoder = Model(m.input, m.get_layer('bottleneck').output)
     decoder = extract_decoder(m)
     latent_space = encoder.predict(validation_data[0])  # bottleneck representation
@@ -189,9 +189,9 @@ def main(_):
                        np.array([i[1] for i in validation_data]).reshape(-1, 432, 768, 3))
 
     z_size = 20
-    regul_const = 10e-7
+    regul_const = 10e-8
     lr = 0.001
-    decay=0.
+    decay = 0.
     input_tensor = Input(shape=(432, 768, 3))
     out = Conv2D(8, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(input_tensor)
     out = Conv2D(16, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
@@ -213,6 +213,7 @@ def main(_):
 
     log_dir = f'logs/anime-{name}'
     os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(f'figures/{name}', exist_ok=True)
     m.summary()
     # obtaining keras
     with open(f'{log_dir}/model-summary.txt', 'w') as f:
