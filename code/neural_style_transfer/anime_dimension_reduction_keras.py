@@ -12,7 +12,8 @@ from tensorflow.python.util.serialization import get_json_type
 mpl.use('module://backend_interagg')
 from keras.losses import mean_squared_error
 from keras.models import Sequential, Model
-from keras.layers import Dense, Input, Flatten, Reshape, Conv2D, Conv2DTranspose, ZeroPadding2D
+from keras.layers import Dense, Input, Flatten, Reshape, Conv2D, Conv2DTranspose, ZeroPadding2D, MaxPooling2D, \
+    Cropping2D
 from keras.optimizers import Adam
 from keras import backend as K
 from keras.callbacks import TensorBoard, Callback
@@ -189,32 +190,39 @@ def main(_):
                        np.array([i[1] for i in validation_data]).reshape(-1, 432, 768, 3))
 
     z_size = 20
-    regul_const = 10e-8
+    regul_const = 10e-7
     lr = 0.001
     decay = 0.
     input_tensor = Input(shape=(432, 768, 3))
-    out = Conv2D(8, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(input_tensor)
-    out = Conv2D(16, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
-    out = Conv2D(32, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
-    out = Conv2D(64, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
+    out = Conv2D(8, kernel_size=(3, 3), strides=(1, 1), activation='elu', padding='same')(input_tensor)
+    out = MaxPooling2D(pool_size=(2, 2), strides=None, padding='valid', data_format=None)(out)
+    out = Conv2D(16, kernel_size=(3, 3), strides=(1, 1), activation='elu', padding='same')(out)
+    out = MaxPooling2D(pool_size=(2, 2), strides=None, padding='valid', data_format=None)(out)
+    out = Conv2D(32, kernel_size=(3, 3), strides=(1, 1), activation='elu', padding='same')(out)
+    out = MaxPooling2D(pool_size=(2, 2), strides=None, padding='valid', data_format=None)(out)
+    out = Conv2D(48, kernel_size=(3, 3), strides=(1, 1), activation='elu', padding='same')(out)
+    out = MaxPooling2D(pool_size=(2, 2), strides=None, padding='valid', data_format=None)(out)
+    out = Conv2D(64, kernel_size=(3, 3), strides=(1, 1), activation='elu', padding='same')(out)
+    out = MaxPooling2D(pool_size=(2, 2), strides=None, padding='valid', data_format=None)(out)
     out = Flatten()(out)
     out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
-    out = Dense(8 * 14 * 32, activation='elu')(out)
-    out = Reshape((8, 14, 32))(out)
-    out = Conv2DTranspose(64, kernel_size=(2, 2), strides=(2, 2), activation='elu', padding='valid')(out)
-    out = Conv2DTranspose(32, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
-    out = Conv2DTranspose(18, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
-    out = ZeroPadding2D(padding=(0, 2))(out)
-    out = Conv2DTranspose(8, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
+    out = Dense(13 * 24 * 48, activation='elu')(out)
+    out = Reshape((13, 24, 48))(out)
+    out = Conv2DTranspose(48, kernel_size=(5, 5), strides=(2, 2), activation='elu', padding='same')(out)
+    out = ZeroPadding2D(padding=((1, 0), (0, 0)))(out)
+    out = Conv2DTranspose(32, kernel_size=(5, 5), strides=(2, 2), activation='elu', padding='same')(out)
+    out = Conv2DTranspose(24, kernel_size=(5, 5), strides=(2, 2), activation='elu', padding='same')(out)
+    out = Conv2DTranspose(16, kernel_size=(5, 5), strides=(2, 2), activation='elu', padding='same')(out)
+    out = Conv2DTranspose(8, kernel_size=(5, 5), strides=(2, 2), activation='elu', padding='same')(out)
     out = Conv2DTranspose(3, kernel_size=(1, 1), activation='linear', padding='same')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
                                                       epsilon=None, decay=decay, amsgrad=False))
 
+    m.summary()
     log_dir = f'logs/anime-{name}'
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(f'figures/{name}', exist_ok=True)
-    m.summary()
     # obtaining keras
     with open(f'{log_dir}/model-summary.txt', 'w') as f:
         with redirect_stdout(f):
