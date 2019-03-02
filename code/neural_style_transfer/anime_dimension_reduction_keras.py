@@ -1,6 +1,10 @@
+from contextlib import redirect_stdout
+from datetime import datetime
+
 import numpy as np
 import tensorflow as tf
 import matplotlib as mpl
+from sklearn.decomposition import PCA
 
 mpl.use('module://backend_interagg')
 from keras.losses import mean_squared_error
@@ -20,7 +24,7 @@ from cycle.models.anime._utils import normer, denormer
 from keras.backend.tensorflow_backend import set_session
 
 from cycle.utils import TFReader
-from dimension_reduction_playground import extract_decoder, plot_network_history
+from dimension_reduction_playground import extract_decoder
 
 
 def norm_and_resize(data):
@@ -66,11 +70,11 @@ def make_image(arr):
 
 
 class TensorBoardImage(Callback):
-    def __init__(self, model: Model, data):
+    def __init__(self, model: Model, data, log_dir):
         super().__init__()
         self.model = model
         self.data = data
-        self.writer = tf.summary.FileWriter('./logs/anime')
+        self.writer = tf.summary.FileWriter(log_dir)
 
     def on_epoch_end(self, epoch, logs={}):
         reconst_images = self.model.predict(self.data)
@@ -83,34 +87,32 @@ class TensorBoardImage(Callback):
             self.writer.flush()
 
 
-def show_data(data, name):
+def show_data(data, name, dir_name):
     data = denormalize(data)
-    plt.figure(figsize=(20, 20))
-    plt.axis('off')
-    plt.title(name, fontsize='50')
     size = data.shape[0]
-    tile_width = int(round(np.sqrt(size)))
-    while size % tile_width != 0:
-        tile_width -= 1
-
-    nw = size // tile_width
-    # aligning images to one big
-    h, w = (432, 768)
-    tiled = data.reshape(tile_width, nw, h, w, 3).swapaxes(1, 2).reshape(tile_width * h, nw * w, 3)
-
-    plt.imshow(tiled)
-    plt.savefig(f'figures/{name}.png')
-    plt.show()
+    for i in range(size):
+        plt.figure(figsize=(20, 10))
+        plt.axis('off')
+        plt.title(name, fontsize='50')
+        plt.imshow(data[i])
+        plt.savefig(f'figures/{dir_name}/{i}-{name}.png')
+        plt.show()
 
 
-def visualize_data(x_orig, x_reconst, z, suffix):
-    show_data(x_orig, 'x_orig_' + suffix)
-    show_data(x_reconst, 'x_reconst_' + suffix)
+def visualize_data(x_orig, x_reconst, z, dir_name):
+    show_data(x_orig, 'x_orig', dir_name)
+    show_data(x_reconst, 'x_reconst', dir_name)
 
-    plt.title('z_' + suffix)
-    # plt.axis('off')   # I want to see the scale
-    plt.scatter(x=z[:, 0], y=z[:, 1], s=10)
-    plt.savefig(f'figures/z_{suffix}.png')
+    use_pca = z.shape[1] > 2
+    if use_pca:
+        plt.title(f'z pca from {z.shape[1]} dims to 2')
+        pca = PCA(n_components=2)
+        z_pca = pca.fit_transform(z)
+        plt.scatter(x=z_pca[:, 0], y=z_pca[:, 1], s=10)
+    else:
+        plt.title('z')
+        plt.scatter(x=z[:, 0], y=z[:, 1], s=10)
+    plt.savefig(f'figures/{dir_name}/z.png')
     plt.show()
 
     # sns.jointplot(x=z_pca_train[:, 0], y=z_pca_train[:, 1])
@@ -118,17 +120,46 @@ def visualize_data(x_orig, x_reconst, z, suffix):
     # plt.show()
 
 
-def show_factors(decoder, z_size, suffix):
+def show_factors(decoder, z_size, dir_name):
     for i in range(z_size):
         latent_vector = np.zeros((1, z_size))
         latent_vector[:, i] = 1
         plt.imshow(denormalize(decoder.predict(latent_vector)[0]))
         plt.axis('off')
-        plt.savefig(f'figures/factor-{suffix}-{i}.png')
+        plt.savefig(f'figures/{dir_name}/factor-{i}.png')
         plt.show()
 
 
+def plot_network_history(history, dir_name):
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    name = 'model train vs validation loss'
+    plt.title(name)
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'validation'], loc='upper right')
+    plt.savefig(f'figures/{dir_name}/loss_history.png')
+    plt.show()
+
+
+def save_and_eval_model(m, log_dir, validation_data, history, name):
+    model_json = m.to_json()
+    with open(log_dir + '/model.json', 'w') as json_file:
+        json_file.write(model_json)
+    m.save_weights(log_dir + 'model.h5')
+
+    encoder = Model(m.input, m.get_layer('bottleneck').output)
+    decoder = extract_decoder(m)
+    latent_space = encoder.predict(validation_data[0])  # bottleneck representation
+    reconst_data = m.predict(validation_data[0])
+
+    show_factors(decoder, m.get_layer('bottleneck').units, name)
+    plot_network_history(history, name)
+    visualize_data(validation_data[0], reconst_data, latent_space, name)
+
+
 def main(_):
+    name = datetime.now().strftime('%Y-%m-%d--%H-%M')
     batch_size = 4
     data = create_dataset('../../datasets/anime/no-game-no-life-ep-2.tfrecord', batch_size)
     iterator = data.make_one_shot_iterator()
@@ -161,33 +192,30 @@ def main(_):
     out = Conv2DTranspose(3, kernel_size=(1, 1), activation='linear', padding='same')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam())
-    print(m.summary())
-    tensorboard = TensorBoard(
-        log_dir='logs/anime', histogram_freq=5, write_images=True, embeddings_freq=5,
-        embeddings_layer_names=['bottleneck'], embeddings_data=validation_data[0]
-    )
-    tbi_callback = TensorBoardImage(model=m, data=validation_data[0])
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    set_session(tf.Session(config=config))
+
+    log_dir, tbi_callback, tensorboard = prepare_training(m, name, validation_data)
 
     history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=50, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size, callbacks=[tensorboard, tbi_callback])
 
-    model_json = m.to_json()
-    with open("model.json", "w") as json_file:
-        json_file.write(model_json)
-    # serialize weights to HDF5
-    m.save_weights("model.h5")
+    save_and_eval_model(m, log_dir, validation_data, history, name)
 
-    encoder = Model(m.input, m.get_layer('bottleneck').output)
-    decoder = extract_decoder(m)
-    latent_space = encoder.predict(validation_data[0])  # bottleneck representation
-    reconst_data = m.predict(validation_data[0])
 
-    show_factors(decoder, m.get_layer('bottleneck').units, 'anime')
-    plot_network_history(history, 'anime')
-    visualize_data(validation_data[0], reconst_data, latent_space, 'train_anime')
+def prepare_training(m, name, validation_data):
+    log_dir = f'logs/anime-{name}'
+    print(m.summary())
+    with open(f'{log_dir}/model-summary.txt', 'w') as f:
+        with redirect_stdout(f):
+            m.summary()
+    tensorboard = TensorBoard(
+        log_dir=log_dir, histogram_freq=5, write_images=True, embeddings_freq=5,
+        embeddings_layer_names=['bottleneck'], embeddings_data=validation_data[0]
+    )
+    tbi_callback = TensorBoardImage(model=m, data=validation_data[0], log_dir=log_dir)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    set_session(tf.Session(config=config))
+    return log_dir, tbi_callback, tensorboard
 
 
 if __name__ == '__main__':
