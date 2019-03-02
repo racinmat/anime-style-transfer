@@ -1,3 +1,5 @@
+import json
+import os
 from contextlib import redirect_stdout
 from datetime import datetime
 
@@ -5,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib as mpl
 from sklearn.decomposition import PCA
+from tensorflow.python.util.serialization import get_json_type
 
 mpl.use('module://backend_interagg')
 from keras.losses import mean_squared_error
@@ -142,12 +145,11 @@ def plot_network_history(history, dir_name):
     plt.show()
 
 
-def save_and_eval_model(m, log_dir, validation_data, history, name):
+def save_and_eval_model(m: Model, log_dir, validation_data, history, name):
     model_json = m.to_json()
     with open(log_dir + '/model.json', 'w') as json_file:
         json_file.write(model_json)
     m.save_weights(log_dir + 'model.h5')
-
     encoder = Model(m.input, m.get_layer('bottleneck').output)
     decoder = extract_decoder(m)
     latent_space = encoder.predict(validation_data[0])  # bottleneck representation
@@ -158,10 +160,23 @@ def save_and_eval_model(m, log_dir, validation_data, history, name):
     visualize_data(validation_data[0], reconst_data, latent_space, name)
 
 
+def prepare_training(m, log_dir, validation_data):
+    tensorboard = TensorBoard(
+        log_dir=log_dir, histogram_freq=5, write_images=True, embeddings_freq=5,
+        embeddings_layer_names=['bottleneck'], embeddings_data=validation_data[0]
+    )
+    tbi_callback = TensorBoardImage(model=m, data=validation_data[0], log_dir=log_dir)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    set_session(tf.Session(config=config))
+    return tbi_callback, tensorboard
+
+
 def main(_):
     name = datetime.now().strftime('%Y-%m-%d--%H-%M')
     batch_size = 4
-    data = create_dataset('../../datasets/anime/no-game-no-life-ep-2.tfrecord', batch_size)
+    dataset_name = '../../datasets/anime/no-game-no-life-ep-2.tfrecord'
+    data = create_dataset(dataset_name, batch_size)
     iterator = data.make_one_shot_iterator()
     data_gen = tf_data_generator(iterator)
 
@@ -176,46 +191,48 @@ def main(_):
     z_size = 20
     regul_const = 10e-7
     input_tensor = Input(shape=(432, 768, 3))
-    out = Conv2D(16, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(input_tensor)
+    out = Conv2D(8, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(input_tensor)
+    out = Conv2D(16, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
     out = Conv2D(32, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
     out = Conv2D(64, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
-    out = Conv2D(128, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
     out = Flatten()(out)
     out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
-    out = Dense(8 * 14 * 64, activation='elu')(out)
-    out = Reshape((8, 14, 64))(out)
-    out = Conv2DTranspose(128, kernel_size=(2, 2), strides=(2, 2), activation='elu', padding='valid')(out)
-    out = Conv2DTranspose(64, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
+    out = Dense(8 * 14 * 32, activation='elu')(out)
+    out = Reshape((8, 14, 32))(out)
+    out = Conv2DTranspose(64, kernel_size=(2, 2), strides=(2, 2), activation='elu', padding='valid')(out)
     out = Conv2DTranspose(32, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
+    out = Conv2DTranspose(18, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
     out = ZeroPadding2D(padding=(0, 2))(out)
-    out = Conv2DTranspose(16, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
+    out = Conv2DTranspose(8, kernel_size=(3, 3), strides=(3, 3), activation='elu', padding='valid')(out)
     out = Conv2DTranspose(3, kernel_size=(1, 1), activation='linear', padding='same')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam())
 
-    log_dir, tbi_callback, tensorboard = prepare_training(m, name, validation_data)
+    log_dir = f'logs/anime-{name}'
+    os.makedirs(log_dir, exist_ok=True)
+    m.summary()
+    with open(f'{log_dir}/model-summary.txt', 'w') as f:
+        with redirect_stdout(f):
+            m.summary()
+            print('dataset: ', dataset_name)
+            print('training_config:', json.dumps({
+                'optimizer_config': {
+                    'class_name': m.optimizer.__class__.__name__,
+                    'config': m.optimizer.get_config()
+                },
+                'loss': m.loss,
+                'metrics': m.metrics,
+                'sample_weight_mode': m.sample_weight_mode,
+                'loss_weights': m.loss_weights,
+            }, default=get_json_type).encode('utf8')
+)
+
+    tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)
 
     history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=50, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size, callbacks=[tensorboard, tbi_callback])
 
     save_and_eval_model(m, log_dir, validation_data, history, name)
-
-
-def prepare_training(m, name, validation_data):
-    log_dir = f'logs/anime-{name}'
-    print(m.summary())
-    with open(f'{log_dir}/model-summary.txt', 'w') as f:
-        with redirect_stdout(f):
-            m.summary()
-    tensorboard = TensorBoard(
-        log_dir=log_dir, histogram_freq=5, write_images=True, embeddings_freq=5,
-        embeddings_layer_names=['bottleneck'], embeddings_data=validation_data[0]
-    )
-    tbi_callback = TensorBoardImage(model=m, data=validation_data[0], log_dir=log_dir)
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    set_session(tf.Session(config=config))
-    return log_dir, tbi_callback, tensorboard
 
 
 if __name__ == '__main__':
