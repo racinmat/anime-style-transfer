@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from contextlib import redirect_stdout
 from datetime import datetime
@@ -16,7 +17,7 @@ from keras.layers import Dense, Input, Flatten, Reshape, Conv2D, Conv2DTranspose
     Cropping2D
 from keras.optimizers import Adam
 from keras import backend as K
-from keras.callbacks import TensorBoard, Callback
+from keras.callbacks import TensorBoard, Callback, LearningRateScheduler, ReduceLROnPlateau
 from keras.regularizers import l1
 from PIL import Image
 import io
@@ -73,7 +74,7 @@ def make_image(arr):
                             encoded_image_string=image_string)
 
 
-class TensorBoardImage(Callback):
+class TensorBoardThings(Callback):
     def __init__(self, model: Model, data, log_dir):
         super().__init__()
         self.model = model
@@ -89,6 +90,8 @@ class TensorBoardImage(Callback):
             self.writer.add_summary(summary_orig, epoch)
             self.writer.add_summary(summary_reconst, epoch)
             self.writer.flush()
+        logs.update({'learning_rate': K.eval(self.model.optimizer.lr)})
+        super().on_epoch_end(epoch, logs)
 
 
 def show_data(data, name, dir_name):
@@ -166,11 +169,19 @@ def prepare_training(m, log_dir, validation_data):
         log_dir=log_dir, histogram_freq=5, write_images=True, embeddings_freq=5,
         embeddings_layer_names=['bottleneck'], embeddings_data=validation_data[0]
     )
-    tbi_callback = TensorBoardImage(model=m, data=validation_data[0], log_dir=log_dir)
+    tbi_callback = TensorBoardThings(model=m, data=validation_data[0], log_dir=log_dir)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     set_session(tf.Session(config=config))
     return tbi_callback, tensorboard
+
+
+def step_decay(epoch):
+    initial_lrate = 0.001
+    drop = 0.5
+    epochs_drop = 40.0
+    lrate = initial_lrate * math.pow(drop, math.floor((1 + epoch) / epochs_drop))
+    return lrate
 
 
 def main(_):
@@ -193,6 +204,9 @@ def main(_):
     regul_const = 10e-7
     lr = 0.001
     decay = 0.
+    # lrate = LearningRateScheduler(step_decay)
+    reduce_lr = ReduceLROnPlateau(monitor='loss', patience=5)
+
     input_tensor = Input(shape=(432, 768, 3))
     out = Conv2D(16, kernel_size=3, strides=1, activation='elu', padding='same')(input_tensor)
     out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same')(out)
@@ -241,8 +255,9 @@ def main(_):
 
     tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)
 
-    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=50, verbose=1, validation_data=validation_data,
-                              validation_steps=validation_batches * batch_size, callbacks=[tensorboard, tbi_callback])
+    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=100, verbose=1, validation_data=validation_data,
+                              validation_steps=validation_batches * batch_size,
+                              callbacks=[tensorboard, tbi_callback, reduce_lr])
 
     save_and_eval_model(m, log_dir, validation_data, history, name)
 
