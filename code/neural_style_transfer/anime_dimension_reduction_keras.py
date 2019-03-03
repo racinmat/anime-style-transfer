@@ -189,7 +189,7 @@ def main(_):
     validation_data = (np.array([i[0] for i in validation_data]).reshape(-1, 432, 768, 3),
                        np.array([i[1] for i in validation_data]).reshape(-1, 432, 768, 3))
 
-    z_size = 20
+    z_size = 30
     regul_const = 10e-7
     lr = 0.001
     decay = 0.
