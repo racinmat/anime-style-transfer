@@ -43,12 +43,12 @@ def denormalize(x):
     return x_denormed
 
 
-def create_dataset(tf_record, batch_size):
+def create_dataset(tf_record, batch_size, seed=None):
     data = tf.data.TFRecordDataset(tf_record)
     data = data.map(TFReader._parse_example_encoded, num_parallel_calls=8)
     data = data.map(norm_and_resize, num_parallel_calls=8)
     data = tf.data.Dataset.zip((data, data))
-    data = data.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=100))
+    data = data.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=100, seed=seed))
     data = data.batch(batch_size, drop_remainder=True)
     data = data.prefetch(batch_size * 5)
     return data
@@ -176,23 +176,25 @@ def prepare_training(m, log_dir, validation_data):
     return tbi_callback, tensorboard
 
 
-def step_decay(epoch):
-    initial_lrate = 0.001
-    drop = 0.5
-    epochs_drop = 40.0
-    lrate = initial_lrate * math.pow(drop, math.floor((1 + epoch) / epochs_drop))
-    return lrate
+# def step_decay(epoch):
+#     initial_lrate = 5e-4
+#     drop = 0.5
+#     epochs_drop = 40.0
+#     lrate = initial_lrate * math.pow(drop, math.floor((1 + epoch) / epochs_drop))
+#     return lrate
 
 
 def main(_):
+    seed = seed = random.randrange(sys.maxsize)
     name = datetime.now().strftime('%Y-%m-%d--%H-%M')
     batch_size = 4
-    dataset_name = '../../datasets/anime/no-game-no-life-ep-2.tfrecord'
-    data = create_dataset(dataset_name, batch_size)
+    dataset_name = '../../datasets/anime/no-game-no-life.tfrecord'
+    data = create_dataset(dataset_name, batch_size, seed)
     iterator = data.make_one_shot_iterator()
     data_gen = tf_data_generator(iterator)
 
     K.set_image_data_format('channels_last')  # set format
+    tf.set_random_seed(seed)
 
     # fuck it, I must create some validation data and keep it in memory, because fuck you
     validation_batches = 10
@@ -202,7 +204,7 @@ def main(_):
 
     z_size = 30
     regul_const = 10e-7
-    lr = 0.001
+    lr =5e-4
     decay = 0.
     # lrate = LearningRateScheduler(step_decay)
     reduce_lr = ReduceLROnPlateau(monitor='loss', patience=5)
@@ -242,6 +244,7 @@ def main(_):
         with redirect_stdout(f):
             m.summary()
             print('dataset: ', dataset_name)
+            print('seed: ', seed)
             print('training_config:', json.dumps({
                 'optimizer_config': {
                     'class_name': m.optimizer.__class__.__name__,
@@ -255,7 +258,7 @@ def main(_):
 
     tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)
 
-    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=100, verbose=1, validation_data=validation_data,
+    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=200, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size,
                               callbacks=[tensorboard, tbi_callback, reduce_lr])
 
