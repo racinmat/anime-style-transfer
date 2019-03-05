@@ -267,7 +267,7 @@ def main(_):
     # loading initial weights, optional
     # m.load_weights('logs/anime-2019-03-04--08-13/model.h5', by_name=True)   # must be after setting session
 
-    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=50, verbose=1, validation_data=validation_data,
+    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=200, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size,
                               callbacks=[tensorboard, tbi_callback, reduce_lr])
 
