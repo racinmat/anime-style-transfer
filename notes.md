@@ -7,6 +7,9 @@ try the StyleGAN paper https://arxiv.org/abs/1812.04948
 and also try the original neural style paper
 take a look at DiscoGAN
 take a look at https://www.cs.ru.nl/bachelors-theses/2018/Robin_Elbers___4225678___On_the_replication_of_CycleGAN.pdf
+take a look at CartoonGAN
+take a look at Deep Analogy (Visual Attribute Transfer through Deep Image Analogy)
+take a look at CNNMRF https://arxiv.org/pdf/1601.04589.pdf
 
 zrefactorovat history pooling z https://github.com/tensorflow/tensorflow/blob/c985bd0dce0f8a7ccf334c9782d051c81ad00f1d/tensorflow/contrib/gan/python/features/python/random_tensor_pool_impl.py#L50
 a benchmarknout
