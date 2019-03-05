@@ -33,8 +33,8 @@ from keras.backend.tensorflow_backend import set_session
 from cycle.utils import TFReader
 from dimension_reduction_playground import extract_decoder
 
-
 SIZE = (288, 512)
+
 
 def norm_and_resize(data):
     data = normer(data)
@@ -207,12 +207,13 @@ def main(_):
     validation_data = (np.array([i[0] for i in validation_data]).reshape(-1, SIZE[0], SIZE[1], 3),
                        np.array([i[1] for i in validation_data]).reshape(-1, SIZE[0], SIZE[1], 3))
 
-    z_size = 30
+    z_size = 500
     regul_const = 10e-7
-    lr =5e-4
+    lr = 5e-4
     decay = 0.
     # lrate = LearningRateScheduler(step_decay)
-    reduce_lr = ReduceLROnPlateau(monitor='loss', patience=5, cooldown=5, verbose=True)
+    # only 6 reducings at max
+    reduce_lr = ReduceLROnPlateau(monitor='loss', patience=10, cooldown=10, verbose=True, min_lr=lr * 1e-6)
 
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
     out = Conv2D(16, kernel_size=3, strides=1, activation='elu', padding='same')(input_tensor)
@@ -222,13 +223,13 @@ def main(_):
     out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     out = Conv2D(96, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = ZeroPadding2D(padding=((0, 0), (0, 0)), name='bottleneck')(out)
-    # out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same')(out)
-    # out = Flatten()(out)
-    # out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
-    # out = Dense(13 * 24 * 32, activation='elu')(out)
-    # out = Reshape((13, 24, 32))(out)
-    # out = Conv2DTranspose(128, kernel_size=3, strides=1, activation='elu', padding='same')(out)
+    out = ZeroPadding2D(padding=((0, 0), (0, 0)))(out)
+    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same')(out)
+    out = Flatten()(out)
+    out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
+    out = Dense(9 * 16 * 32, activation='elu')(out)
+    out = Reshape((9, 16, 32))(out)
+    out = Conv2DTranspose(128, kernel_size=3, strides=1, activation='elu', padding='same')(out)
     out = Conv2DTranspose(96, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     out = Conv2DTranspose(18, kernel_size=5, strides=2, activation='elu', padding='same')(out)
@@ -265,7 +266,7 @@ def main(_):
     tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)
 
     # loading initial weights, optional
-    # m.load_weights('logs/anime-2019-03-04--08-13/model.h5', by_name=True)   # must be after setting session
+    m.load_weights('logs/anime-2019-03-05--08-23/model.h5', by_name=True)   # must be after setting session
 
     history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=200, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size,
