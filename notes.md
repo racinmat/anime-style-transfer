@@ -11,8 +11,6 @@ take a look at CartoonGAN
 take a look at Deep Analogy (Visual Attribute Transfer through Deep Image Analogy)
 take a look at CNNMRF https://arxiv.org/pdf/1601.04589.pdf
 
-zrefactorovat history pooling z https://github.com/tensorflow/tensorflow/blob/c985bd0dce0f8a7ccf334c9782d051c81ad00f1d/tensorflow/contrib/gan/python/features/python/random_tensor_pool_impl.py#L50
-a benchmarknout
 
 ### ideas:
 - historical averaging 
@@ -29,4 +27,6 @@ a benchmarknout
 - compare PCA, autoencoder and variational autoencoder for individual animes
 - compare random sampling style image from anime with selecting components from dimension reduction as style image
 
-video for CartoonGAN https://www.youtube.com/watch?v=r4zzhN8Aibw&ab_channel=ZivZone
+### lecture notes
+video for CartoonGAN https://www.youtube.com/watch?v=r4zzhN8Aibw&ab_channel=ZivZone to lecture - faces from it
+mention in lecture https://github.com/luanfujun/deep-painterly-harmonization (the most funny of them)

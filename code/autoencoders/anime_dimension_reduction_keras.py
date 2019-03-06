@@ -266,7 +266,7 @@ def main(_):
     tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)
 
     # loading initial weights, optional
-    m.load_weights('logs/anime-2019-03-05--08-23/model.h5', by_name=True)   # must be after setting session
+    m.load_weights('logs/anime-2019-03-05--08-23/model.h5', by_name=True, skip_mismatch=True)   # must be after setting session
 
     history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=200, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size,
