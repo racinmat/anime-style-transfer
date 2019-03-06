@@ -28,3 +28,5 @@ a benchmarknout
 - create original neural style transfer - should work and learn more quickly
 - compare PCA, autoencoder and variational autoencoder for individual animes
 - compare random sampling style image from anime with selecting components from dimension reduction as style image
+
+video for CartoonGAN https://www.youtube.com/watch?v=r4zzhN8Aibw&ab_channel=ZivZone
