@@ -218,14 +218,14 @@ def main(_):
     reduce_lr = ReduceLROnPlateau(monitor='loss', patience=10, cooldown=10, verbose=True, min_lr=lr * 1e-6)
 
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
-    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
-    # out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same')(out)
-    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
     # out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     # out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     # out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     # out = Conv2D(512, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    # out = ZeroPadding2D(padding=((0, 0), (0, 0)))(out)
+    out = ZeroPadding2D(padding=((0, 0), (0, 0)), name='bottleneck')(out)
     # out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same')(out)
     # out = Flatten()(out)
     # out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
@@ -236,8 +236,8 @@ def main(_):
     # out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     # out = Conv2DTranspose(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     # out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_2')(out)
-    # out = Conv2DTranspose(16, kernel_size=3, strides=1, activation='elu', padding='same')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
+    out = Conv2DTranspose(16, kernel_size=9, strides=1, activation='elu', padding='same', name='decoder_2')(out)
     out = Conv2DTranspose(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
 
@@ -270,7 +270,7 @@ def main(_):
     # loading initial weights, optional
     # m.load_weights('logs/anime-2019-03-05--08-23/model.h5', by_name=True, skip_mismatch=True)   # must be after setting session
 
-    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=400, verbose=1, validation_data=validation_data,
+    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=100, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size,
                               callbacks=[tensorboard, tbi_callback, reduce_lr])
 
