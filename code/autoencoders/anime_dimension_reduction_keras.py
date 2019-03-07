@@ -33,7 +33,7 @@ from keras.backend.tensorflow_backend import set_session
 from cycle.utils import TFReader
 from dimension_reduction_playground import extract_decoder
 
-SIZE = (288, 512)
+SIZE = (144, 256)
 
 
 def norm_and_resize(data):
@@ -153,12 +153,14 @@ def plot_network_history(history, dir_name):
     plt.show()
 
 
-def save_and_eval_model(m: Model, log_dir, validation_data, history, name):
+def save_model(m: Model, log_dir):
     model_json = m.to_json()
     with open(log_dir + '/model.json', 'w') as json_file:
         json_file.write(model_json)
     m.save_weights(log_dir + '/model.h5')
 
+
+def eval_model(m: Model, validation_data, history, name):
     encoder = Model(m.input, m.get_layer('bottleneck').output)
     decoder = extract_decoder(m)
     latent_space = encoder.predict(validation_data[0])  # bottleneck representation
@@ -216,27 +218,27 @@ def main(_):
     reduce_lr = ReduceLROnPlateau(monitor='loss', patience=10, cooldown=10, verbose=True, min_lr=lr * 1e-6)
 
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
-    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same')(input_tensor)
+    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
     # out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same')(out)
-    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2D(512, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
+    # out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2D(512, kernel_size=5, strides=2, activation='elu', padding='same')(out)
     # out = ZeroPadding2D(padding=((0, 0), (0, 0)))(out)
-    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same')(out)
-    out = Flatten()(out)
-    out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
-    out = Dense(9 * 16 * 32, activation='elu')(out)
-    out = Reshape((9, 16, 32))(out)
-    out = Conv2DTranspose(512, kernel_size=3, strides=1, activation='elu', padding='same')(out)
-    out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2DTranspose(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same')(out)
+    # out = Flatten()(out)
+    # out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
+    # out = Dense(9 * 16 * 24, activation='elu')(out)
+    # out = Reshape((9, 16, 24))(out)
+    # out = Conv2DTranspose(256, kernel_size=3, strides=1, activation='elu', padding='same')(out)
+    # out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2DTranspose(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_2')(out)
     # out = Conv2DTranspose(16, kernel_size=3, strides=1, activation='elu', padding='same')(out)
-    out = Conv2DTranspose(3, kernel_size=1, activation='tanh', padding='same')(out)
+    out = Conv2DTranspose(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
 
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -266,13 +268,14 @@ def main(_):
     tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)
 
     # loading initial weights, optional
-    m.load_weights('logs/anime-2019-03-05--08-23/model.h5', by_name=True, skip_mismatch=True)   # must be after setting session
+    # m.load_weights('logs/anime-2019-03-05--08-23/model.h5', by_name=True, skip_mismatch=True)   # must be after setting session
 
     history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=400, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size,
                               callbacks=[tensorboard, tbi_callback, reduce_lr])
 
-    save_and_eval_model(m, log_dir, validation_data, history, name)
+    save_model(m, log_dir)
+    # eval_model(m, validation_data, history, name)
 
 
 if __name__ == '__main__':
