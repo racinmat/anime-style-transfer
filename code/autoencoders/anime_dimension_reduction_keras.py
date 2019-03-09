@@ -173,8 +173,8 @@ def eval_model(m: Model, validation_data, history, name):
 
 def prepare_training(m, log_dir, validation_data):
     tensorboard = TensorBoard(
-        log_dir=log_dir, histogram_freq=5, write_images=True, embeddings_freq=5,
-        embeddings_layer_names=['bottleneck'], embeddings_data=validation_data[0]
+        log_dir=log_dir, histogram_freq=5, write_images=True,
+        # embeddings_freq=5, embeddings_layer_names=['bottleneck'], embeddings_data=validation_data[0]
     )
     tbi_callback = TensorBoardThings(model=m, data=validation_data[0], log_dir=log_dir)
     config = tf.ConfigProto()
@@ -189,6 +189,150 @@ def prepare_training(m, log_dir, validation_data):
 #     epochs_drop = 40.0
 #     lrate = initial_lrate * math.pow(drop, math.floor((1 + epoch) / epochs_drop))
 #     return lrate
+
+def prepare_network(lr, decay):
+    input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
+    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
+    # out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
+    # out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2D(512, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = ZeroPadding2D(padding=((0, 0), (0, 0)), name='bottleneck')(out)
+    # out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same')(out)
+    # out = Flatten()(out)
+    # out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
+    # out = Dense(9 * 16 * 24, activation='elu')(out)
+    # out = Reshape((9, 16, 24))(out)
+    # out = Conv2DTranspose(256, kernel_size=3, strides=1, activation='elu', padding='same')(out)
+    # out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    # out = Conv2DTranspose(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_2')(out)
+    # out = Conv2DTranspose(16, kernel_size=9, strides=1, activation='elu', padding='same', name='decoder_2')(out)
+    out = Conv2D(3, kernel_size=9, activation='tanh', padding='same', name='decoder_1')(out)
+    # out = Conv2DTranspose(3, kernel_size=9, activation='tanh', padding='same', name='decoder_1')(out)
+    m = Model(inputs=input_tensor, outputs=out)
+
+    m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
+                                                      epsilon=None, decay=decay, amsgrad=False))
+    return m
+
+
+def build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_fn):
+    z_size = 500
+    regul_const = 10e-8
+    lr = 5e-4
+    decay = 0.
+    # lrate = LearningRateScheduler(step_decay)
+    # only 6 reducings at max
+    reduce_lr = ReduceLROnPlateau(monitor='loss', patience=10, cooldown=20, verbose=True, min_lr=lr * 5e-7)
+
+    m = prepare_network_fn(lr, decay)
+    m.summary()
+
+    log_dir = f'logs/anime-{name}'
+    tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)   # this creates session
+    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(f'figures/{name}', exist_ok=True)
+    # obtaining keras
+    with open(f'{log_dir}/model-summary.txt', 'w') as f:
+        with redirect_stdout(f):
+            m.summary()
+            print('dataset: ', dataset_name)
+            print('seed: ', seed)
+            print('training_config:', json.dumps({
+                'optimizer_config': {
+                    'class_name': m.optimizer.__class__.__name__,
+                    'config': m.optimizer.get_config(), # session must be created before calling this
+                },
+            }, default=get_json_type, indent=2).encode('utf8'))
+
+    # loading initial weights, optional
+    # m.load_weights('logs/anime-2019-03-05--08-23/model.h5', by_name=True, skip_mismatch=True)   # must be after setting session
+
+    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=100, verbose=1, validation_data=validation_data,
+                              validation_steps=validation_batches * batch_size,
+                              callbacks=[tensorboard, tbi_callback, reduce_lr])
+
+    save_model(m, log_dir)
+    # eval_model(m, validation_data, history, name)
+    K.clear_session()
+
+
+def prepare_network_1(lr, decay):
+    input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
+    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_2')(out)
+    out = Conv2D(3, kernel_size=9, activation='tanh', padding='same', name='decoder_1')(out)
+    m = Model(inputs=input_tensor, outputs=out)
+    m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
+                                                      epsilon=None, decay=decay, amsgrad=False))
+    return m
+
+
+def prepare_network_2(lr, decay):
+    input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
+    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
+    out = Conv2D(16, kernel_size=9, activation='tanh', padding='same', name='decoder_2')(out)
+    out = Conv2D(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
+    m = Model(inputs=input_tensor, outputs=out)
+    m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
+                                                      epsilon=None, decay=decay, amsgrad=False))
+    return m
+
+
+def prepare_network_3(lr, decay):
+    input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
+    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
+    out = Conv2D(16, kernel_size=3, activation='tanh', padding='same', name='decoder_2')(out)
+    out = Conv2D(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
+    m = Model(inputs=input_tensor, outputs=out)
+    m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
+                                                      epsilon=None, decay=decay, amsgrad=False))
+    return m
+
+
+def prepare_network_4(lr, decay):
+    input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
+    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_2')(out)
+    out = Conv2DTranspose(3, kernel_size=9, activation='tanh', padding='same', name='decoder_1')(out)
+    m = Model(inputs=input_tensor, outputs=out)
+    m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
+                                                      epsilon=None, decay=decay, amsgrad=False))
+    return m
+
+
+def prepare_network_5(lr, decay):
+    input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
+    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
+    out = Conv2DTranspose(16, kernel_size=3, activation='tanh', padding='same', name='decoder_2')(out)
+    out = Conv2DTranspose(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
+    m = Model(inputs=input_tensor, outputs=out)
+    m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
+                                                      epsilon=None, decay=decay, amsgrad=False))
+    return m
 
 
 def main(_):
@@ -209,73 +353,11 @@ def main(_):
     validation_data = (np.array([i[0] for i in validation_data]).reshape(-1, SIZE[0], SIZE[1], 3),
                        np.array([i[1] for i in validation_data]).reshape(-1, SIZE[0], SIZE[1], 3))
 
-    z_size = 500
-    regul_const = 10e-8
-    lr = 5e-4
-    decay = 0.
-    # lrate = LearningRateScheduler(step_decay)
-    # only 6 reducings at max
-    reduce_lr = ReduceLROnPlateau(monitor='loss', patience=10, cooldown=10, verbose=True, min_lr=lr * 1e-6)
-
-    input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
-    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
-    out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_2')(out)
-    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
-    # out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    # out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    # out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    # out = Conv2D(512, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = ZeroPadding2D(padding=((0, 0), (0, 0)), name='bottleneck')(out)
-    # out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same')(out)
-    # out = Flatten()(out)
-    # out = Dense(z_size, activation='linear', name='bottleneck', activity_regularizer=l1(regul_const))(out)
-    # out = Dense(9 * 16 * 24, activation='elu')(out)
-    # out = Reshape((9, 16, 24))(out)
-    # out = Conv2DTranspose(256, kernel_size=3, strides=1, activation='elu', padding='same')(out)
-    # out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    # out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    # out = Conv2DTranspose(128, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    # out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same')(out)
-    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2DTranspose(16, kernel_size=9, strides=1, activation='elu', padding='same', name='decoder_2')(out)
-    out = Conv2DTranspose(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
-    m = Model(inputs=input_tensor, outputs=out)
-
-    m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
-                                                      epsilon=None, decay=decay, amsgrad=False))
-
-    m.summary()
-    log_dir = f'logs/anime-{name}'
-    os.makedirs(log_dir, exist_ok=True)
-    os.makedirs(f'figures/{name}', exist_ok=True)
-    # obtaining keras
-    with open(f'{log_dir}/model-summary.txt', 'w') as f:
-        with redirect_stdout(f):
-            m.summary()
-            print('dataset: ', dataset_name)
-            print('seed: ', seed)
-            print('training_config:', json.dumps({
-                'optimizer_config': {
-                    'class_name': m.optimizer.__class__.__name__,
-                    # manual config for adam, because otherwise it can not be persisted before training
-                    'config': {
-                        'lr': lr,
-                        'decay': decay,
-                    }
-                },
-            }, default=get_json_type, indent=2).encode('utf8'))
-
-    tbi_callback, tensorboard = prepare_training(m, log_dir, validation_data)
-
-    # loading initial weights, optional
-    # m.load_weights('logs/anime-2019-03-05--08-23/model.h5', by_name=True, skip_mismatch=True)   # must be after setting session
-
-    history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=100, verbose=1, validation_data=validation_data,
-                              validation_steps=validation_batches * batch_size,
-                              callbacks=[tensorboard, tbi_callback, reduce_lr])
-
-    save_model(m, log_dir)
-    # eval_model(m, validation_data, history, name)
+    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_1)
+    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_2)
+    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_3)
+    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_4)
+    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_5)
 
 
 if __name__ == '__main__':
