@@ -221,7 +221,21 @@ def prepare_network(lr, decay):
     return m
 
 
-def build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_fn):
+def build_and_train_network(dataset_name, seed, batch_size, prepare_network_fn):
+    name = datetime.now().strftime('%Y-%m-%d--%H-%M')
+    data = create_dataset(dataset_name, batch_size, seed)
+    iterator = data.make_one_shot_iterator()
+    data_gen = tf_data_generator(iterator)
+
+    K.set_image_data_format('channels_last')  # set format
+    tf.set_random_seed(seed)
+
+    # fuck it, I must create some validation data and keep it in memory, because fuck you
+    validation_batches = 10
+    validation_data = [next(data_gen) for _ in range(validation_batches)]
+    validation_data = (np.array([i[0] for i in validation_data]).reshape((-1, SIZE[0], SIZE[1], 3)),
+                       np.array([i[1] for i in validation_data]).reshape((-1, SIZE[0], SIZE[1], 3)))
+
     z_size = 500
     regul_const = 10e-8
     lr = 5e-4
@@ -283,7 +297,7 @@ def prepare_network_2(lr, decay):
     out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
     out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
     out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2D(16, kernel_size=9, activation='tanh', padding='same', name='decoder_2')(out)
+    out = Conv2D(16, kernel_size=9, activation='elu', padding='same', name='decoder_2')(out)
     out = Conv2D(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -298,7 +312,7 @@ def prepare_network_3(lr, decay):
     out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
     out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
     out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2D(16, kernel_size=3, activation='tanh', padding='same', name='decoder_2')(out)
+    out = Conv2D(16, kernel_size=3, activation='elu', padding='same', name='decoder_2')(out)
     out = Conv2D(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -327,7 +341,7 @@ def prepare_network_5(lr, decay):
     out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
     out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
     out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2DTranspose(16, kernel_size=3, activation='tanh', padding='same', name='decoder_2')(out)
+    out = Conv2DTranspose(16, kernel_size=3, activation='elu', padding='same', name='decoder_2')(out)
     out = Conv2DTranspose(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -337,27 +351,14 @@ def prepare_network_5(lr, decay):
 
 def main(_):
     seed = random.randrange(sys.maxsize)
-    name = datetime.now().strftime('%Y-%m-%d--%H-%M')
     batch_size = 4
     dataset_name = '../../datasets/anime/no-game-no-life.tfrecord'
-    data = create_dataset(dataset_name, batch_size, seed)
-    iterator = data.make_one_shot_iterator()
-    data_gen = tf_data_generator(iterator)
 
-    K.set_image_data_format('channels_last')  # set format
-    tf.set_random_seed(seed)
-
-    # fuck it, I must create some validation data and keep it in memory, because fuck you
-    validation_batches = 10
-    validation_data = [next(data_gen) for _ in range(validation_batches)]
-    validation_data = (np.array([i[0] for i in validation_data]).reshape(-1, SIZE[0], SIZE[1], 3),
-                       np.array([i[1] for i in validation_data]).reshape(-1, SIZE[0], SIZE[1], 3))
-
-    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_1)
-    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_2)
-    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_3)
-    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_4)
-    build_and_train_network(name, validation_data, dataset_name, seed, validation_batches, batch_size, data_gen, prepare_network_5)
+    build_and_train_network(dataset_name, seed, batch_size, prepare_network_1)
+    build_and_train_network(dataset_name, seed, batch_size, prepare_network_2)
+    build_and_train_network(dataset_name, seed, batch_size, prepare_network_3)
+    build_and_train_network(dataset_name, seed, batch_size, prepare_network_4)
+    build_and_train_network(dataset_name, seed, batch_size, prepare_network_5)
 
 
 if __name__ == '__main__':
