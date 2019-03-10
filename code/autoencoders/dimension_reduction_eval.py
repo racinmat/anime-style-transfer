@@ -8,7 +8,7 @@ import tensorflow as tf
 import matplotlib as mpl
 import pandas as pd
 from keras import Model
-from plotly.offline import iplot
+from plotly.offline import iplot, plot
 import plotly.graph_objs as go
 from anime_dimension_reduction_keras import create_dataset, tf_data_generator
 
@@ -56,7 +56,8 @@ def parallel_coordinates(df: pd.DataFrame):
         if isinstance(column.dtype, pd.CategoricalDtype):
             dimension['range'] = [df[col_name + '_encoded'].min(), df[col_name + '_encoded'].max()]
             dimension['values'] = df[col_name + '_encoded'].values
-            dimension['ticktext'] = column.values
+            dimension['tickvals'] = np.unique(column.cat.codes)
+            dimension['ticktext'] = column.cat.categories.values
         else:
             dimension['range'] = [column.min(), column.max()]
             dimension['values'] = column.values
@@ -82,7 +83,7 @@ def parallel_coordinates(df: pd.DataFrame):
         )
     ]
 
-    iplot(data, filename='parcoord-dimensions', image='png')
+    plot(data, filename='parallel_coords_hparams.html')
 
 
 def main(_):
