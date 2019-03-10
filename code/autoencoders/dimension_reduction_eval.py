@@ -95,7 +95,7 @@ def main(_):
     data_gen = tf_data_generator(iterator)
 
     # fuck it, I must create some validation data and keep it in memory, because fuck you
-    validation_batches = 20
+    validation_batches = 30
     # validation_data = [next(data_gen) for _ in range(validation_batches)]
     validation_data = np.array([next(data_gen)[0] for _ in range(validation_batches)])
     validation_data = validation_data.reshape((-1,) + validation_data.shape[2:])
@@ -139,7 +139,7 @@ def main(_):
     for model in models:
         l2_error, l2_err_median = eval_model(model, validation_data)
         eval_data.append({**params[model], 'name': model, 'l2_error': l2_error, 'l2_error_inv': 1 / l2_error,
-                          'l2_err_median': l2_err_median})
+                          'l2_err_median': l2_err_median, 'l2_err_median_inv': 1/l2_err_median})
 
     df = pd.DataFrame(eval_data)
     df['activation'] = df['activation'].astype('category')
