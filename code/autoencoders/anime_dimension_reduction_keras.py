@@ -16,7 +16,7 @@ mpl.use('module://backend_interagg')
 from keras.losses import mean_squared_error
 from keras.models import Sequential, Model
 from keras.layers import Dense, Input, Flatten, Reshape, Conv2D, Conv2DTranspose, ZeroPadding2D, MaxPooling2D, \
-    Cropping2D
+    Cropping2D, LeakyReLU
 from keras.optimizers import Adam
 from keras import backend as K
 from keras.callbacks import TensorBoard, Callback, LearningRateScheduler, ReduceLROnPlateau
@@ -154,7 +154,7 @@ def plot_network_history(history, dir_name):
 
 
 def save_model(m: Model, log_dir):
-    model_json = m.to_json()
+    model_json = m.to_json(indent=4)
     with open(log_dir + '/model.json', 'w') as json_file:
         json_file.write(model_json)
     m.save_weights(log_dir + '/model.h5')
@@ -278,11 +278,11 @@ def build_and_train_network(dataset_name, seed, batch_size, prepare_network_fn):
 
 def prepare_network_1(lr, decay):
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
-    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
-    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
-    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
-    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_2')(out)
+    out = Conv2D(32, kernel_size=9, strides=1, activation='relu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_3')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_2')(out)
     out = Conv2D(3, kernel_size=9, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -292,12 +292,12 @@ def prepare_network_1(lr, decay):
 
 def prepare_network_2(lr, decay):
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
-    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
-    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
-    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
-    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
-    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2D(16, kernel_size=9, activation='elu', padding='same', name='decoder_2')(out)
+    out = Conv2D(32, kernel_size=9, strides=1, activation='relu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_4')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_3')(out)
+    out = Conv2D(16, kernel_size=9, activation='relu', padding='same', name='decoder_2')(out)
     out = Conv2D(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -307,12 +307,12 @@ def prepare_network_2(lr, decay):
 
 def prepare_network_3(lr, decay):
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
-    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
-    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
-    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
-    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
-    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2D(16, kernel_size=3, activation='elu', padding='same', name='decoder_2')(out)
+    out = Conv2D(32, kernel_size=3, strides=1, activation='relu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_4')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_3')(out)
+    out = Conv2D(16, kernel_size=3, activation='relu', padding='same', name='decoder_2')(out)
     out = Conv2D(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -322,11 +322,11 @@ def prepare_network_3(lr, decay):
 
 def prepare_network_4(lr, decay):
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
-    out = Conv2D(32, kernel_size=9, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
-    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
-    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
-    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_2')(out)
+    out = Conv2D(32, kernel_size=9, strides=1, activation='relu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_3')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_2')(out)
     out = Conv2DTranspose(3, kernel_size=9, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -336,12 +336,12 @@ def prepare_network_4(lr, decay):
 
 def prepare_network_5(lr, decay):
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
-    out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
-    out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
-    out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
-    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
-    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
-    out = Conv2DTranspose(16, kernel_size=3, activation='elu', padding='same', name='decoder_2')(out)
+    out = Conv2D(32, kernel_size=3, strides=1, activation='relu', padding='same', name='encoder_1')(input_tensor)
+    out = Conv2D(64, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_2')(out)
+    out = Conv2D(128, kernel_size=5, strides=2, activation='relu', padding='same', name='encoder_3')(out)
+    out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_4')(out)
+    out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='relu', padding='same', name='decoder_3')(out)
+    out = Conv2DTranspose(16, kernel_size=3, activation='relu', padding='same', name='decoder_2')(out)
     out = Conv2DTranspose(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,

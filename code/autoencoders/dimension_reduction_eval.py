@@ -6,11 +6,14 @@ import sys
 import numpy as np
 import tensorflow as tf
 import matplotlib as mpl
-
+import pandas as pd
+from keras import Model
+from plotly.offline import iplot
+import plotly.graph_objs as go
 from anime_dimension_reduction_keras import create_dataset, tf_data_generator
 
 mpl.use('module://backend_interagg')
-from keras.models import load_model
+from keras.models import load_model, model_from_json
 from cycle.models.anime._utils import normer, denormer
 from keras.backend.tensorflow_backend import set_session
 
@@ -32,10 +35,54 @@ def denormalize(x):
 
 
 def eval_model(name, validation_data):
-    m = load_model(f'logs/{name}')
+    with open(f'logs/anime-{name}/model.json', encoding='utf-8') as f:
+        m = model_from_json(f.read())  # type: Model
+    m.load_weights(f'logs/anime-{name}/model.h5')
     reconst_data = m.predict(validation_data)
     l2_error = np.mean(np.abs(validation_data - reconst_data) ** 2)
     return l2_error
+
+
+def parallel_coordinates(df: pd.DataFrame):
+    dimensions = []
+    for col_name in df.columns:
+        column = df[col_name]
+        if '_encoded' in col_name:
+            continue
+        dimension = {
+            'label': col_name,
+        }
+
+        if isinstance(column.dtype, pd.CategoricalDtype):
+            dimension['range'] = [df[col_name + '_encoded'].min(), df[col_name + '_encoded'].max()]
+            dimension['values'] = df[col_name + '_encoded'].values
+            dimension['ticktext'] = column.values
+        else:
+            dimension['range'] = [column.min(), column.max()]
+            dimension['values'] = column.values
+        dimensions.append(dimension)
+    data = [
+        go.Parcoords(
+            line=dict(color='blue'),
+            # dimensions=list([
+            #     dict(range=[1, 5],
+            #          constraintrange=[1, 2],
+            #          label='A', values=[1, 4]),
+            #     dict(range=[1.5, 5],
+            #          tickvals=[1.5, 3, 4.5],
+            #          label='B', values=[3, 1.5]),
+            #     dict(range=[1, 5],
+            #          tickvals=[1, 2, 4, 5],
+            #          label='C', values=[2, 4],
+            #          ticktext=['text 1', 'text 2', 'text 3', 'text 4']),
+            #     dict(range=[1, 5],
+            #          label='D', values=[4, 2])
+            # ]),
+            dimensions=dimensions,
+        )
+    ]
+
+    iplot(data, filename='parcoord-dimensions', image='png')
 
 
 def main(_):
@@ -47,20 +94,42 @@ def main(_):
     data_gen = tf_data_generator(iterator)
 
     # fuck it, I must create some validation data and keep it in memory, because fuck you
-    validation_batches = 10
+    validation_batches = 20
     # validation_data = [next(data_gen) for _ in range(validation_batches)]
-    validation_data = np.array([next(data_gen) for _ in range(validation_batches)])
+    validation_data = np.array([next(data_gen)[0] for _ in range(validation_batches)])
+    validation_data = validation_data.reshape((-1,) + validation_data.shape[2:])
 
-    models = ['2019-03-09--21-37', '2019-03-09--22-13',
-              # '2019-03-09--22-50'
-              ]
-    params = {'2019-03-09--21-37': {'output': 'conv-k-9-d-3'},
-              '2019-03-09--22-13': {'output': 'conv-k-9-d-16_conv-k-1-d-3'},
-              # '2019-03-09--22-50': {'output': 'conv-k-9-d-3'}
-              }
-    eval_data = {}
+    models = [
+        '2019-03-09--21-37', '2019-03-09--22-13', '2019-03-09--22-50', '2019-03-09--23-22', '2019-03-09--23-56',
+        '2019-03-10--01-04', '2019-03-10--01-39', '2019-03-10--02-16', '2019-03-10--02-47', '2019-03-10--03-19',
+    ]
+    params = {
+        '2019-03-09--21-37': {'output': 'conv-k-9-d-3', 'activation': 'elu'},
+        '2019-03-09--22-13': {'output': 'conv-k-9-d-16_conv-k-1-d-3', 'activation': 'elu'},
+        '2019-03-09--22-50': {'output': 'conv-k-3-d-16_conv-k-1-d-3', 'activation': 'elu'},
+        '2019-03-09--23-22': {'output': 'deconv-k-9-d-3', 'activation': 'elu'},
+        '2019-03-09--23-56': {'output': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activation': 'elu'},
+
+        '2019-03-10--01-04': {'output': 'conv-k-9-d-3', 'activation': 'relu'},
+        '2019-03-10--01-39': {'output': 'conv-k-9-d-16_conv-k-1-d-3', 'activation': 'relu'},
+        '2019-03-10--02-16': {'output': 'conv-k-3-d-16_conv-k-1-d-3', 'activation': 'relu'},
+        '2019-03-10--02-47': {'output': 'deconv-k-9-d-3', 'activation': 'relu'},
+        '2019-03-10--03-19': {'output': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activation': 'relu'},
+    }
+    eval_data = []
     for model in models:
-        eval_data[model] = eval_model(model, validation_data)
+        eval_data.append({**params[model], 'l2_error': eval_model(model, validation_data), 'name': model})
+
+    df = pd.DataFrame(eval_data)
+    df['activation'] = df['activation'].astype('category')
+    df['output'] = df['output'].astype('category')
+    df['name'] = df['name'].astype('category')
+    df['activation_encoded'] = df['activation'].cat.codes
+    df['output_encoded'] = df['output'].cat.codes
+    df['name_encoded'] = df['name'].cat.codes
+
+    parallel_coordinates(df)
+    print('done')
 
 
 if __name__ == '__main__':
