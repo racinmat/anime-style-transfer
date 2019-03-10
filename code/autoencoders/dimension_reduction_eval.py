@@ -39,8 +39,8 @@ def eval_model(name, validation_data):
         m = model_from_json(f.read())  # type: Model
     m.load_weights(f'logs/anime-{name}/model.h5')
     reconst_data = m.predict(validation_data)
-    l2_error = np.mean(np.abs(validation_data - reconst_data) ** 2)
-    return l2_error
+    l2_error = np.abs(validation_data - reconst_data) ** 2
+    return np.mean(l2_error), np.median(l2_error)
 
 
 def parallel_coordinates(df: pd.DataFrame):
@@ -103,23 +103,43 @@ def main(_):
     models = [
         '2019-03-09--21-37', '2019-03-09--22-13', '2019-03-09--22-50', '2019-03-09--23-22', '2019-03-09--23-56',
         '2019-03-10--01-04', '2019-03-10--01-39', '2019-03-10--02-16', '2019-03-10--02-47', '2019-03-10--03-19',
+        '2019-03-10--16-59', '2019-03-10--17-25', '2019-03-10--17-51', '2019-03-10--18-14', '2019-03-10--18-37',
+        '2019-03-10--19-02',
+        '2019-03-10--19-29', '2019-03-10--19-54', '2019-03-10--20-21', '2019-03-10--20-43', '2019-03-10--21-07',
+        '2019-03-10--21-31',
     ]
     params = {
-        '2019-03-09--21-37': {'output': 'conv-k-9-d-3', 'activation': 'elu'},
-        '2019-03-09--22-13': {'output': 'conv-k-9-d-16_conv-k-1-d-3', 'activation': 'elu'},
-        '2019-03-09--22-50': {'output': 'conv-k-3-d-16_conv-k-1-d-3', 'activation': 'elu'},
-        '2019-03-09--23-22': {'output': 'deconv-k-9-d-3', 'activation': 'elu'},
-        '2019-03-09--23-56': {'output': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activation': 'elu'},
+        '2019-03-09--21-37': {'output': 'conv-k-9-d-3', 'activation': 'elu', 'init_lr': 5e-4},
+        '2019-03-09--22-13': {'output': 'conv-k-9-d-16_conv-k-1-d-3', 'activation': 'elu', 'init_lr': 5e-4},
+        '2019-03-09--22-50': {'output': 'conv-k-3-d-16_conv-k-1-d-3', 'activation': 'elu', 'init_lr': 5e-4},
+        '2019-03-09--23-22': {'output': 'deconv-k-9-d-3', 'activation': 'elu', 'init_lr': 5e-4},
+        '2019-03-09--23-56': {'output': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activation': 'elu', 'init_lr': 5e-4},
 
-        '2019-03-10--01-04': {'output': 'conv-k-9-d-3', 'activation': 'relu'},
-        '2019-03-10--01-39': {'output': 'conv-k-9-d-16_conv-k-1-d-3', 'activation': 'relu'},
-        '2019-03-10--02-16': {'output': 'conv-k-3-d-16_conv-k-1-d-3', 'activation': 'relu'},
-        '2019-03-10--02-47': {'output': 'deconv-k-9-d-3', 'activation': 'relu'},
-        '2019-03-10--03-19': {'output': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activation': 'relu'},
+        '2019-03-10--01-04': {'output': 'conv-k-9-d-3', 'activation': 'relu', 'init_lr': 5e-4},
+        '2019-03-10--01-39': {'output': 'conv-k-9-d-16_conv-k-1-d-3', 'activation': 'relu', 'init_lr': 5e-4},
+        '2019-03-10--02-16': {'output': 'conv-k-3-d-16_conv-k-1-d-3', 'activation': 'relu', 'init_lr': 5e-4},
+        '2019-03-10--02-47': {'output': 'deconv-k-9-d-3', 'activation': 'relu', 'init_lr': 5e-4},
+        '2019-03-10--03-19': {'output': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activation': 'relu', 'init_lr': 5e-4},
+
+        '2019-03-10--16-59': {'output': 'conv-k-9-d-3', 'activation': 'elu', 'init_lr': 1e-3},
+        '2019-03-10--17-25': {'output': 'conv-k-9-d-16_conv-k-1-d-3', 'activation': 'elu', 'init_lr': 1e-3},
+        '2019-03-10--17-51': {'output': 'conv-k-3-d-16_conv-k-1-d-3', 'activation': 'elu', 'init_lr': 1e-3},
+        '2019-03-10--18-14': {'output': 'deconv-k-9-d-3', 'activation': 'elu', 'init_lr': 1e-3},
+        '2019-03-10--18-37': {'output': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activation': 'elu', 'init_lr': 1e-3},
+        '2019-03-10--19-02': {'output': 'deconv-k-9-d-16_deconv-k-1-d-3', 'activation': 'elu', 'init_lr': 1e-3},
+
+        '2019-03-10--19-29': {'output': 'conv-k-9-d-3', 'activation': 'relu', 'init_lr': 1e-3},
+        '2019-03-10--19-54': {'output': 'conv-k-9-d-16_conv-k-1-d-3', 'activation': 'relu', 'init_lr': 1e-3},
+        '2019-03-10--20-21': {'output': 'conv-k-3-d-16_conv-k-1-d-3', 'activation': 'relu', 'init_lr': 1e-3},
+        '2019-03-10--20-43': {'output': 'deconv-k-9-d-3', 'activation': 'relu', 'init_lr': 1e-3},
+        '2019-03-10--21-07': {'output': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activation': 'relu', 'init_lr': 1e-3},
+        '2019-03-10--21-31': {'output': 'deconv-k-9-d-16_deconv-k-1-d-3', 'activation': 'relu', 'init_lr': 1e-3},
     }
     eval_data = []
     for model in models:
-        eval_data.append({**params[model], 'l2_error': eval_model(model, validation_data), 'name': model})
+        l2_error, l2_err_median = eval_model(model, validation_data)
+        eval_data.append({**params[model], 'name': model, 'l2_error': l2_error, 'l2_error_inv': 1 / l2_error,
+                          'l2_err_median': l2_err_median})
 
     df = pd.DataFrame(eval_data)
     df['activation'] = df['activation'].astype('category')
