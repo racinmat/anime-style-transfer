@@ -100,14 +100,6 @@ def main(_):
     validation_data = np.array([next(data_gen)[0] for _ in range(validation_batches)])
     validation_data = validation_data.reshape((-1,) + validation_data.shape[2:])
 
-    models = [
-        '2019-03-09--21-37', '2019-03-09--22-13', '2019-03-09--22-50', '2019-03-09--23-22', '2019-03-09--23-56',
-        '2019-03-10--01-04', '2019-03-10--01-39', '2019-03-10--02-16', '2019-03-10--02-47', '2019-03-10--03-19',
-        '2019-03-10--16-59', '2019-03-10--17-25', '2019-03-10--17-51', '2019-03-10--18-14', '2019-03-10--18-37',
-        '2019-03-10--19-02',
-        '2019-03-10--19-29', '2019-03-10--19-54', '2019-03-10--20-21', '2019-03-10--20-43', '2019-03-10--21-07',
-        '2019-03-10--21-31',
-    ]
     params = {
         '2019-03-09--21-37': {'dec': 'conv-k-9-d-3', 'activ': 'elu', 'init_lr': 5e-4, 'scale_k': 5},
         '2019-03-09--22-13': {'dec': 'conv-k-9-d-16_conv-k-1-d-3', 'activ': 'elu', 'init_lr': 5e-4, 'scale_k': 5},
@@ -120,6 +112,7 @@ def main(_):
         '2019-03-10--02-16': {'dec': 'conv-k-3-d-16_conv-k-1-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 5},
         '2019-03-10--02-47': {'dec': 'deconv-k-9-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 5},
         '2019-03-10--03-19': {'dec': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 5},
+
 
         '2019-03-10--16-59': {'dec': 'conv-k-9-d-3', 'activ': 'elu', 'init_lr': 1e-3, 'scale_k': 5},
         '2019-03-10--17-25': {'dec': 'conv-k-9-d-16_conv-k-1-d-3', 'activ': 'elu', 'init_lr': 1e-3, 'scale_k': 5},
@@ -134,19 +127,34 @@ def main(_):
         '2019-03-10--20-43': {'dec': 'deconv-k-9-d-3', 'activ': 'relu', 'init_lr': 1e-3, 'scale_k': 5},
         '2019-03-10--21-07': {'dec': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activ': 'relu', 'init_lr': 1e-3, 'scale_k': 5},
         '2019-03-10--21-31': {'dec': 'deconv-k-9-d-16_deconv-k-1-d-3', 'activ': 'relu', 'init_lr': 1e-3, 'scale_k': 5},
+
+
+        '2019-03-10--22-58': {'dec': 'conv-k-9-d-3', 'activ': 'elu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-10--23-27': {'dec': 'conv-k-9-d-16_conv-k-1-d-3', 'activ': 'elu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-10--23-57': {'dec': 'conv-k-3-d-16_conv-k-1-d-3', 'activ': 'elu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-11--00-23': {'dec': 'deconv-k-9-d-3', 'activ': 'elu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-11--00-49': {'dec': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activ': 'elu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-11--01-16': {'dec': 'deconv-k-9-d-16_deconv-k-1-d-3', 'activ': 'elu', 'init_lr': 5e-4, 'scale_k': 7},
+
+        '2019-03-11--01-45': {'dec': 'conv-k-9-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-11--02-13': {'dec': 'conv-k-9-d-16_conv-k-1-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-11--02-42': {'dec': 'conv-k-3-d-16_conv-k-1-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-11--03-06': {'dec': 'deconv-k-9-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-11--03-32': {'dec': 'deconv-k-3-d-16_deconv-k-1-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 7},
+        '2019-03-11--03-58': {'dec': 'deconv-k-9-d-16_deconv-k-1-d-3', 'activ': 'relu', 'init_lr': 5e-4, 'scale_k': 7},
     }
     eval_data = []
-    for model in models:
+    for model in params.keys():
         l2_error, l2_err_median = eval_model(model, validation_data)
         eval_data.append({**params[model], 'name': model, 'l2_error': l2_error, 'l2_error_inv': 1 / l2_error,
                           'l2_err_median': l2_err_median, 'l2_err_median_inv': 1/l2_err_median})
 
     df = pd.DataFrame(eval_data)
-    df['activation'] = df['activation'].astype('category')
-    df['output'] = df['output'].astype('category')
+    df['activ'] = df['activ'].astype('category')
+    df['dec'] = df['dec'].astype('category')
     df['name'] = df['name'].astype('category')
-    df['activation_encoded'] = df['activation'].cat.codes
-    df['output_encoded'] = df['output'].cat.codes
+    df['activ_encoded'] = df['activ'].cat.codes
+    df['dec_encoded'] = df['dec'].cat.codes
     df['name_encoded'] = df['name'].cat.codes
 
     parallel_coordinates(df)
