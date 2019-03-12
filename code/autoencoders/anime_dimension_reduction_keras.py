@@ -1,4 +1,4 @@
-import functools
+from functools import partial
 import json
 import math
 import os
@@ -53,7 +53,7 @@ def create_dataset(tf_record, batch_size, seed=None):
     data = data.map(TFReader._parse_example_encoded, num_parallel_calls=8)
     data = data.map(norm_and_resize, num_parallel_calls=8)
     data = tf.data.Dataset.zip((data, data))
-    data = data.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=100, seed=seed))
+    data = data.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=200, seed=seed))
     data = data.batch(batch_size, drop_remainder=True)
     data = data.prefetch(batch_size * 5)
     return data
@@ -239,7 +239,8 @@ def build_and_train_network(dataset_name, seed, batch_size, build_network_fn, in
     z_size = 500
     regul_const = 10e-8
     # lr = 1e-3
-    lr = 5e-4
+    # lr = 5e-4
+    lr = 1e-4
     decay = 0.
     # lrate = LearningRateScheduler(step_decay)
     # only 6 reducings at max
@@ -278,21 +279,10 @@ def build_and_train_network(dataset_name, seed, batch_size, build_network_fn, in
 
 
 def load_weights(m: Model, weights_file):
-    m.load_weights(weights_file, by_name=True, skip_mismatch=True)
+    m.load_weights(weights_file, by_name=True, reshape=True)
 
 
-def load_weights_and_freeze(m: Model, weights_file):
-    m.load_weights(weights_file, by_name=True, skip_mismatch=True)
-    m.get_layer('encoder_1').trainable = False
-    m.get_layer('encoder_2').trainable = False
-    m.get_layer('encoder_3').trainable = False
-    m.get_layer('decoder_4').trainable = False
-    m.get_layer('decoder_3').trainable = False
-    m.get_layer('decoder_2').trainable = False
-    m.get_layer('decoder_1').trainable = False
-
-
-def prepare_network_1(lr, decay):
+def prepare_network_1(lr, decay, freeze_prev_model=False):
     input_tensor = Input(shape=(SIZE[0], SIZE[1], 3))
     out = Conv2D(32, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_1')(input_tensor)
     out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
@@ -304,6 +294,16 @@ def prepare_network_1(lr, decay):
     out = Conv2DTranspose(16, kernel_size=3, activation='elu', padding='same', name='decoder_2')(out)
     out = Conv2D(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
+
+    if freeze_prev_model:
+        m.get_layer('encoder_1').trainable = False
+        m.get_layer('encoder_2').trainable = False
+        m.get_layer('encoder_3').trainable = False
+        m.get_layer('decoder_4').trainable = False
+        m.get_layer('decoder_3').trainable = False
+        m.get_layer('decoder_2').trainable = False
+        m.get_layer('decoder_1').trainable = False
+
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
                                                       epsilon=None, decay=decay, amsgrad=False))
     return m
@@ -312,17 +312,17 @@ def prepare_network_1(lr, decay):
 def main(_):
     # seed = random.randrange(sys.maxsize)
     seed = 1297405518608473393
-    batch_size = 4
+    batch_size = 8
     dataset_name = '../../datasets/anime/no-game-no-life.tfrecord'
 
     # trained from scratch
     build_and_train_network(dataset_name, seed, batch_size, prepare_network_1)
     # used trained shallower network as initialization
-    build_and_train_network(dataset_name, seed, batch_size, prepare_network_1, functools.partial(
+    build_and_train_network(dataset_name, seed, batch_size, prepare_network_1, partial(
         load_weights, weights_file='logs/anime-2019-03-09--22-50/model.h5'))
     # used trained shallower network weights and frozen
-    build_and_train_network(dataset_name, seed, batch_size, prepare_network_1, functools.partial(
-        load_weights_and_freeze, weights_file='logs/anime-2019-03-09--22-50/model.h5'))
+    build_and_train_network(dataset_name, seed, batch_size, partial(prepare_network_1, freeze_prev_model=True), partial(
+        load_weights, weights_file='logs/anime-2019-03-09--22-50/model.h5'))
 
 
 if __name__ == '__main__':
