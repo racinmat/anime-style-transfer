@@ -197,7 +197,7 @@ def prepare_network(lr, decay):
     out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
     out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
     out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_4')(out)
-    # out = Conv2D(256, kernel_size=7, strides=2, activation='elu', padding='same')(out)
+    out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_5')(out)
     # out = Conv2D(512, kernel_size=7, strides=2, activation='elu', padding='same')(out)
     # out = ZeroPadding2D(padding=((0, 0), (0, 0)), name='bottleneck')(out)
     # out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same')(out)
@@ -207,13 +207,12 @@ def prepare_network(lr, decay):
     # out = Reshape((9, 16, 24))(out)
     # out = Conv2DTranspose(256, kernel_size=3, strides=1, activation='elu', padding='same')(out)
     # out = Conv2DTranspose(256, kernel_size=7, strides=2, activation='elu', padding='same')(out)
-    # out = Conv2DTranspose(256, kernel_size=7, strides=2, activation='elu', padding='same')(out)
+    out = Conv2DTranspose(256, kernel_size=7, strides=2, activation='elu', padding='same', name='decoder_6')(out)
     out = Conv2DTranspose(128, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_5')(out)
     out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
     out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
     out = Conv2DTranspose(16, kernel_size=3, activation='elu', padding='same', name='decoder_2')(out)
     out = Conv2D(3, kernel_size=1, activation='tanh', padding='same', name='decoder_1')(out)
-    # out = Conv2DTranspose(3, kernel_size=9, activation='tanh', padding='same', name='decoder_1')(out)
     m = Model(inputs=input_tensor, outputs=out)
 
     m.compile(loss=mean_squared_error, optimizer=Adam(lr=lr, beta_1=0.9, beta_2=0.999,
@@ -267,7 +266,7 @@ def build_and_train_network(dataset_name, seed, batch_size, build_network_fn, in
             }, default=get_json_type, indent=2).encode('utf8'))
 
     # loading initial weights, optional
-    init_network_fn(m)  # must be after setting session
+            init_network_fn(m)  # must be after setting session
 
     history = m.fit_generator(data_gen, steps_per_epoch=500, epochs=100, verbose=1, validation_data=validation_data,
                               validation_steps=validation_batches * batch_size,
@@ -280,6 +279,7 @@ def build_and_train_network(dataset_name, seed, batch_size, build_network_fn, in
 
 def load_weights(m: Model, weights_file):
     m.load_weights(weights_file, by_name=True, reshape=True)
+    print('loading weights from:', weights_file)
 
 
 def prepare_network_1(lr, decay, freeze_prev_model=False):
@@ -288,6 +288,9 @@ def prepare_network_1(lr, decay, freeze_prev_model=False):
     out = Conv2D(64, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_2')(out)
     out = Conv2D(128, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_3')(out)
     out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_4')(out)
+    out = Conv2D(256, kernel_size=5, strides=2, activation='elu', padding='same', name='encoder_5')(out)
+    out = Conv2D(24, kernel_size=3, strides=1, activation='elu', padding='same', name='encoder_6')(out)
+    out = Conv2DTranspose(256, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_6')(out)
     out = Conv2DTranspose(128, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_5')(out)
     out = Conv2DTranspose(64, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_4')(out)
     out = Conv2DTranspose(32, kernel_size=5, strides=2, activation='elu', padding='same', name='decoder_3')(out)
@@ -315,14 +318,14 @@ def main(_):
     batch_size = 8
     dataset_name = '../../datasets/anime/no-game-no-life.tfrecord'
 
-    # trained from scratch
+    # # trained from scratch
     build_and_train_network(dataset_name, seed, batch_size, prepare_network_1)
     # used trained shallower network as initialization
     build_and_train_network(dataset_name, seed, batch_size, prepare_network_1, partial(
-        load_weights, weights_file='logs/anime-2019-03-09--22-50/model.h5'))
+        load_weights, weights_file='logs/anime-2019-03-13--20-10/model.h5'))
     # used trained shallower network weights and frozen
-    build_and_train_network(dataset_name, seed, batch_size, partial(prepare_network_1, freeze_prev_model=True), partial(
-        load_weights, weights_file='logs/anime-2019-03-09--22-50/model.h5'))
+    # build_and_train_network(dataset_name, seed, batch_size, partial(prepare_network_1, freeze_prev_model=True), partial(
+    #     load_weights, weights_file='logs/anime-2019-03-09--22-50/model.h5'))
 
 
 if __name__ == '__main__':
