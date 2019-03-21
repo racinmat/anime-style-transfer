@@ -38,6 +38,7 @@ from dimension_reduction_playground import extract_decoder
 tf.enable_eager_execution()
 print("Eager execution: {}".format(tf.executing_eagerly()))
 
+# taken from article https://medium.com/tensorflow/neural-style-transfer-creating-art-with-deep-learning-using-tf-keras-and-eager-execution-7d541ac31398
 
 def load_img(path_to_img):
     max_dim = 512

@@ -1,0 +1,9 @@
+[submodule "code/neural_style_transfer/neural_style_gatys"]
+	path = code/neural_style_transfer/neural_style_gatys
+	url = https://github.com/jcjohnson/neural-style.git
+[submodule "code/neural_style_transfer/fast_neural_style_johnson"]
+	path = code/neural_style_transfer/fast_neural_style_johnson
+	url = https://github.com/jcjohnson/fast-neural-style.git
+[submodule "code/neural_style_transfer/texture_nets_ulyanov"]
+	path = code/neural_style_transfer/texture_nets_ulyanov
+	url = https://github.com/DmitryUlyanov/texture_nets.git
