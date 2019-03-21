@@ -37,4 +37,4 @@ for installing torch:
 install cmake manually by `conda install -c anaconda cmake`
 clone https://github.com/BTNC/distro-win.git
 then follow win instructions, but for beware problems with outputting things to files
-check zips, and maybe download them by hand if they are not downloaded correctly
+download zips manually, there is problem with them
