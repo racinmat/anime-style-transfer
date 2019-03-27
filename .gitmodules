@@ -15,4 +15,4 @@
 	url = https://github.com/wzirui/guided-neural-style.git
 [submodule "code/neural_style_transfer/guided_style_transfer_2"]
 	path = code/neural_style_transfer/guided_style_transfer_2
-	url = https://github.com/cysmith/neural-style-tf.git
+	url = https://github.com/racinmat/neural-style-tf.git
