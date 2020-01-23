@@ -71,3 +71,4 @@ Following images are photos of Czech cosplayer Lena, be sure to check her conten
 
 ![Image of results](https://raw.github.com/racinmat/anime-style-transfer/master/lena-images-testset.png)
 
+Unfortunately other training did not show any more interesting results so far.

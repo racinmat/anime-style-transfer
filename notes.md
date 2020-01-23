@@ -30,8 +30,13 @@ take a look at CNNMRF https://arxiv.org/pdf/1601.04589.pdf
 ### lecture notes
 video for CartoonGAN https://www.youtube.com/watch?v=r4zzhN8Aibw&ab_channel=ZivZone to lecture - faces from it
 mention in lecture https://github.com/luanfujun/deep-painterly-harmonization (the most funny of them)
+definitely describe https://www.gwern.net/Faces, and https://www.thiswaifudoesnotexist.net/
+try something with trained network from that blog
+mention waifu2x
+mention makegirlsmoe
 
-for installing lua:
+
+for installing lua - did not get that working:
 install lua from https://github.com/rjpcomputing/luaforwindows/releases
 for installing torch:
 install cmake manually by `conda install -c anaconda cmake`
